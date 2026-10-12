@@ -91,6 +91,7 @@
                     {% elif page == 'sms-log' %}SMS Log
                     {% elif page == 'accounts' %}Kelola Akun IVASMS
                     {% elif page == 'auto-add' %}Auto-Add Numbers
+                    {% elif page == 'numbers' %}My Numbers & Export
                     {% elif page == 'bot-control' %}Bot Control
                     {% elif page == 'settings' %}Settings
                     {% endif %}
@@ -502,6 +503,102 @@
                             <div class="last-message" id="addLastMessage">
                                 <i class="fas fa-info-circle"></i> Belum ada aktivitas
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% elif page == 'numbers' %}
+            <!-- ═══════════════ MY NUMBERS & EXPORT ═══════════════ -->
+            <div class="page-content" id="numbersPage">
+                <!-- Top Action Header & Stats -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i class="fas fa-sim-card"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="numStatTotal">...</span>
+                            <span class="stat-label">Total Nomor di IVASMS</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple"><i class="fas fa-user-circle"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="numStatAccount" style="font-size: 1.15rem; word-break: break-all;">-</span>
+                            <span class="stat-label">Akun IVASMS Aktif</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon yellow"><i class="fas fa-history"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="numStatLastCheck" style="font-size: 1.15rem;">-</span>
+                            <span class="stat-label">Terakhir Diperiksa</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Numbers Card -->
+                <div class="card">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <h2><i class="fas fa-list-ol" style="color: var(--primary);"></i> Daftar Nomor (My Numbers)</h2>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun:</label>
+                                <select id="numAccountSelect" class="form-input" style="padding: 4px 10px; font-size: 0.85rem; width: auto; min-width: 180px;" onchange="loadNumbersData(false)">
+                                    <option value="1">Akun #1 (Loading...)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button class="btn btn-secondary btn-sm" id="btnRefreshNumbers" onclick="loadNumbersData(true)" title="Periksa Ulang ke IVASMS Portal">
+                                <i class="fas fa-sync-alt"></i> Deteksi Ulang
+                            </button>
+                            <button class="btn btn-primary btn-sm" id="btnExportExcel" onclick="downloadNumbersExport('excel')" style="background: #10b981; border-color: #10b981;">
+                                <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
+                            </button>
+                            <button class="btn btn-primary btn-sm" id="btnExportTxt" onclick="downloadNumbersExport('txt')" style="background: #6366f1; border-color: #6366f1;">
+                                <i class="fas fa-file-alt"></i> Export TXT (Nomor Saja)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Search & Filter Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 260px; max-width: 450px;">
+                                <div class="input-group" style="width: 100%;">
+                                    <input type="text" id="numSearchInput" class="form-input" placeholder="Cari nomor atau range name..." oninput="filterNumbersTable()">
+                                    <span class="input-addon"><i class="fas fa-search"></i></span>
+                                </div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.85rem;" id="numCountSummary">
+                                Memuat data nomor...
+                            </div>
+                        </div>
+
+                        <!-- Table Wrapper -->
+                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">No</th>
+                                        <th>Phone Number</th>
+                                        <th>Range Name</th>
+                                        <th>Rates (A2P)</th>
+                                        <th>Limit by Range</th>
+                                        <th>SID/Range Limit</th>
+                                        <th>SID→DID Limit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="numbersTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center" style="padding: 30px;">
+                                            <i class="fas fa-circle-notch fa-spin"></i> Sedang mendeteksi nomor dari ivasms.com...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
