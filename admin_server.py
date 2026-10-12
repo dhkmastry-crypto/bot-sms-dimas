@@ -461,6 +461,12 @@ def auto_add_page():
     return render_template("admin.html", page="auto-add")
 
 
+@app.route("/numbers")
+@login_required
+def numbers_page():
+    return render_template("admin.html", page="numbers")
+
+
 @app.route("/bot-control")
 @login_required
 def bot_control_page():
