@@ -266,13 +266,104 @@ async def get_csrf_token(page):
     return token
 
 
+async def run_worker(worker_id: int, account_idx: int, account_email: str, page, initial_csrf: str, queue: asyncio.Queue, shared_stats: dict, stats_lock: asyncio.Lock, delay: int, max_add: int):
+    """Worker task independen yang mengeksekusi penambahan nomor dari antrian."""
+    csrf = initial_csrf
+    while not queue.empty():
+        # Cek apakah max add sudah tercapai
+        async with stats_lock:
+            if max_add > 0 and shared_stats["added"] >= max_add:
+                break
+            shared_stats["current_action"] += 1
+            action_num = shared_stats["current_action"]
+
+        try:
+            row = await queue.get()
+        except asyncio.QueueEmpty:
+            break
+
+        termination_id = row.get("id")
+        row_range = row.get("range", "")
+        test_number = row.get("test_number", "")
+
+        if not termination_id:
+            queue.task_done()
+            continue
+
+        logger.info(f"── [Worker #{worker_id} | Akun #{account_idx}] Action #{action_num} ──")
+        logger.info(f"  📋 Range: {row_range} | 📱 Number: {test_number} | 🆔 ID: {termination_id}")
+
+        res = await add_number(page, termination_id, csrf)
+
+        success = res.get("success", False)
+        status = res.get("status", 0)
+        msg = res.get("message", "Unknown")
+
+        if success:
+            async with stats_lock:
+                shared_stats["added"] += 1
+            logger.info(f"  ✅ [Worker #{worker_id}] Berhasil! {msg}")
+        else:
+            if status == 419:
+                # CSRF Expired, reload page untuk token baru
+                logger.warning(f"  ⚠️ [Worker #{worker_id}] CSRF expired, refreshing page...")
+                try:
+                    await page.reload(wait_until="domcontentloaded")
+                    await asyncio.sleep(2)
+                    new_csrf = await get_csrf_token(page)
+                    if new_csrf:
+                        csrf = new_csrf
+                    retry_res = await add_number(page, termination_id, csrf)
+                    if retry_res.get("success"):
+                        async with stats_lock:
+                            shared_stats["added"] += 1
+                        logger.info(f"  ✅ [Worker #{worker_id}] Berhasil setelah refresh! {retry_res.get('message', '')}")
+                    else:
+                        async with stats_lock:
+                            shared_stats["failed"] += 1
+                        logger.error(f"  ❌ [Worker #{worker_id}] Gagal: {retry_res.get('message', '')}")
+                except Exception as e:
+                    async with stats_lock:
+                        shared_stats["failed"] += 1
+                    logger.error(f"  ❌ [Worker #{worker_id}] Error saat refresh: {e}")
+            elif status == 429:
+                logger.warning(f"  ⚠️ [Worker #{worker_id}] Rate limited! Menunggu 120 detik...")
+                async with stats_lock:
+                    shared_stats["skipped"] += 1
+                await asyncio.sleep(120)
+            elif "already" in msg.lower() or "exist" in msg.lower():
+                async with stats_lock:
+                    shared_stats["skipped"] += 1
+                logger.info(f"  ⏩ [Worker #{worker_id}] Sudah ada: {msg}")
+            else:
+                async with stats_lock:
+                    shared_stats["failed"] += 1
+                logger.error(f"  ❌ [Worker #{worker_id}] Gagal: [{status}] {msg}")
+
+        queue.task_done()
+
+        async with stats_lock:
+            curr_added = shared_stats["added"]
+            curr_failed = shared_stats["failed"]
+            curr_skipped = shared_stats["skipped"]
+
+        logger.info(f"  📊 Stats: Added={curr_added}, Failed={curr_failed}, Skipped={curr_skipped}")
+
+        if max_add > 0 and curr_added >= max_add:
+            break
+
+        if not queue.empty() and delay > 0:
+            await asyncio.sleep(delay)
+
+
 async def main():
     range_name = RANGE_NAME
     max_add = MAX_ADD
     delay = DELAY_SECONDS
-    account_idx = 1
+    account_arg = "1"
+    num_workers = 1
 
-    # Bisa override via command line: python auto_add_numbers.py "RUSSIA 1" [MAX_ADD] [DELAY] [ACCOUNT_INDEX]
+    # Format CLI: python auto_add_numbers.py "RANGE_NAME" [MAX_ADD] [DELAY] [ACCOUNT_INDEX_OR_ALL] [WORKERS]
     if len(sys.argv) >= 2:
         range_name = sys.argv[1]
     if len(sys.argv) >= 3:
@@ -286,34 +377,27 @@ async def main():
         except Exception:
             delay = 60
     if len(sys.argv) >= 5:
+        account_arg = str(sys.argv[4]).strip().lower()
+    if len(sys.argv) >= 6:
         try:
-            account_idx = int(sys.argv[4])
+            num_workers = max(1, min(int(sys.argv[5]), 36))
         except Exception:
-            account_idx = 1
+            num_workers = 1
 
+    # Interactive mode jika tidak ada parameter
     if not range_name:
         print("=" * 60)
-        print("  AUTO ADD NUMBERS - IVASMS")
+        print("  ⚡ MULTI-WORKER AUTO ADD NUMBERS - IVASMS")
         print("=" * 60)
         print()
-        print("  Cara penggunaan:")
+        print("  Penggunaan CLI:")
+        print('    python auto_add_numbers.py "RANGE_NAME" [MAX_ADD] [DELAY] [ACCOUNT] [WORKERS]')
         print()
-        print('  python auto_add_numbers.py "RANGE_NAME" [MAX_ADD] [DELAY] [ACCOUNT_INDEX]')
-        print()
-        print("  Contoh:")
-        print('    python auto_add_numbers.py "RUSSIA 1"')
-        print('    python auto_add_numbers.py "RUSSIA 1" 10')
-        print('    python auto_add_numbers.py "RUSSIA 1" 10 60 1')
-        print('    python auto_add_numbers.py "UZBEKISTAN" 0 30 2')
-        print()
-        print("  Parameter:")
-        print("    RANGE_NAME    : Nama range (case-insensitive, partial match)")
-        print("    MAX_ADD       : Maks jumlah add (0 = semua). Default: 0")
-        print("    DELAY         : Delay per action dalam detik. Default: 60")
-        print("    ACCOUNT_INDEX : Nomor index akun IVASMS (1, 2, dst). Default: 1")
+        print("  Contoh (VPS High Performance):")
+        print('    python auto_add_numbers.py "RUSSIA" 50 15 1 4      # Akun 1, 4 Workers paralel')
+        print('    python auto_add_numbers.py "RUSSIA" 100 20 all 8    # Semua Akun, 8 Workers paralel')
         print()
 
-        # Interactive mode
         acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
         accounts_list = []
         if os.path.exists(acc_file):
@@ -324,12 +408,13 @@ async def main():
                 pass
 
         if accounts_list:
-            print("  📋 Daftar Akun IVASMS Tersedia:")
+            print("  📋 Daftar Akun IVASMS:")
             for i, a in enumerate(accounts_list, start=1):
                 print(f"    [{i}] Akun #{i}: {a.get('email')}")
-            acc_input = input(f"  Pilih Akun [1-{len(accounts_list)}] (default 1): ").strip()
-            if acc_input.isdigit():
-                account_idx = int(acc_input)
+            print(f"    [all] Semua Akun Sekaligus (Parallel All Accounts)")
+            choice = input("  Pilih Akun [1/2/.../all] (default 1): ").strip().lower()
+            if choice:
+                account_arg = choice
             print()
 
         range_name = input("  Masukkan Range Name: ").strip()
@@ -340,195 +425,200 @@ async def main():
         max_input = input("  Maks jumlah add (0 = semua) [0]: ").strip()
         max_add = int(max_input) if max_input else 0
 
-        delay_input = input("  Delay per action (detik) [60]: ").strip()
+        delay_input = input("  Delay per action per worker (detik) [60]: ").strip()
         delay = int(delay_input) if delay_input else 60
 
-    # Dapatkan konfigurasi akun & direktori browser profile yang sesuai
-    acc_info = get_account_config(account_idx)
-    user_data_dir = acc_info["user_data_dir"]
-    login_email = acc_info["email"]
-    login_password = acc_info["password"]
+        w_input = input("  Jumlah Parallel Workers (1-36) [1]: ").strip()
+        if w_input.isdigit():
+            num_workers = max(1, min(int(w_input), 36))
+
+    # Tentukan target akun yang akan diproses
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    all_accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                all_accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not all_accounts:
+        all_accounts = [{"email": "Default", "password": ""}]
+
+    target_accounts = []
+    if account_arg == "all":
+        target_accounts = [get_account_config(i + 1) for i in range(len(all_accounts))]
+    else:
+        try:
+            target_idx = int(account_arg)
+        except Exception:
+            target_idx = 1
+        target_accounts = [get_account_config(target_idx)]
 
     print()
-    logger.info("═" * 55)
-    logger.info("  AUTO ADD NUMBERS - IVASMS")
-    logger.info("═" * 55)
-    logger.info(f"  👤 Akun IVASMS: Akun #{account_idx} ({login_email or 'Default'})")
-    logger.info(f"  📁 Profile Dir: {user_data_dir}")
-    logger.info(f"  🔍 Range Name : {range_name}")
-    logger.info(f"  📊 Max Add    : {'Unlimited' if max_add == 0 else max_add}")
-    logger.info(f"  ⏱️  Delay      : {delay} detik")
-    logger.info("═" * 55)
+    logger.info("═" * 58)
+    logger.info("  ⚡ MULTI-WORKER PARALLEL AUTO ADD NUMBERS")
+    logger.info("═" * 58)
+    logger.info(f"  🔍 Range Name       : {range_name}")
+    logger.info(f"  👥 Target Akun      : {len(target_accounts)} Akun ({', '.join('Akun #' + str(a['index']) for a in target_accounts)})")
+    logger.info(f"  🚀 Parallel Workers : {num_workers} Workers")
+    logger.info(f"  📊 Max Add          : {'Unlimited' if max_add == 0 else max_add}")
+    logger.info(f"  ⏱️  Delay Worker     : {delay} detik")
+    logger.info("═" * 58)
 
-    async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            channel="msedge",
-            headless=False,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-gpu",
-                "--window-position=-2000,-2000",
-            ]
-        )
-        page = context.pages[0] if context.pages else await context.new_page()
+    # Proses setiap akun (atau jalankan worker per akun)
+    for acc in target_accounts:
+        acc_idx = acc["index"]
+        user_data_dir = acc["user_data_dir"]
+        login_email = acc["email"]
+        login_password = acc["password"]
 
-        # Navigate to test numbers page
-        logger.info("🌐 Navigating ke halaman Test Numbers...")
-        try:
-            await page.goto(
-                "https://www.ivasms.com/portal/numbers/test",
-                timeout=45000,
-                wait_until="domcontentloaded"
-            )
-        except Exception as e:
-            logger.warning(f"Navigation warning: {e}")
+        logger.info(f"🚀 Membuka browser context untuk Akun #{acc_idx} ({login_email})...")
 
-        # Wait for Cloudflare
-        if not await wait_cloudflare(page, 30):
-            logger.error("❌ Cloudflare challenge timeout!")
-            await context.close()
-            return
+        async with async_playwright() as p:
+            try:
+                context = await p.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    channel="msedge",
+                    headless=False,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-gpu",
+                        "--window-position=-2000,-2000",
+                    ]
+                )
+            except Exception as launch_err:
+                logger.error(f"❌ Gagal launch browser Akun #{acc_idx}: {launch_err}")
+                continue
 
-        await asyncio.sleep(3)
+            main_page = context.pages[0] if context.pages else await context.new_page()
 
-        # Auto-login if needed dengan kredensial akun terpilih
-        if not await auto_login_if_needed(page, context, email=login_email, password=login_password):
-            await context.close()
-            return
+            logger.info("🌐 Navigating ke halaman Test Numbers...")
+            try:
+                await main_page.goto(
+                    "https://www.ivasms.com/portal/numbers/test",
+                    timeout=45000,
+                    wait_until="domcontentloaded"
+                )
+            except Exception as e:
+                logger.warning(f"Navigation warning: {e}")
 
-        # Make sure we're on the right page
-        if "/portal/numbers/test" not in page.url:
-            await page.goto(
-                "https://www.ivasms.com/portal/numbers/test",
-                timeout=30000,
-                wait_until="domcontentloaded"
-            )
-            await asyncio.sleep(3)
+            if not await wait_cloudflare(main_page, 30):
+                logger.error("❌ Cloudflare challenge timeout!")
+                await context.close()
+                continue
 
-        # Get CSRF token
-        csrf = await get_csrf_token(page)
-        if not csrf:
-            logger.error("❌ Gagal mendapatkan CSRF token!")
-            await context.close()
-            return
-        logger.info(f"🔐 CSRF token: {csrf[:20]}...")
+            await asyncio.sleep(2)
 
-        # Fetch matching ranges
-        logger.info(f"🔍 Mencari ranges dengan nama '{range_name}'...")
+            if not await auto_login_if_needed(main_page, context, email=login_email, password=login_password):
+                await context.close()
+                continue
 
-        total_added = 0
-        total_failed = 0
-        total_skipped = 0
-        start = 0
-        has_more = True
+            if "/portal/numbers/test" not in main_page.url:
+                await main_page.goto(
+                    "https://www.ivasms.com/portal/numbers/test",
+                    timeout=30000,
+                    wait_until="domcontentloaded"
+                )
+                await asyncio.sleep(2)
 
-        while has_more:
-            result = await fetch_ranges(page, range_name, start, BATCH_SIZE)
+            main_csrf = await get_csrf_token(main_page)
+            if not main_csrf:
+                logger.error("❌ Gagal mendapatkan CSRF token!")
+                await context.close()
+                continue
 
-            if 'error' in result and result['error']:
-                logger.error(f"❌ API Error: {result['error']}")
-                # Try refreshing CSRF
-                csrf = await get_csrf_token(page)
-                break
+            logger.info(f"🔐 CSRF token verified: {main_csrf[:15]}...")
 
-            records_total = result.get('recordsFiltered', 0)
-            data = result.get('data', [])
+            # Fetch matching numbers ke antrian
+            logger.info(f"🔍 Mengambil daftar nomor range '{range_name}' dari DataTable...")
+            items_queue = asyncio.Queue()
+            fetch_start = 0
+            has_more = True
+            total_found = 0
 
-            if start == 0:
-                logger.info(f"📊 Ditemukan {records_total} total records untuk '{range_name}'")
-
-            if not data:
-                logger.info("📭 Tidak ada data lagi.")
-                break
-
-            for row in data:
-                termination_id = row.get('id')
-                row_range = row.get('range', '')
-                test_number = row.get('test_number', '')
-
-                if not termination_id:
-                    continue
-
-                # Check max
-                if max_add > 0 and total_added >= max_add:
-                    logger.info(f"✅ Sudah mencapai batas {max_add} add.")
-                    has_more = False
+            while has_more:
+                batch_res = await fetch_ranges(main_page, range_name, fetch_start, BATCH_SIZE)
+                if 'error' in batch_res and batch_res['error']:
+                    logger.error(f"❌ DataTable Error: {batch_res['error']}")
                     break
 
-                total_added_and_failed = total_added + total_failed + total_skipped
-                logger.info(f"")
-                logger.info(f"── Action #{total_added_and_failed + 1} ──")
-                logger.info(f"  📋 Range: {row_range}")
-                logger.info(f"  📱 Number: {test_number}")
-                logger.info(f"  🆔 ID: {termination_id}")
+                records_total = batch_res.get('recordsFiltered', 0)
+                rows = batch_res.get('data', [])
 
-                # Call AddNumbers
-                res = await add_number(page, termination_id, csrf)
+                if fetch_start == 0:
+                    total_found = records_total
+                    logger.info(f"📊 Ditemukan {total_found} total records untuk '{range_name}'")
 
-                if res.get('success'):
-                    total_added += 1
-                    logger.info(f"  ✅ Berhasil! {res.get('message', '')}")
-                else:
-                    status = res.get('status', 0)
-                    msg = res.get('message', 'Unknown error')
+                if not rows:
+                    break
 
-                    if status == 419:
-                        # CSRF expired, refresh
-                        logger.warning(f"  ⚠️ CSRF expired, refreshing...")
-                        await page.reload(wait_until="domcontentloaded")
-                        await asyncio.sleep(3)
-                        csrf = await get_csrf_token(page)
-                        # Retry
-                        res = await add_number(page, termination_id, csrf)
-                        if res.get('success'):
-                            total_added += 1
-                            logger.info(f"  ✅ Berhasil setelah refresh! {res.get('message', '')}")
-                        else:
-                            total_failed += 1
-                            logger.error(f"  ❌ Gagal: [{status}] {msg}")
-                    elif status == 429:
-                        logger.warning(f"  ⚠️ Rate limited! Menunggu 120 detik...")
-                        total_skipped += 1
-                        await asyncio.sleep(120)
-                    elif "already" in msg.lower() or "exist" in msg.lower():
-                        total_skipped += 1
-                        logger.info(f"  ⏩ Sudah ada: {msg}")
-                    else:
-                        total_failed += 1
-                        logger.error(f"  ❌ Gagal: [{status}] {msg}")
+                for r in rows:
+                    items_queue.put_nowait(r)
 
-                logger.info(f"  📊 Stats: Added={total_added}, Failed={total_failed}, Skipped={total_skipped}")
+                fetch_start += BATCH_SIZE
+                if fetch_start >= records_total:
+                    has_more = False
 
-                # Delay between actions
-                if max_add == 0 or total_added < max_add:
-                    if has_more and (data.index(row) < len(data) - 1 or start + BATCH_SIZE < records_total):
-                        logger.info(f"  ⏱️ Menunggu {delay} detik sebelum action berikutnya...")
-                        await asyncio.sleep(delay)
+            if items_queue.empty():
+                logger.info(f"📭 Tidak ada nomor yang ditemukan untuk '{range_name}'.")
+                await context.close()
+                continue
 
-            # Move to next batch
-            start += BATCH_SIZE
-            if start >= records_total:
-                has_more = False
+            # Buat worker pages / tabs
+            logger.info(f"⚡ Menyiapkan {num_workers} parallel worker tabs...")
+            worker_pages = [main_page]
+            for _ in range(num_workers - 1):
+                try:
+                    new_p = await context.new_page()
+                    worker_pages.append(new_p)
+                except Exception as tab_err:
+                    logger.warning(f"Tidak dapat membuat tab tambahan: {tab_err}")
+                    break
 
-            if max_add > 0 and total_added >= max_add:
-                has_more = False
+            shared_stats = {
+                "added": 0,
+                "failed": 0,
+                "skipped": 0,
+                "current_action": 0
+            }
+            stats_lock = asyncio.Lock()
 
-        # Summary
-        logger.info("")
-        logger.info("═" * 55)
-        logger.info("  📊 RINGKASAN")
-        logger.info("═" * 55)
-        logger.info(f"  🔍 Range Name : {range_name}")
-        logger.info(f"  ✅ Berhasil   : {total_added}")
-        logger.info(f"  ❌ Gagal      : {total_failed}")
-        logger.info(f"  ⏩ Dilewati   : {total_skipped}")
-        logger.info(f"  📊 Total      : {total_added + total_failed + total_skipped}")
-        logger.info("═" * 55)
+            # Jalankan worker secara paralel
+            worker_tasks = [
+                run_worker(
+                    worker_id=w_i + 1,
+                    account_idx=acc_idx,
+                    account_email=login_email,
+                    page=p_inst,
+                    initial_csrf=main_csrf,
+                    queue=items_queue,
+                    shared_stats=shared_stats,
+                    stats_lock=stats_lock,
+                    delay=delay,
+                    max_add=max_add
+                )
+                for w_i, p_inst in enumerate(worker_pages)
+            ]
 
-        await context.close()
-        logger.info("🏁 Selesai!")
+            await asyncio.gather(*worker_tasks)
+
+            # Summary per akun
+            logger.info("")
+            logger.info("═" * 58)
+            logger.info(f"  📊 RINGKASAN AKUN #{acc_idx} ({login_email})")
+            logger.info("═" * 58)
+            logger.info(f"  🔍 Range Name : {range_name}")
+            logger.info(f"  ✅ Berhasil   : {shared_stats['added']}")
+            logger.info(f"  ❌ Gagal      : {shared_stats['failed']}")
+            logger.info(f"  ⏩ Dilewati   : {shared_stats['skipped']}")
+            logger.info(f"  📊 Total      : {shared_stats['added'] + shared_stats['failed'] + shared_stats['skipped']}")
+            logger.info("═" * 58)
+
+            await context.close()
+
+    logger.info("🏁 Semua proses Auto-Add selesai!")
 
 
 if __name__ == "__main__":

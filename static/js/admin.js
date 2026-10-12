@@ -425,10 +425,16 @@ async function loadAutoAddAccountsOptions() {
         }
 
         const currentVal = select.value;
-        select.innerHTML = accounts.map((acc, i) => {
+        let html = '';
+        if (accounts.length > 1) {
+            html += `<option value="all">⚡ SEMUA AKUN SEKALIGUS (Parallel ${accounts.length} Akun)</option>`;
+        }
+        html += accounts.map((acc, i) => {
             const idx = i + 1;
             return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
         }).join('');
+
+        select.innerHTML = html;
 
         if (currentVal) {
             select.value = currentVal;
@@ -442,7 +448,8 @@ async function startAutoAdd() {
     const rangeName = document.getElementById('addRangeName')?.value.trim();
     const maxAdd = parseInt(document.getElementById('addMaxAdd')?.value || '0', 10);
     const delay = parseInt(document.getElementById('addDelay')?.value || '60', 10);
-    const accountIndex = parseInt(document.getElementById('addAccountSelect')?.value || '1', 10);
+    const rawAccVal = document.getElementById('addAccountSelect')?.value || '1';
+    const workers = parseInt(document.getElementById('addWorkers')?.value || '4', 10);
 
     if (!rangeName) {
         showToast('Harap masukkan Range Name!', 'warning');
@@ -458,7 +465,8 @@ async function startAutoAdd() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                account_index: accountIndex,
+                account_index: rawAccVal,
+                workers: workers,
                 range_name: rangeName,
                 max_add: maxAdd,
                 delay: delay
@@ -523,7 +531,8 @@ async function checkAutoAddStatus() {
             if (runningInfo && state.account_email) {
                 runningInfo.style.display = 'block';
                 if (runningText) {
-                    runningText.innerHTML = `Sedang berjalan menggunakan: <b>Akun #${state.account_index || 1}</b> (${escapeHtml(state.account_email)})`;
+                    const workerBadge = state.workers ? ` <span class="badge badge-info" style="font-size:0.75rem;"><i class="fas fa-bolt"></i> ${state.workers} Workers</span>` : '';
+                    runningText.innerHTML = `Sedang berjalan menggunakan: <b>${escapeHtml(state.account_email)}</b>${workerBadge}`;
                 }
             }
         } else {
@@ -1092,6 +1101,51 @@ async function deleteAccountSlot(index) {
         }
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function submitBulkAccounts() {
+    const textarea = document.getElementById('accBulkInput');
+    const btn = document.getElementById('btnSubmitBulk');
+    const hint = document.getElementById('bulkImportHint');
+    const rawText = textarea ? textarea.value.trim() : '';
+
+    if (!rawText) {
+        showToast('Teks akun bulk tidak boleh kosong!', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengimpor...';
+    }
+
+    try {
+        const res = await fetch('/api/accounts/bulk-import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: rawText })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            if (textarea) textarea.value = '';
+            if (hint) hint.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Berhasil import ${data.imported} akun baru (${data.total} total akun).</span>`;
+            await loadAccountsList();
+            if (typeof loadAutoAddAccountsOptions === 'function') {
+                await loadAutoAddAccountsOptions();
+            }
+        } else {
+            showToast(data.message || 'Gagal import akun bulk', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-upload"></i> Proses Import Massal';
+        }
     }
 }
 

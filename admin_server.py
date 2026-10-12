@@ -772,29 +772,38 @@ def api_auto_add_start():
     range_name = data.get("range_name", "")
     max_add = data.get("max_add", 0)
     delay = data.get("delay", 60)
-    try:
-        account_index = int(data.get("account_index", 1))
-    except Exception:
-        account_index = 1
+    raw_acc = str(data.get("account_index", "1")).strip().lower()
+    workers = int(data.get("workers", 1) or 1)
+    workers = max(1, min(workers, 36))  # Batasi 1 - 36 workers
     
     if not range_name:
         return jsonify({"success": False, "message": "Range name harus diisi!"})
 
-    # Dapatkan email akun untuk display
     acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
-    account_email = f"Akun #{account_index}"
+    accounts_db = []
     if os.path.exists(acc_file):
         try:
             with open(acc_file, "r", encoding="utf-8") as f:
-                accs = json.load(f)
-                if 1 <= account_index <= len(accs):
-                    account_email = accs[account_index - 1].get("email", account_email)
+                accounts_db = json.load(f)
         except Exception:
             pass
+
+    if raw_acc == "all":
+        account_arg = "all"
+        account_email = f"Semua Akun ({len(accounts_db)} Akun Terdaftar)"
+    else:
+        try:
+            acc_num = int(raw_acc)
+        except Exception:
+            acc_num = 1
+        account_arg = str(acc_num)
+        account_email = f"Akun #{acc_num}"
+        if 1 <= acc_num <= len(accounts_db):
+            account_email = accounts_db[acc_num - 1].get("email", account_email)
     
     try:
         proc = subprocess.Popen(
-            [sys.executable, "auto_add_numbers.py", range_name, str(max_add), str(delay), str(account_index)],
+            [sys.executable, "auto_add_numbers.py", range_name, str(max_add), str(delay), account_arg, str(workers)],
             cwd=os.path.dirname(__file__),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -803,8 +812,9 @@ def api_auto_add_start():
         
         auto_add_state = {
             "running": True,
-            "account_index": account_index,
+            "account_index": account_arg,
             "account_email": account_email,
+            "workers": workers,
             "range_name": range_name,
             "max_add": max_add,
             "delay": delay,
@@ -813,7 +823,7 @@ def api_auto_add_start():
             "skipped": 0,
             "total_found": 0,
             "current_action": 0,
-            "last_message": f"Memulai untuk {account_email}...",
+            "last_message": f"Memulai {workers} worker untuk {account_email}...",
             "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "process": proc,
         }
@@ -1034,6 +1044,78 @@ def api_accounts_delete():
             return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
 
     return jsonify({"success": False, "message": "Akun tidak ditemukan."})
+
+
+@app.route("/api/accounts/bulk-import", methods=["POST"])
+@login_required
+def api_accounts_bulk_import():
+    """Bulk import IVASMS accounts in format email:password per line"""
+    data = request.json or {}
+    raw_text = data.get("text", "").strip()
+    if not raw_text:
+        return jsonify({"success": False, "message": "Teks akun tidak boleh kosong!"})
+
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    existing_emails = {a.get("email", "").lower(): i for i, a in enumerate(accounts)}
+    imported_count = 0
+    updated_count = 0
+    lines = raw_text.splitlines()
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        parts = re.split(r"[:|;\t,]", line, maxsplit=1)
+        if len(parts) < 2:
+            continue
+        email = parts[0].strip()
+        password = parts[1].strip()
+        if not email or not password or "@" not in email:
+            continue
+
+        em_lower = email.lower()
+        if em_lower in existing_emails:
+            idx = existing_emails[em_lower]
+            accounts[idx]["password"] = password
+            updated_count += 1
+        else:
+            accounts.append({"email": email, "password": password})
+            existing_emails[em_lower] = len(accounts) - 1
+            imported_count += 1
+
+    try:
+        with open(acc_file, "w", encoding="utf-8") as f:
+            json.dump(accounts, f, indent=2)
+
+        sync_cfg = {}
+        if len(accounts) >= 1:
+            sync_cfg["IVASMS_EMAIL"] = accounts[0]["email"]
+            sync_cfg["IVASMS_PASSWORD"] = accounts[0]["password"]
+        if len(accounts) >= 2:
+            sync_cfg["IVASMS_EMAIL_2"] = accounts[1]["email"]
+            sync_cfg["IVASMS_PASSWORD_2"] = accounts[1]["password"]
+        if sync_cfg:
+            save_config(sync_cfg)
+
+        return jsonify({
+            "success": True,
+            "message": f"Berhasil memproses! {imported_count} akun baru ditambahkan, {updated_count} akun diperbarui.",
+            "imported": imported_count,
+            "updated": updated_count,
+            "total": len(accounts),
+            "accounts": accounts
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
 
 
 # ────────────────────────────────────────────
