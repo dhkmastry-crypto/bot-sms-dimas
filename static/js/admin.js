@@ -81,6 +81,8 @@ function initPage(page) {
         loadAutoAddAccountsOptions();
         checkAutoAddStatus();
         autoAddInterval = setInterval(checkAutoAddStatus, 3000);
+    } else if (page === 'numbers') {
+        initNumbersPage();
     } else if (page === 'bot-control') {
         loadBotControl();
         refreshLogs();
@@ -564,6 +566,172 @@ async function checkAutoAddStatus() {
     } catch (e) {
         console.error('Failed to get auto-add status:', e);
     }
+}
+
+// ────────────────────────────────────────────
+//  MY NUMBERS & EXPORT (IVASMS PORTAL)
+// ────────────────────────────────────────────
+
+let allNumbersList = [];
+
+async function initNumbersPage() {
+    await loadNumbersAccountOptions();
+    await loadNumbersData(false);
+}
+
+async function loadNumbersAccountOptions() {
+    const select = document.getElementById('numAccountSelect');
+    if (!select) return;
+
+    try {
+        const res = await fetch('/api/accounts');
+        const data = await res.json();
+        const accounts = data.accounts || [];
+
+        if (accounts.length === 0) {
+            select.innerHTML = '<option value="1">Akun #1 (Default)</option>';
+            return;
+        }
+
+        const currentVal = select.value || '1';
+        select.innerHTML = accounts.map((acc, i) => {
+            const idx = i + 1;
+            return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
+        }).join('');
+
+        if (currentVal) {
+            select.value = currentVal;
+        }
+    } catch (e) {
+        console.error('Failed to load accounts for numbers:', e);
+    }
+}
+
+async function loadNumbersData(forceRefresh = false) {
+    const select = document.getElementById('numAccountSelect');
+    const accIdx = select ? select.value : '1';
+    const tbody = document.getElementById('numbersTableBody');
+    const statTotal = document.getElementById('numStatTotal');
+    const statAcc = document.getElementById('numStatAccount');
+    const statLast = document.getElementById('numStatLastCheck');
+    const summary = document.getElementById('numCountSummary');
+    const btnRef = document.getElementById('btnRefreshNumbers');
+
+    if (btnRef) {
+        btnRef.disabled = true;
+        btnRef.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mendeteksi...';
+    }
+
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center" style="padding: 30px;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i>
+                    <div style="margin-top: 10px; font-weight: 500;">
+                        ${forceRefresh ? 'Membuka portal ivasms.com & mendeteksi nomor realtime...' : 'Memuat data nomor akun...'}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        const res = await fetch(`/api/numbers?account_index=${accIdx}&refresh=${forceRefresh ? '1' : '0'}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            showToast(data.message || 'Gagal mengambil nomor dari portal', 'error');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
+            }
+            if (statTotal) statTotal.textContent = '0';
+            return;
+        }
+
+        allNumbersList = data.numbers || [];
+        const total = data.total || allNumbersList.length;
+
+        if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
+        if (statAcc) statAcc.textContent = `Akun #${data.account_index} (${data.email})`;
+        if (statLast) statLast.textContent = data.cached_at || 'Baru saja';
+        if (summary) summary.innerHTML = `Menampilkan <b>${allNumbersList.length}</b> dari total <b>${total}</b> nomor`;
+
+        renderNumbersTable(allNumbersList);
+        if (forceRefresh) {
+            showToast(`Berhasil mendeteksi ${total} nomor di akun #${accIdx}!`, 'success');
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    } finally {
+        if (btnRef) {
+            btnRef.disabled = false;
+            btnRef.innerHTML = '<i class="fas fa-sync-alt"></i> Deteksi Ulang';
+        }
+    }
+}
+
+function renderNumbersTable(list) {
+    const tbody = document.getElementById('numbersTableBody');
+    if (!tbody) return;
+
+    if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor yang ditemukan untuk akun ini.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = list.map((item, idx) => {
+        return `
+            <tr>
+                <td class="text-muted mono" style="font-size: 0.82rem;">${idx + 1}</td>
+                <td class="selectable mono" style="font-weight: 600; color: var(--primary);">
+                    <i class="fas fa-phone-alt" style="font-size: 0.75rem; opacity: 0.6; margin-right: 4px;"></i>
+                    <span onclick="copyText('${escapeHtml(item.number)}')">${escapeHtml(item.number)}</span>
+                </td>
+                <td><span class="badge badge-info" style="font-weight: 500;">${escapeHtml(item.range || '-')}</span></td>
+                <td class="mono">${escapeHtml(item.rate || '-')}</td>
+                <td class="mono">${escapeHtml(item.limit_range || '-')}</td>
+                <td class="mono">${escapeHtml(item.sid_limit || '-')}</td>
+                <td class="mono">${escapeHtml(item.sid_did_limit || '-')}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterNumbersTable() {
+    const query = (document.getElementById('numSearchInput')?.value || '').toLowerCase().trim();
+    const summary = document.getElementById('numCountSummary');
+
+    if (!query) {
+        renderNumbersTable(allNumbersList);
+        if (summary) summary.innerHTML = `Menampilkan <b>${allNumbersList.length}</b> nomor`;
+        return;
+    }
+
+    const filtered = allNumbersList.filter(item => {
+        return (item.number && item.number.toLowerCase().includes(query)) ||
+               (item.range && item.range.toLowerCase().includes(query)) ||
+               (item.id && item.id.includes(query));
+    });
+
+    renderNumbersTable(filtered);
+    if (summary) summary.innerHTML = `Ditemukan <b>${filtered.length}</b> hasil dari <b>${allNumbersList.length}</b> nomor`;
+}
+
+function downloadNumbersExport(format) {
+    const select = document.getElementById('numAccountSelect');
+    const accIdx = select ? select.value : '1';
+
+    if (allNumbersList.length === 0) {
+        showToast('Tidak ada data nomor untuk diexport. Lakukan deteksi terlebih dahulu!', 'warning');
+        return;
+    }
+
+    showToast(`Menyiapkan export ${format.toUpperCase()}...`, 'info');
+    const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
+    window.location.href = downloadUrl;
 }
 
 // ────────────────────────────────────────────
