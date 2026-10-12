@@ -9,44 +9,56 @@ async def inspect():
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
             user_data_dir=user_data_dir,
-            headless=True,
-            args=["--no-sandbox", "--disable-dev-shm-usage"]
+            channel="msedge",
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-gpu",
+                "--window-position=-2000,-2000",
+            ]
         )
         page = context.pages[0] if context.pages else await context.new_page()
         print("Navigating to /portal/numbers ...")
-        resp = await page.goto("https://www.ivasms.com/portal/numbers", wait_until="domcontentloaded", timeout=45000)
+        await page.goto("https://www.ivasms.com/portal/numbers", wait_until="domcontentloaded", timeout=45000)
+        
+        for _ in range(30):
+            title = await page.title()
+            if "Just a moment" not in title:
+                break
+            await asyncio.sleep(1)
+            
         await asyncio.sleep(4)
         print(f"Current URL: {page.url}")
-        
-        # Capture title and body snippet
-        title = await page.title()
-        print(f"Page Title: {title}")
-        
-        # Check if table exists
-        tables = await page.evaluate("""() => {
-            const list = [];
-            document.querySelectorAll('table').forEach(t => {
-                list.push({ id: t.id, class: t.className, headers: Array.from(t.querySelectorAll('th')).map(th => th.innerText.trim()) });
-            });
-            return list;
-        }""")
-        print(f"Tables found: {json.dumps(tables, indent=2)}")
+        print(f"Page Title: {await page.title()}")
 
-        # Check scripts or datatables ajax url
-        scripts_info = await page.evaluate("""() => {
-            const scripts = Array.from(document.querySelectorAll('script')).map(s => s.innerHTML).filter(s => s.includes('DataTable') || s.includes('/numbers'));
-            return scripts.map(s => s.substring(0, 300));
+        # Check tables & columns
+        info = await page.evaluate("""() => {
+            const tables = Array.from(document.querySelectorAll('table')).map(t => ({
+                id: t.id,
+                className: t.className,
+                headers: Array.from(t.querySelectorAll('th')).map(th => th.innerText.trim())
+            }));
+            const cardHeaders = Array.from(document.querySelectorAll('.card-header, .card-title, h1, h2, h3, h4, .badge')).map(e => e.innerText.trim());
+            return { tables, cardHeaders };
         }""")
-        print(f"DataTable scripts snippet count: {len(scripts_info)}")
-        for s in scripts_info[:3]:
-            print("--- SCRIPT ---")
+        print(f"Info: {json.dumps(info, indent=2)}")
+
+        # Check DataTables settings or AJAX calls
+        scripts_ajax = await page.evaluate("""() => {
+            const scripts = Array.from(document.querySelectorAll('script')).map(s => s.innerHTML).filter(s => s.includes('DataTable') || s.includes('ajax') || s.includes('numbers'));
+            return scripts.map(s => s.substring(0, 500));
+        }""")
+        print(f"AJAX Scripts count: {len(scripts_ajax)}")
+        for i, s in enumerate(scripts_ajax):
+            print(f"=== SCRIPT {i+1} ===")
             print(s)
 
-        # Save HTML for inspection
-        content = await page.content()
+        # Look for any network endpoint mentioned in HTML
+        html = await page.content()
         with open("debug_numbers_portal.html", "w", encoding="utf-8") as f:
-            f.write(content)
-        print("Saved debug_numbers_portal.html")
+            f.write(html)
+        print("Written debug_numbers_portal.html successfully")
         await context.close()
 
 if __name__ == "__main__":
