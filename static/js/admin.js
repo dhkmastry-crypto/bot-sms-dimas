@@ -75,7 +75,10 @@ function initPage(page) {
         setInterval(refreshLogs, 6000);
     } else if (page === 'sms-log') {
         loadSmsLog(1);
+    } else if (page === 'accounts') {
+        loadAccountsList();
     } else if (page === 'auto-add') {
+        loadAutoAddAccountsOptions();
         checkAutoAddStatus();
         autoAddInterval = setInterval(checkAutoAddStatus, 3000);
     } else if (page === 'bot-control') {
@@ -144,9 +147,14 @@ async function loadDashboard() {
         const statIvasms = document.getElementById('statIvasms');
         const statIvasmsBadge = document.getElementById('statIvasmsBadge');
         const statErrors = document.getElementById('statErrors');
+        const statRevenue = document.getElementById('statRevenue');
 
         if (statOtp) statOtp.textContent = data.stats.otp_received || 0;
         if (statErrors) statErrors.textContent = data.stats.errors || 0;
+        if (statRevenue) {
+            const revVal = (data.stats.total_revenue !== undefined) ? data.stats.total_revenue : (data.stats.otp_received * 0.05);
+            statRevenue.textContent = `$${parseFloat(revVal).toFixed(2)}`;
+        }
 
         if (statBot) statBot.textContent = data.stats.bot_running ? 'Online' : 'Offline';
         if (statBotBadge) {
@@ -158,6 +166,76 @@ async function loadDashboard() {
         if (statIvasmsBadge) {
             statIvasmsBadge.textContent = data.stats.ivasms_connected ? 'Session OK' : 'Needs Sync';
             statIvasmsBadge.className = `stat-badge ${data.stats.ivasms_connected ? 'active' : 'inactive'}`;
+        }
+
+        // Render Country Leaderboard
+        const countryBoard = document.getElementById('countryLeaderboard');
+        if (countryBoard) {
+            const cCounts = data.stats.country_counts || {};
+            const cEntries = Object.entries(cCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            if (cEntries.length === 0) {
+                // Fallback default sample data jika bot baru nyala
+                countryBoard.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>🇩🇪 Jerman (DE)</span><b style="color:var(--accent);">Active</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>🇿🇼 Zimbabwe (ZW)</span><b style="color:var(--accent);">Active</b>
+                    </div>
+                `;
+            } else {
+                countryBoard.innerHTML = cEntries.map(([cc, count], idx) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>#${idx+1} <b>${cc}</b></span>
+                        <span style="color:var(--accent); font-weight:700;">${count} OTP</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render Platform Leaderboard
+        const platBoard = document.getElementById('platformLeaderboard');
+        if (platBoard) {
+            const pCounts = data.stats.platform_counts || {};
+            const pEntries = Object.entries(pCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            if (pEntries.length === 0) {
+                platBoard.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>🟢 WhatsApp</span><b style="color:#10b981;">Active</b>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>🔵 Telegram</span><b style="color:#3b82f6;">Active</b>
+                    </div>
+                `;
+            } else {
+                platBoard.innerHTML = pEntries.map(([plat, count], idx) => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:6px 10px; border-radius:6px; font-size:0.85rem;">
+                        <span>#${idx+1} <b>${plat}</b></span>
+                        <span style="color:#10b981; font-weight:700;">${count} OTP</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Render Busy Hours Chart
+        const chartBox = document.getElementById('hourlyChartContainer');
+        if (chartBox) {
+            const hourly = data.stats.hourly_counts || {};
+            const hours = [];
+            for (let i = 0; i < 24; i++) {
+                const hk = `${String(i).padStart(2, '0')}:00`;
+                hours.push({ hour: hk, count: hourly[hk] || 0 });
+            }
+            const maxVal = Math.max(...hours.map(h => h.count), 1);
+            chartBox.innerHTML = hours.map(h => {
+                const pct = Math.max((h.count / maxVal) * 100, 10);
+                const isPeak = h.count === maxVal && maxVal > 0;
+                return `
+                    <div style="flex:1; display:flex; flex-direction:column; align-items:center; height:100%; justify-content:flex-end;" title="${h.hour}: ${h.count} OTP">
+                        <div style="width:100%; max-width:14px; height:${pct}%; background:${isPeak ? 'linear-gradient(to top, #10b981, #06b6d4)' : 'rgba(255,255,255,0.15)'}; border-radius:3px 3px 0 0; transition:height 0.3s ease;"></div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // Recent Activity
@@ -332,10 +410,39 @@ function copyText(text) {
 //  AUTO-ADD NUMBERS
 // ────────────────────────────────────────────
 
+async function loadAutoAddAccountsOptions() {
+    const select = document.getElementById('addAccountSelect');
+    if (!select) return;
+
+    try {
+        const res = await fetch('/api/accounts');
+        const data = await res.json();
+        const accounts = data.accounts || [];
+
+        if (accounts.length === 0) {
+            select.innerHTML = '<option value="1">Akun #1 (Default)</option>';
+            return;
+        }
+
+        const currentVal = select.value;
+        select.innerHTML = accounts.map((acc, i) => {
+            const idx = i + 1;
+            return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
+        }).join('');
+
+        if (currentVal) {
+            select.value = currentVal;
+        }
+    } catch (e) {
+        console.error('Failed to load accounts for auto-add:', e);
+    }
+}
+
 async function startAutoAdd() {
     const rangeName = document.getElementById('addRangeName')?.value.trim();
     const maxAdd = parseInt(document.getElementById('addMaxAdd')?.value || '0', 10);
     const delay = parseInt(document.getElementById('addDelay')?.value || '60', 10);
+    const accountIndex = parseInt(document.getElementById('addAccountSelect')?.value || '1', 10);
 
     if (!rangeName) {
         showToast('Harap masukkan Range Name!', 'warning');
@@ -350,7 +457,12 @@ async function startAutoAdd() {
         const res = await fetch('/api/auto-add/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ range_name: rangeName, max_add: maxAdd, delay: delay })
+            body: JSON.stringify({
+                account_index: accountIndex,
+                range_name: rangeName,
+                max_add: maxAdd,
+                delay: delay
+            })
         });
         const data = await res.json();
 
@@ -399,15 +511,27 @@ async function checkAutoAddStatus() {
         const statTotal = document.getElementById('addStatTotal');
         const bar = document.getElementById('addProgressBar');
         const msg = document.getElementById('addLastMessage');
+        const accSelect = document.getElementById('addAccountSelect');
+        const runningInfo = document.getElementById('addRunningAccountInfo');
+        const runningText = document.getElementById('addRunningAccountText');
 
         if (state.running) {
             if (btnStart) { btnStart.style.display = 'none'; btnStart.disabled = false; }
             if (btnStop) { btnStop.style.display = 'inline-flex'; }
             if (badge) { badge.textContent = 'Running'; badge.className = 'status-badge active'; }
+            if (accSelect) { accSelect.disabled = true; }
+            if (runningInfo && state.account_email) {
+                runningInfo.style.display = 'block';
+                if (runningText) {
+                    runningText.innerHTML = `Sedang berjalan menggunakan: <b>Akun #${state.account_index || 1}</b> (${escapeHtml(state.account_email)})`;
+                }
+            }
         } else {
             if (btnStart) { btnStart.style.display = 'inline-flex'; btnStart.disabled = false; }
             if (btnStop) { btnStop.style.display = 'none'; }
             if (badge) { badge.textContent = 'Idle'; badge.className = 'status-badge'; }
+            if (accSelect) { accSelect.disabled = false; }
+            if (runningInfo) { runningInfo.style.display = 'none'; }
         }
 
         if (statAdded) statAdded.textContent = state.added || 0;
@@ -461,8 +585,81 @@ async function loadBotControl() {
             if (btnStart) btnStart.disabled = false;
             if (btnStop) btnStop.disabled = true;
         }
+
+        // Render status akun IVASMS dari backend bot status / api accounts
+        await renderBotControlAccountsStatus(status.accounts_status || null);
     } catch (e) {
         console.error('Error fetching bot status:', e);
+    }
+}
+
+async function renderBotControlAccountsStatus(customResults = null) {
+    const listContainer = document.getElementById('ivasmsAccountsStatusList');
+    if (!listContainer) return;
+
+    try {
+        let accounts = [];
+        if (customResults && Array.isArray(customResults) && customResults.length > 0) {
+            accounts = customResults;
+        } else {
+            const res = await fetch('/api/accounts');
+            const data = await res.json();
+            accounts = (data.accounts || []).map((a, i) => ({
+                index: i + 1,
+                email: a.email,
+                connected: a.connected !== undefined ? a.connected : true,
+                last_check: a.last_check || 'Status Terpantau (Aktif)'
+            }));
+        }
+
+        const countBadge = document.getElementById('ivasmsAccCountBadge');
+        if (countBadge) {
+            countBadge.textContent = `${accounts.length} Akun Terdaftar`;
+        }
+
+        if (accounts.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-muted" style="font-size: 0.85rem; padding: 14px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    Belum ada akun IVASMS terdaftar. <a href="/accounts" style="color: var(--primary); text-decoration: underline;">Kelola Akun</a> untuk menambahkan akun.
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = accounts.map(acc => {
+            const isConn = !!acc.connected;
+            const statusDot = isConn 
+                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div>' 
+                : '<div class="status-dot offline" style="margin: 0; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></div>';
+            const badge = isConn 
+                ? '<span class="badge badge-success" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-check-circle"></i> Connected</span>' 
+                : '<span class="badge badge-danger" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-times-circle"></i> Disconnected</span>';
+
+            return `
+                <div id="accStatusCard_${acc.index}" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: all 0.2s ease;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${statusDot}
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <b style="font-size: 0.92rem; color: var(--text);">Akun #${acc.index}</b>
+                                <span class="text-muted" style="font-size: 0.8rem; font-family: monospace;">(${escapeHtml(acc.email)})</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.74rem; margin-top: 3px;" id="accCheckTime_${acc.index}">
+                                <i class="far fa-clock"></i> ${acc.last_check ? 'Pengecekan: ' + acc.last_check : 'Status terpantau aktif'}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="accBadge_${acc.index}">${badge}</span>
+                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkIvasmsSingle(${acc.index})" id="btnCheckAcc_${acc.index}" title="Cek koneksi akun #${acc.index}">
+                            <i class="fas fa-sync-alt"></i> Cek
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        listContainer.innerHTML = `<div class="text-danger" style="font-size: 0.8rem;">Gagal memuat status: ${e.message}</div>`;
     }
 }
 
@@ -504,31 +701,81 @@ async function stopBot() {
     }
 }
 
+async function checkIvasmsSingle(index) {
+    const btn = document.getElementById(`btnCheckAcc_${index}`);
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    }
+
+    try {
+        const res = await fetch('/api/ivasms/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        const data = await res.json();
+        if (data.success && data.status) {
+            const accList = data.status.accounts || [];
+            await renderBotControlAccountsStatus(accList);
+            const thisAcc = accList.find(a => a.index === index);
+            if (thisAcc && thisAcc.connected) {
+                showToast(`Akun #${index} berhasil terhubung!`, 'success');
+            } else {
+                showToast(`Akun #${index} terputus / cookie expired!`, 'error');
+            }
+        } else {
+            showToast(`Gagal cek akun #${index}: ${data.message || 'Error'}`, 'error');
+        }
+    } catch (e) {
+        showToast(`Gagal cek akun #${index}: ${e.message}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
 async function checkIvasms() {
     const text = document.getElementById('ivasmsStatusText');
     const desc = document.getElementById('ivasmsStatusDesc');
     const icon = document.getElementById('ivasmsIcon');
+    const btn = document.getElementById('btnCheckIvasms');
 
-    if (text) text.textContent = 'Memeriksa...';
-    if (desc) desc.textContent = 'Membuka browser & mengambil cookies sesi...';
+    if (text) text.textContent = 'Memeriksa Semua Akun...';
+    if (desc) desc.textContent = 'Memvalidasi sesi login & cookies per akun...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memeriksa...';
+    }
 
     try {
         const res = await fetch('/api/ivasms/check', { method: 'POST' });
         const data = await res.json();
 
-        if (data.success && data.status && data.status.connected) {
-            if (icon) icon.className = 'bot-icon online';
-            if (text) text.textContent = 'IVASMS Terhubung';
-            if (desc) desc.textContent = `Cookies valid • Dicek: ${data.status.last_check}`;
-            showToast('Koneksi IVASMS valid & aktif!', 'success');
+        if (data.success && data.status) {
+            const accList = data.status.accounts || [];
+            const allConn = accList.length > 0 && accList.every(a => a.connected);
+            const anyConn = accList.some(a => a.connected);
+
+            if (icon) icon.className = anyConn ? 'bot-icon online' : 'bot-icon offline';
+            if (text) text.textContent = allConn ? 'Semua Akun Terhubung' : anyConn ? 'Sebagian Akun Terhubung' : 'Semua Akun Terputus';
+            if (desc) desc.textContent = `Pengecekan selesai pada ${data.status.last_check}`;
+
+            await renderBotControlAccountsStatus(accList);
+            showToast(allConn ? 'Semua akun IVASMS berhasil terhubung!' : anyConn ? 'Sebagian akun terhubung.' : 'Semua akun terputus!', anyConn ? 'success' : 'warning');
         } else {
-            if (icon) icon.className = 'bot-icon offline';
-            if (text) text.textContent = 'IVASMS Terputus';
-            if (desc) desc.textContent = 'Sesi expired atau kredensial salah.';
-            showToast('Sesi IVASMS tidak terhubung!', 'warning');
+            showToast('Gagal memverifikasi status akun!', 'error');
         }
     } catch (e) {
         showToast(`Gagal cek IVASMS: ${e.message}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Cek Koneksi';
+        }
     }
 }
 
@@ -548,7 +795,18 @@ async function loadSettings() {
         if (document.getElementById('cfgPollInterval')) document.getElementById('cfgPollInterval').value = cfg.POLL_INTERVAL || '10';
         if (document.getElementById('cfgEmail')) document.getElementById('cfgEmail').value = cfg.IVASMS_EMAIL || '';
         if (document.getElementById('cfgPassword')) document.getElementById('cfgPassword').value = cfg.IVASMS_PASSWORD || '';
-        if (document.getElementById('cfgNumberLink')) document.getElementById('cfgNumberLink').value = cfg.NUMBER_LINK || '';
+        if (document.getElementById('cfgEmail2')) document.getElementById('cfgEmail2').value = cfg.IVASMS_EMAIL_2 || '';
+        if (document.getElementById('cfgPassword2')) document.getElementById('cfgPassword2').value = cfg.IVASMS_PASSWORD_2 || '';
+        
+        // File & Channel Links
+        const fileLink = cfg.FILE_LINK || cfg.NUMBER_LINK || '';
+        const channelLink = cfg.CHANNEL_LINK || cfg.GROUP_LINK || '';
+        const sensorText = cfg.SENSOR_TEXT || '••••';
+
+        if (document.getElementById('cfgFileLink')) document.getElementById('cfgFileLink').value = fileLink;
+        if (document.getElementById('cfgChannelLink')) document.getElementById('cfgChannelLink').value = channelLink;
+        if (document.getElementById('cfgSensorText')) document.getElementById('cfgSensorText').value = sensorText;
+        if (document.getElementById('cfgNumberLink')) document.getElementById('cfgNumberLink').value = fileLink;
         if (document.getElementById('cfgOwnerLink')) document.getElementById('cfgOwnerLink').value = cfg.OWNER_LINK || '';
     } catch (e) {
         showToast('Gagal memuat konfigurasi: ' + e.message, 'error');
@@ -556,17 +814,35 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
+    const fileLink = document.getElementById('cfgFileLink')?.value.trim() || document.getElementById('cfgNumberLink')?.value.trim();
+    const channelLink = document.getElementById('cfgChannelLink')?.value.trim() || document.getElementById('cfgGroupLink')?.value.trim();
+    const sensorText = document.getElementById('cfgSensorText')?.value.trim() || '••••';
+
     const payload = {
         BOT_TOKEN: document.getElementById('cfgBotToken')?.value.trim(),
         GROUP_CHAT_ID: document.getElementById('cfgGroupChatId')?.value.trim(),
-        GROUP_LINK: document.getElementById('cfgGroupLink')?.value.trim(),
+        GROUP_LINK: channelLink,
+        CHANNEL_LINK: channelLink,
         BOT_NAME: document.getElementById('cfgBotName')?.value.trim(),
         POLL_INTERVAL: parseInt(document.getElementById('cfgPollInterval')?.value || '10', 10),
-        IVASMS_EMAIL: document.getElementById('cfgEmail')?.value.trim(),
-        IVASMS_PASSWORD: document.getElementById('cfgPassword')?.value.trim(),
-        NUMBER_LINK: document.getElementById('cfgNumberLink')?.value.trim(),
+        FILE_LINK: fileLink,
+        NUMBER_LINK: fileLink,
+        SENSOR_TEXT: sensorText,
         OWNER_LINK: document.getElementById('cfgOwnerLink')?.value.trim(),
     };
+
+    if (document.getElementById('cfgEmail')) {
+        payload.IVASMS_EMAIL = document.getElementById('cfgEmail').value.trim();
+    }
+    if (document.getElementById('cfgPassword')) {
+        payload.IVASMS_PASSWORD = document.getElementById('cfgPassword').value.trim();
+    }
+    if (document.getElementById('cfgEmail2')) {
+        payload.IVASMS_EMAIL_2 = document.getElementById('cfgEmail2').value.trim();
+    }
+    if (document.getElementById('cfgPassword2')) {
+        payload.IVASMS_PASSWORD_2 = document.getElementById('cfgPassword2').value.trim();
+    }
 
     try {
         const res = await fetch('/api/config', {
@@ -586,6 +862,29 @@ async function saveSettings() {
     }
 }
 
+function copyText(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`Disalin: ${text}`, 'success');
+        }).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(`Disalin: ${text}`, 'success');
+}
+
 function togglePasswordVisibility() {
     const input = document.getElementById('cfgPassword');
     const icon = document.getElementById('pwdToggleIcon');
@@ -600,6 +899,202 @@ function togglePasswordVisibility() {
     }
 }
 
+function togglePasswordVisibility2() {
+    const input = document.getElementById('cfgPassword2');
+    const icon = document.getElementById('pwdToggleIcon2');
+    if (!input || !icon) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+// ────────────────────────────────────────────
+//  MENU KELOLA AKUN IVASMS (SEPARATE PAGE)
+// ────────────────────────────────────────────
+
+let currentAccounts = [];
+
+async function loadAccountsList() {
+    const container = document.getElementById('accountsListContainer');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/accounts');
+        const data = await res.json();
+        currentAccounts = data.accounts || [];
+
+        if (currentAccounts.length === 0) {
+            container.innerHTML = `
+                <div class="text-muted" style="text-align: center; padding: 25px; border: 1px dashed var(--border); border-radius: 12px;">
+                    <i class="fas fa-users-slash" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                    <p>Belum ada akun IVASMS terdaftar. Silakan tambahkan akun pertama Anda.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = currentAccounts.map((acc, idx) => {
+            const email = escapeHtml(acc.email || '');
+            const isFirst = idx === 0;
+            const badgeLabel = isFirst ? 'Akun Utama' : `Akun ${idx + 1}`;
+            const gradient = isFirst 
+                ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
+                : 'linear-gradient(135deg, #10b981, #059669)';
+
+            return `
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: ${gradient}; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff;">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <b style="font-size: 1rem; color: var(--text);">Akun #${idx + 1}</b>
+                                <span class="badge ${isFirst ? 'badge-info' : 'badge-success'}" style="font-size: 0.72rem;">
+                                    ${badgeLabel}
+                                </span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">
+                                <i class="fas fa-envelope"></i> ${email}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="editAccountSlot(${idx})" title="Edit Akun">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAccountSlot(${idx})" title="Hapus Akun">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = `<div class="text-danger" style="padding: 10px;">Gagal memuat akun: ${e.message}</div>`;
+    }
+}
+
+function editAccountSlot(index) {
+    if (index >= 0 && index < currentAccounts.length) {
+        const acc = currentAccounts[index];
+        document.getElementById('accEditIndex').value = String(index);
+        document.getElementById('accInputEmail').value = acc.email || '';
+        document.getElementById('accInputPassword').value = acc.password || '';
+
+        const title = document.getElementById('accFormModeTitle');
+        if (title) {
+            title.innerHTML = `<i class="fas fa-edit"></i> Edit Akun #${index + 1} (${escapeHtml(acc.email)})`;
+        }
+        const btnSave = document.getElementById('btnSaveAcc');
+        if (btnSave) {
+            btnSave.innerHTML = `<i class="fas fa-save"></i> Perbarui Akun #${index + 1}`;
+        }
+        const btnCancel = document.getElementById('btnCancelEdit');
+        if (btnCancel) {
+            btnCancel.style.display = 'inline-block';
+        }
+        document.getElementById('accInputEmail')?.focus();
+    }
+}
+
+function resetAccForm() {
+    document.getElementById('accEditIndex').value = '';
+    document.getElementById('accInputEmail').value = '';
+    document.getElementById('accInputPassword').value = '';
+
+    const title = document.getElementById('accFormModeTitle');
+    if (title) {
+        title.innerHTML = `<i class="fas fa-plus-circle"></i> Tambah Akun Baru`;
+    }
+    const btnSave = document.getElementById('btnSaveAcc');
+    if (btnSave) {
+        btnSave.innerHTML = `<i class="fas fa-plus"></i> Simpan Akun`;
+    }
+    const btnCancel = document.getElementById('btnCancelEdit');
+    if (btnCancel) {
+        btnCancel.style.display = 'none';
+    }
+}
+
+function toggleAccPasswordVisibility() {
+    const input = document.getElementById('accInputPassword');
+    const icon = document.getElementById('accPwdIcon');
+    if (!input || !icon) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+async function saveAccountFromMenu() {
+    const editIdxVal = document.getElementById('accEditIndex')?.value;
+    const email = document.getElementById('accInputEmail')?.value.trim();
+    const password = document.getElementById('accInputPassword')?.value.trim();
+
+    if (!email || !password) {
+        showToast('Email dan Password akun wajib diisi!', 'warning');
+        return;
+    }
+
+    const payload = {
+        email: email,
+        password: password
+    };
+    if (editIdxVal !== '' && !isNaN(parseInt(editIdxVal))) {
+        payload.index = parseInt(editIdxVal, 10);
+    }
+
+    try {
+        const res = await fetch('/api/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Akun berhasil disimpan!', 'success');
+            resetAccForm();
+            await loadAccountsList();
+        } else {
+            showToast(data.message || 'Gagal menyimpan akun', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function deleteAccountSlot(index) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus Akun #${index + 1}?`)) return;
+
+    try {
+        const res = await fetch('/api/accounts/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Akun berhasil dihapus!', 'success');
+            resetAccForm();
+            await loadAccountsList();
+        } else {
+            showToast(data.message || 'Gagal menghapus akun', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
 // ────────────────────────────────────────────
 //  HELPERS
 // ────────────────────────────────────────────
@@ -609,4 +1104,159 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ────────────────────────────────────────────
+//  TEST OTP FEATURES
+// ────────────────────────────────────────────
+
+async function sendQuickTestOtp() {
+    const btn = document.getElementById('btnQuickTest');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengirim...';
+    }
+
+    try {
+        const payload = {
+            country_code: "ZW",
+            flag: "🇿🇼",
+            platform: "WhatsApp",
+            phone: "263788124006",
+            otp: String(Math.floor(100000 + Math.random() * 900000)),
+        };
+
+        const res = await fetch('/api/test-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Update preview di halaman jika ada
+            updateLivePreview(payload);
+            // Refresh logs
+            setTimeout(refreshLogs, 1000);
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        showToast(`Gagal mengirim: ${e.message}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Test OTP Cepat';
+        }
+    }
+}
+
+function openCustomTestModal() {
+    const modal = document.getElementById('customTestModal');
+    if (modal) {
+        randomizeOtp();
+        modal.style.display = 'flex';
+    }
+}
+
+function closeCustomTestModal() {
+    const modal = document.getElementById('customTestModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function updateCountryFlag() {
+    const val = document.getElementById('testCountry')?.value || 'ZW|🇿🇼';
+    const [cc, flag] = val.split('|');
+    const phoneInput = document.getElementById('testPhone');
+    if (phoneInput) {
+        if (cc === 'ZW') phoneInput.value = '263788124006';
+        else if (cc === 'DE') phoneInput.value = '491521990635';
+        else if (cc === 'ID') phoneInput.value = '6281234567890';
+        else if (cc === 'US') phoneInput.value = '14155552671';
+        else if (cc === 'RU') phoneInput.value = '79991234567';
+        else if (cc === 'ML') phoneInput.value = '22378901234';
+        else if (cc === 'FR') phoneInput.value = '33612345678';
+    }
+}
+
+function randomizeOtp() {
+    const otpInput = document.getElementById('testOtp');
+    if (otpInput) {
+        otpInput.value = String(Math.floor(100000 + Math.random() * 900000));
+    }
+}
+
+async function submitCustomTestOtp() {
+    const btn = document.getElementById('btnSubmitTest');
+    const countryVal = document.getElementById('testCountry')?.value || 'ZW|🇿🇼';
+    const [country_code, flag] = countryVal.split('|');
+    const platform = document.getElementById('testPlatform')?.value || 'WhatsApp';
+    const phone = document.getElementById('testPhone')?.value.trim() || '263788124006';
+    const otp = document.getElementById('testOtp')?.value.trim() || '884762';
+
+    if (!phone) {
+        showToast('Nomor HP wajib diisi!', 'warning');
+        return;
+    }
+    if (!otp) {
+        showToast('Kode OTP wajib diisi!', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengirim...';
+    }
+
+    try {
+        const payload = { country_code, flag, platform, phone, otp };
+        const res = await fetch('/api/test-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            updateLivePreview(payload);
+            closeCustomTestModal();
+            setTimeout(refreshLogs, 1000);
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        showToast(`Gagal: ${e.message}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim ke Telegram Sekarang';
+        }
+    }
+}
+
+function updateLivePreview(data) {
+    if (document.getElementById('prevFlag')) document.getElementById('prevFlag').textContent = data.flag || '🇿🇼';
+    if (document.getElementById('prevCC')) document.getElementById('prevCC').textContent = data.country_code || 'ZW';
+    
+    // Mask phone & prefix
+    const digits = (data.phone || '').replace(/\D/g, '');
+    const prefix = digits.substring(0, 6);
+    if (document.getElementById('prevPrefix')) document.getElementById('prevPrefix').textContent = prefix;
+    
+    if (document.getElementById('prevPhone')) {
+        if (digits.length >= 8) {
+            document.getElementById('prevPhone').textContent = `${digits.substring(0, 4)} •••• ${digits.substring(digits.length - 4)}`;
+        } else {
+            document.getElementById('prevPhone').textContent = digits;
+        }
+    }
+
+    // OTP
+    const otp = data.otp || '884762';
+    const dispOtp = (otp.length === 6 && /^\d+$/.test(otp)) ? `${otp.substring(0, 3)}-${otp.substring(3)}` : otp;
+    if (document.getElementById('prevOtp')) {
+        document.getElementById('prevOtp').textContent = `🔑 ${dispOtp}`;
+    }
 }

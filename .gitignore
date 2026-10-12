@@ -9,18 +9,28 @@ venv/
 ENV/
 env/
 
-# Browser profile & personal browser data (VERY IMPORTANT: JANGAN PUSH DATA BROWSER LOKAL)
+# Browser profile & personal browser data (JANGAN PUSH DATA BROWSER LOKAL)
 browser_profile/
+browser_profile_*/
 *.session
+
+# Binaries & Tunnels
+*.exe
+cloudflared.exe
+ngrok/
 
 # Logs
 *.log
 bot.log
 
-# Temporary debug files
+# Temporary debug files & status
 debug_*.html
 debug_*.png
 test_*.png
+status.json
+
+# Nested redundant folder
+OTP IVA SMS/
 
 # OS generated
 Thumbs.db

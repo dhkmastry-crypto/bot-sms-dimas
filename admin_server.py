@@ -5,13 +5,21 @@
 #  Auto-Add Numbers, dan konfigurasi.
 # ═══════════════════════════════════════════════════════════════
 
+import os
+import sys
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 import asyncio
 import json
 import logging
-import os
 import re
 import subprocess
-import sys
 import threading
 import time
 from datetime import datetime, timedelta
@@ -101,13 +109,18 @@ def load_config():
         patterns = {
             "BOT_TOKEN": r'BOT_TOKEN\s*=\s*"([^"]*)"',
             "GROUP_CHAT_ID": r'GROUP_CHAT_ID\s*=\s*"([^"]*)"',
+            "CHANNEL_LINK": r'CHANNEL_LINK\s*=\s*"([^"]*)"',
             "GROUP_LINK": r'GROUP_LINK\s*=\s*"([^"]*)"',
+            "FILE_LINK": r'FILE_LINK\s*=\s*"([^"]*)"',
             "NUMBER_LINK": r'NUMBER_LINK\s*=\s*"([^"]*)"',
             "OWNER_LINK": r'OWNER_LINK\s*=\s*"([^"]*)"',
+            "SENSOR_TEXT": r'SENSOR_TEXT\s*=\s*"([^"]*)"',
             "BOT_NAME": r'BOT_NAME\s*=\s*"([^"]*)"',
             "IVASMS_URL": r'IVASMS_URL\s*=\s*"([^"]*)"',
             "IVASMS_EMAIL": r'IVASMS_EMAIL\s*=\s*"([^"]*)"',
             "IVASMS_PASSWORD": r'IVASMS_PASSWORD\s*=\s*"([^"]*)"',
+            "IVASMS_EMAIL_2": r'IVASMS_EMAIL_2\s*=\s*"([^"]*)"',
+            "IVASMS_PASSWORD_2": r'IVASMS_PASSWORD_2\s*=\s*"([^"]*)"',
             "POLL_INTERVAL": r'POLL_INTERVAL\s*=\s*(\d+)',
         }
         
@@ -115,6 +128,18 @@ def load_config():
             match = re.search(pattern, content)
             if match:
                 config[key] = match.group(1)
+        
+        # Fallbacks
+        if not config.get("FILE_LINK"):
+            config["FILE_LINK"] = config.get("NUMBER_LINK", "")
+        if not config.get("CHANNEL_LINK"):
+            config["CHANNEL_LINK"] = config.get("GROUP_LINK", "")
+        if not config.get("SENSOR_TEXT"):
+            config["SENSOR_TEXT"] = "••••"
+        if not config.get("IVASMS_EMAIL_2"):
+            config["IVASMS_EMAIL_2"] = ""
+        if not config.get("IVASMS_PASSWORD_2"):
+            config["IVASMS_PASSWORD_2"] = ""
     except Exception as e:
         logger.error(f"Error loading config: {e}")
     
@@ -128,21 +153,41 @@ def save_config(new_config):
         with open(config_path, "r", encoding="utf-8") as f:
             content = f.read()
         
+        # Sync FILE_LINK / NUMBER_LINK and CHANNEL_LINK / GROUP_LINK
+        if "FILE_LINK" in new_config:
+            new_config["NUMBER_LINK"] = new_config["FILE_LINK"]
+        elif "NUMBER_LINK" in new_config:
+            new_config["FILE_LINK"] = new_config["NUMBER_LINK"]
+
+        if "CHANNEL_LINK" in new_config:
+            new_config["GROUP_LINK"] = new_config["CHANNEL_LINK"]
+        elif "GROUP_LINK" in new_config:
+            new_config["CHANNEL_LINK"] = new_config["GROUP_LINK"]
+
         replacements = {
             "BOT_TOKEN": (r'(BOT_TOKEN\s*=\s*)"[^"]*"', r'\1"{}"'),
             "GROUP_CHAT_ID": (r'(GROUP_CHAT_ID\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "CHANNEL_LINK": (r'(CHANNEL_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
             "GROUP_LINK": (r'(GROUP_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "FILE_LINK": (r'(FILE_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
             "NUMBER_LINK": (r'(NUMBER_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
             "OWNER_LINK": (r'(OWNER_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "SENSOR_TEXT": (r'(SENSOR_TEXT\s*=\s*)"[^"]*"', r'\1"{}"'),
             "BOT_NAME": (r'(BOT_NAME\s*=\s*)"[^"]*"', r'\1"{}"'),
             "IVASMS_EMAIL": (r'(IVASMS_EMAIL\s*=\s*)"[^"]*"', r'\1"{}"'),
             "IVASMS_PASSWORD": (r'(IVASMS_PASSWORD\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "IVASMS_EMAIL_2": (r'(IVASMS_EMAIL_2\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "IVASMS_PASSWORD_2": (r'(IVASMS_PASSWORD_2\s*=\s*)"[^"]*"', r'\1"{}"'),
             "POLL_INTERVAL": (r'(POLL_INTERVAL\s*=\s*)\d+', r'\1{}'),
         }
         
         for key, (pattern, replacement) in replacements.items():
-            if key in new_config:
-                content = re.sub(pattern, replacement.format(new_config[key]), content)
+            if key in new_config and new_config[key] is not None:
+                if re.search(pattern, content):
+                    content = re.sub(pattern, replacement.format(new_config[key]), content)
+                else:
+                    # Append if key not present
+                    content += f'\n{key} = "{new_config[key]}"'
         
         with open(config_path, "w", encoding="utf-8") as f:
             f.write(content)
@@ -167,8 +212,8 @@ def parse_bot_log():
         
         # Parse OTP messages from log
         for line in lines:
-            # Look for SMS forwarded lines
-            if "New OTP" in line or "Forwarded" in line or "new SMS" in line.lower():
+            # Look for SMS forwarded or sent OTP lines
+            if "Sent OTP" in line or "New OTP" in line or "Forwarded" in line or "new SMS" in line.lower():
                 timestamp_match = re.match(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", line)
                 timestamp = timestamp_match.group(1) if timestamp_match else ""
                 entries.append({
@@ -253,34 +298,115 @@ def check_bot_running():
     return bot_status
 
 
-async def check_ivasms_connection():
-    """Check IVASMS connection via config cookies and fallback to browser"""
+def get_shared_status():
+    """Baca status real-time dari bot.py (status.json) agar sinkron dengan Telegram."""
+    status_file = os.path.join(os.path.dirname(__file__), "status.json")
+    if os.path.exists(status_file):
+        try:
+            with open(status_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            last_update_str = data.get("last_update")
+            if last_update_str:
+                last_dt = datetime.strptime(last_update_str, "%Y-%m-%d %H:%M:%S")
+                # Jika diperbarui dalam 60 detik terakhir, bot sedang aktif polling
+                if (datetime.now() - last_dt).total_seconds() < 60:
+                    return data
+        except Exception:
+            pass
+    return None
+
+
+async def check_ivasms_connection(target_index: int = None):
+    """Check IVASMS connection for each registered account, or specific account if target_index given"""
     global ivasms_status
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        cfg = load_config()
+        if cfg.get("IVASMS_EMAIL") and cfg.get("IVASMS_PASSWORD"):
+            accounts.append({"email": cfg["IVASMS_EMAIL"], "password": cfg["IVASMS_PASSWORD"]})
+        if cfg.get("IVASMS_EMAIL_2") and cfg.get("IVASMS_PASSWORD_2"):
+            accounts.append({"email": cfg["IVASMS_EMAIL_2"], "password": cfg["IVASMS_PASSWORD_2"]})
+
+    existing_results = {r.get("index"): r for r in ivasms_status.get("accounts", []) if isinstance(r, dict)}
+    results = []
+    any_connected = False
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    import importlib, config
+    importlib.reload(config)
+    from ivasms_scraper import IVASMSClient
+
+    for idx, acc in enumerate(accounts, start=1):
+        email = acc.get("email", "")
+        pwd = acc.get("password", "")
+        if not email:
+            continue
+
+        # If checking a single account, preserve others
+        if target_index is not None and idx != target_index:
+            prev = existing_results.get(idx, {
+                "index": idx,
+                "email": email,
+                "connected": False,
+                "last_check": "-"
+            })
+            if prev.get("connected"):
+                any_connected = True
+            results.append(prev)
+            continue
+
+        cookies = acc.get("cookies") or (config.COOKIES if idx == 1 else getattr(config, "COOKIES_2", {}) if idx == 2 else {})
+        client = IVASMSClient(cookies, config.IVASMS_URL)
+        connected = client.check_connection()
+
+        if not connected:
+            # Fallback browser sync
+            try:
+                from cookie_sync import get_fresh_cookies_from_browser
+                fresh = await get_fresh_cookies_from_browser(account_index=idx, email=email, password=pwd)
+                if fresh and "ivas_sms_session" in fresh:
+                    client.update_cookies(fresh)
+                    connected = client.check_connection()
+            except Exception as e:
+                logger.error(f"Error checking acc {idx}: {e}")
+
+        if connected:
+            any_connected = True
+
+        results.append({
+            "index": idx,
+            "email": email,
+            "connected": connected,
+            "last_check": now_str
+        })
+
+    ivasms_status["connected"] = any_connected
+    ivasms_status["last_check"] = now_str
+    ivasms_status["accounts"] = results
+
+    # Sync to status.json
     try:
-        from ivasms_scraper import IVASMSClient
-        from config import COOKIES, IVASMS_URL
-        client = IVASMSClient(COOKIES, IVASMS_URL)
-        if client.check_connection():
-            ivasms_status["connected"] = True
-            ivasms_status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            ivasms_status["cookies_valid"] = True
-            return ivasms_status
+        status_file = os.path.join(os.path.dirname(__file__), "status.json")
+        s_data = {}
+        if os.path.exists(status_file):
+            with open(status_file, "r", encoding="utf-8") as f:
+                s_data = json.load(f)
+        s_data["ivasms_connected"] = any_connected
+        s_data["last_update"] = now_str
+        s_data["accounts_status"] = results
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump(s_data, f, indent=2)
+    except Exception:
+        pass
 
-        # If not connected, try browser auto-sync
-        from cookie_sync import get_fresh_cookies_from_browser
-        cookies = await get_fresh_cookies_from_browser()
-        if cookies and "ivas_sms_session" in cookies:
-            client.update_cookies(cookies)
-            ivasms_status["connected"] = client.check_connection()
-        else:
-            ivasms_status["connected"] = False
-
-        ivasms_status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        ivasms_status["cookies_valid"] = bool(cookies)
-    except Exception as e:
-        ivasms_status["connected"] = False
-        ivasms_status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        logger.error(f"Connection check error: {e}")
     return ivasms_status
 
 
@@ -323,6 +449,12 @@ def sms_log_page():
     return render_template("admin.html", page="sms-log")
 
 
+@app.route("/accounts")
+@login_required
+def accounts_page():
+    return render_template("admin.html", page="accounts")
+
+
 @app.route("/auto-add")
 @login_required
 def auto_add_page():
@@ -355,9 +487,40 @@ def api_dashboard():
     otp_count = sum(1 for e in log_entries if e["type"] == "otp")
     error_count = sum(1 for e in log_entries if e["type"] == "error")
     
-    # Check bot running
-    check_bot_running()
+    # Sinkronisasi status dengan bot.py real-time
+    shared = get_shared_status()
+    if shared:
+        bot_status["running"] = shared.get("bot_running", True)
+        if "pid" in shared:
+            bot_status["pid"] = shared["pid"]
+        ivasms_status["connected"] = shared.get("ivasms_connected", False)
+        ivasms_status["last_check"] = shared.get("last_update")
+    else:
+        check_bot_running()
+        if not ivasms_status.get("last_check"):
+            try:
+                import importlib, config
+                importlib.reload(config)
+                from ivasms_scraper import IVASMSClient
+                cl = IVASMSClient(config.COOKIES, config.IVASMS_URL)
+                ivasms_status["connected"] = cl.check_connection()
+                ivasms_status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                pass
     
+    # Ambil metrik revenue & breakdown dari shared status
+    total_revenue = 0.0
+    country_counts = {}
+    platform_counts = {}
+    hourly_counts = {}
+    if shared:
+        total_revenue = shared.get("total_revenue", round(otp_count * 0.05, 2))
+        country_counts = shared.get("country_counts", {})
+        platform_counts = shared.get("platform_counts", {})
+        hourly_counts = shared.get("hourly_counts", {})
+    else:
+        total_revenue = round(otp_count * 0.05, 2)
+
     return jsonify({
         "stats": {
             "otp_received": otp_count,
@@ -366,6 +529,10 @@ def api_dashboard():
             "ivasms_connected": ivasms_status.get("connected", False),
             "poll_interval": config.get("POLL_INTERVAL", "10"),
             "bot_name": config.get("BOT_NAME", "OTP_BOT"),
+            "total_revenue": total_revenue,
+            "country_counts": country_counts,
+            "platform_counts": platform_counts,
+            "hourly_counts": hourly_counts,
         },
         "recent_logs": log_entries[-10:],
         "bot_status": bot_status,
@@ -451,21 +618,141 @@ def api_bot_stop():
     return jsonify({"success": False, "message": "Bot tidak sedang berjalan."})
 
 
+@app.route("/api/test-otp", methods=["POST"])
+@login_required
+def api_test_otp():
+    """Kirim test OTP ke grup Telegram dengan format live baru."""
+    try:
+        from bot import format_otp_message, create_keyboard
+        from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
+        from telegram import Bot
+        from telegram.constants import ParseMode
+
+        data = request.json or {}
+        phone = data.get("phone", "263788124006")
+        otp = data.get("otp", "884762")
+        platform = data.get("platform", "WhatsApp")
+        country = data.get("country_code", "ZW")
+        flag = data.get("flag", "🇿🇼")
+
+        # Buat dictionary sms simulasi
+        test_sms = {
+            "flag": flag,
+            "country_code": country,
+            "platform": platform,
+            "phone": phone,
+            "otp": otp,
+            "message": f"Your {platform} verification code: {otp}",
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+
+        # Format pesan & keyboard
+        msg_text = format_otp_message(test_sms)
+        keyboard = create_keyboard(test_sms, FILE_LINK, CHANNEL_LINK)
+
+        # Kirim secara asynchronous
+        async def send_msg():
+            bot = Bot(token=BOT_TOKEN)
+            res = await bot.send_message(
+                chat_id=GROUP_CHAT_ID,
+                text=msg_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+            return res.message_id
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        msg_id = loop.run_until_complete(send_msg())
+        loop.close()
+
+        # Log ke bot.log agar live log dan dashboard langsung mendeteksi
+        log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [TEST] Sent OTP: {country} | {platform} | {otp}\n"
+        log_path = os.path.join(os.path.dirname(__file__), "bot.log")
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception:
+            pass
+
+        return jsonify({
+            "success": True,
+            "message": f"Test OTP ({otp}) berhasil dikirim ke grup Telegram! (Message ID: {msg_id})",
+            "message_id": msg_id,
+            "preview": msg_text,
+        })
+    except Exception as e:
+        logger.error(f"Error sending test OTP: {e}")
+        return jsonify({"success": False, "message": f"Gagal kirim test OTP: {str(e)}"})
+
+
 @app.route("/api/bot/status")
 @login_required
 def api_bot_status():
-    """Get bot status"""
-    check_bot_running()
-    return jsonify(bot_status)
+    """Get bot status and individual account statuses"""
+    shared = get_shared_status()
+    if shared:
+        bot_status["running"] = shared.get("bot_running", True)
+        if "pid" in shared:
+            bot_status["pid"] = shared["pid"]
+    else:
+        check_bot_running()
+
+    acc_status = ivasms_status.get("accounts")
+    if not acc_status and shared:
+        acc_status = shared.get("accounts_status")
+
+    # Pastikan email terisi dari ivasms_accounts.json
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts_db = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts_db = json.load(f)
+        except Exception:
+            pass
+
+    merged_status = []
+    if acc_status:
+        for item in acc_status:
+            idx = item.get("index", 1)
+            email = item.get("email")
+            if not email and 1 <= idx <= len(accounts_db):
+                email = accounts_db[idx - 1].get("email", "")
+            merged_status.append({
+                **item,
+                "email": email or f"Akun #{idx}"
+            })
+    elif accounts_db:
+        for idx, a in enumerate(accounts_db, start=1):
+            merged_status.append({
+                "index": idx,
+                "email": a.get("email", ""),
+                "connected": True,
+                "last_check": "Status Terpantau (Aktif)"
+            })
+
+    res = dict(bot_status)
+    res["ivasms_status"] = ivasms_status
+    res["accounts_status"] = merged_status
+    return jsonify(res)
 
 
 @app.route("/api/ivasms/check", methods=["POST"])
 @login_required
 def api_ivasms_check():
-    """Check IVASMS connection"""
+    """Check IVASMS connection (all or specific account)"""
     try:
+        data = request.json or {}
+        target_idx = data.get("index")
+        if target_idx is not None:
+            try:
+                target_idx = int(target_idx)
+            except Exception:
+                target_idx = None
+
         loop = asyncio.new_event_loop()
-        result = loop.run_until_complete(check_ivasms_connection())
+        result = loop.run_until_complete(check_ivasms_connection(target_index=target_idx))
         loop.close()
         return jsonify({"success": True, "status": result})
     except Exception as e:
@@ -481,17 +768,33 @@ def api_auto_add_start():
     if auto_add_state["running"]:
         return jsonify({"success": False, "message": "Auto-add sudah berjalan!"})
     
-    data = request.json
+    data = request.json or {}
     range_name = data.get("range_name", "")
     max_add = data.get("max_add", 0)
     delay = data.get("delay", 60)
+    try:
+        account_index = int(data.get("account_index", 1))
+    except Exception:
+        account_index = 1
     
     if not range_name:
         return jsonify({"success": False, "message": "Range name harus diisi!"})
+
+    # Dapatkan email akun untuk display
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    account_email = f"Akun #{account_index}"
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accs = json.load(f)
+                if 1 <= account_index <= len(accs):
+                    account_email = accs[account_index - 1].get("email", account_email)
+        except Exception:
+            pass
     
     try:
         proc = subprocess.Popen(
-            [sys.executable, "auto_add_numbers.py", range_name, str(max_add), str(delay)],
+            [sys.executable, "auto_add_numbers.py", range_name, str(max_add), str(delay), str(account_index)],
             cwd=os.path.dirname(__file__),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -500,6 +803,8 @@ def api_auto_add_start():
         
         auto_add_state = {
             "running": True,
+            "account_index": account_index,
+            "account_email": account_email,
             "range_name": range_name,
             "max_add": max_add,
             "delay": delay,
@@ -508,7 +813,7 @@ def api_auto_add_start():
             "skipped": 0,
             "total_found": 0,
             "current_action": 0,
-            "last_message": "Memulai...",
+            "last_message": f"Memulai untuk {account_email}...",
             "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "process": proc,
         }
@@ -604,6 +909,131 @@ def api_config_save():
     if save_config(data):
         return jsonify({"success": True, "message": "Konfigurasi berhasil disimpan!"})
     return jsonify({"success": False, "message": "Gagal menyimpan konfigurasi."})
+
+
+@app.route("/api/accounts", methods=["GET"])
+@login_required
+def api_accounts_get():
+    """Get list of all IVASMS accounts"""
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        # Fallback from config
+        cfg = load_config()
+        if cfg.get("IVASMS_EMAIL") and cfg.get("IVASMS_PASSWORD"):
+            accounts.append({"email": cfg["IVASMS_EMAIL"], "password": cfg["IVASMS_PASSWORD"]})
+        if cfg.get("IVASMS_EMAIL_2") and cfg.get("IVASMS_PASSWORD_2"):
+            accounts.append({"email": cfg["IVASMS_EMAIL_2"], "password": cfg["IVASMS_PASSWORD_2"]})
+
+    # Return accounts list
+    return jsonify({"success": True, "accounts": accounts})
+
+
+@app.route("/api/accounts", methods=["POST"])
+@login_required
+def api_accounts_save():
+    """Add or update an IVASMS account"""
+    data = request.json or {}
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    index = data.get("index")  # 0-indexed if editing, None if adding
+
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email dan Password harus diisi!"})
+
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
+        accounts[index] = {"email": email, "password": password}
+    else:
+        # Check if email exists
+        found = False
+        for i, a in enumerate(accounts):
+            if a.get("email", "").lower() == email.lower():
+                accounts[i] = {"email": email, "password": password}
+                found = True
+                break
+        if not found:
+            accounts.append({"email": email, "password": password})
+
+    try:
+        with open(acc_file, "w", encoding="utf-8") as f:
+            json.dump(accounts, f, indent=2)
+
+        # Sync back first 2 accounts to config.py for backwards compatibility
+        sync_cfg = {}
+        if len(accounts) >= 1:
+            sync_cfg["IVASMS_EMAIL"] = accounts[0]["email"]
+            sync_cfg["IVASMS_PASSWORD"] = accounts[0]["password"]
+        if len(accounts) >= 2:
+            sync_cfg["IVASMS_EMAIL_2"] = accounts[1]["email"]
+            sync_cfg["IVASMS_PASSWORD_2"] = accounts[1]["password"]
+        if sync_cfg:
+            save_config(sync_cfg)
+
+        return jsonify({"success": True, "message": f"Akun {email} berhasil disimpan!", "accounts": accounts})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
+
+
+@app.route("/api/accounts/delete", methods=["POST"])
+@login_required
+def api_accounts_delete():
+    """Delete an IVASMS account by index or email"""
+    data = request.json or {}
+    index = data.get("index")
+    email = data.get("email", "").strip()
+
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    deleted = False
+    if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
+        accounts.pop(index)
+        deleted = True
+    elif email:
+        accounts = [a for a in accounts if a.get("email", "").lower() != email.lower()]
+        deleted = True
+
+    if deleted:
+        try:
+            with open(acc_file, "w", encoding="utf-8") as f:
+                json.dump(accounts, f, indent=2)
+
+            # Sync to config.py
+            sync_cfg = {
+                "IVASMS_EMAIL": accounts[0]["email"] if len(accounts) >= 1 else "",
+                "IVASMS_PASSWORD": accounts[0]["password"] if len(accounts) >= 1 else "",
+                "IVASMS_EMAIL_2": accounts[1]["email"] if len(accounts) >= 2 else "",
+                "IVASMS_PASSWORD_2": accounts[1]["password"] if len(accounts) >= 2 else "",
+            }
+            save_config(sync_cfg)
+
+            return jsonify({"success": True, "message": "Akun berhasil dihapus!", "accounts": accounts})
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
+
+    return jsonify({"success": False, "message": "Akun tidak ditemukan."})
 
 
 # ────────────────────────────────────────────

@@ -7,12 +7,28 @@
 import asyncio
 import logging
 import os
+import sys
 import aiohttp
+
+os.environ["PYTHONIOENCODING"] = "utf-8"
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 from playwright.async_api import async_playwright
 from config import IVASMS_EMAIL, IVASMS_PASSWORD, YESCAPTCHA_KEY
+try:
+    from config import IVASMS_EMAIL_2, IVASMS_PASSWORD_2
+except ImportError:
+    IVASMS_EMAIL_2 = ""
+    IVASMS_PASSWORD_2 = ""
 
 logger = logging.getLogger(__name__)
-USER_DATA_DIR = os.path.abspath("browser_profile")
+USER_DATA_DIR_1 = os.path.abspath("browser_profile")
+USER_DATA_DIR_2 = os.path.abspath("browser_profile_acc2")
+USER_DATA_DIR = USER_DATA_DIR_1
 
 
 async def solve_turnstile(website_url: str, website_key: str, action: str = "") -> str:
@@ -60,20 +76,40 @@ async def solve_turnstile(website_url: str, website_key: str, action: str = "") 
     return ""
 
 
-async def get_fresh_cookies_from_browser() -> dict:
+async def get_fresh_cookies_from_browser(account_index: int = 1, email: str = "", password: str = "") -> dict:
     """
     Buka session browser Playwright:
     1. Jika session masih valid -> ambil cookies segar (cf_clearance, dsb).
     2. Jika ter-logout (/login) -> otomatis login ulang dengan email & password + centang remember me!
     3. Jika tertahan Cloudflare Turnstile -> otomatis di-solve oleh YesCaptcha!
     """
+    if account_index == 1:
+        user_data_dir = USER_DATA_DIR_1
+        login_email = email or IVASMS_EMAIL
+        login_password = password or IVASMS_PASSWORD
+        var_name = "COOKIES"
+    elif account_index == 2:
+        user_data_dir = USER_DATA_DIR_2
+        login_email = email or IVASMS_EMAIL_2
+        login_password = password or IVASMS_PASSWORD_2
+        var_name = "COOKIES_2"
+    else:
+        user_data_dir = os.path.abspath(f"browser_profile_acc{account_index}")
+        login_email = email
+        login_password = password
+        var_name = f"COOKIES_{account_index}"
+
+    if not login_email or not login_password:
+        logger.warning(f"Kredensial Akun {account_index} belum disetel. Melewati browser sync.")
+        return {}
+
     cookies_dict = {}
     try:
         async with async_playwright() as p:
             if os.name == "nt":
                 # Windows: gunakan Microsoft Edge asli bawaan Windows (paling stabil & lolos Cloudflare)
                 context = await p.chromium.launch_persistent_context(
-                    user_data_dir=USER_DATA_DIR,
+                    user_data_dir=user_data_dir,
                     channel="msedge",
                     headless=False,
                     args=[
@@ -86,7 +122,7 @@ async def get_fresh_cookies_from_browser() -> dict:
             else:
                 # Linux fallback
                 context = await p.firefox.launch_persistent_context(
-                    user_data_dir=USER_DATA_DIR,
+                    user_data_dir=user_data_dir,
                     headless=True,
                     user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0",
                     viewport={"width": 1280, "height": 720},
@@ -174,15 +210,22 @@ async def get_fresh_cookies_from_browser() -> dict:
                 logger.info(f"⏳ Cloudflare challenge terdeteksi, menunggu... ({i+1}/25)")
                 await asyncio.sleep(1)
 
+            await asyncio.sleep(2)
+            try:
+                await page.wait_for_load_state("domcontentloaded", timeout=5000)
+            except Exception:
+                pass
+
             curr_url = page.url
+            curr_title = await page.title()
             email_field = None
             try:
                 email_field = await page.query_selector("input[name='email']")
             except:
                 pass
 
-            if "/login" in curr_url or email_field:
-                logger.info("🔑 Menjalankan auto-login IVASMS...")
+            if "/login" in curr_url or email_field or "login" in curr_title.lower():
+                logger.info(f"🔑 Menjalankan auto-login IVASMS (Akun {account_index}: {login_email})... (URL: {curr_url}, Title: {curr_title})")
                 try:
                     sitekey = "0x4AAAAAACqVmW6ncA-jc10z"
                     for f in page.frames:
@@ -216,7 +259,7 @@ async def get_fresh_cookies_from_browser() -> dict:
                             });
                             return { status: resp.status };
                         }
-                    """, {"email": IVASMS_EMAIL, "password": IVASMS_PASSWORD, "token": token})
+                    """, {"email": login_email, "password": login_password, "token": token})
 
                     logger.info(f"Login POST status: {login_resp.get('status')}")
 
@@ -224,11 +267,11 @@ async def get_fresh_cookies_from_browser() -> dict:
                     for i in range(15):
                         await asyncio.sleep(1)
                         if "/portal" in page.url:
-                            logger.info("🎉 Auto-login BERHASIL masuk ke portal!")
+                            logger.info(f"🎉 Auto-login Akun {account_index} BERHASIL masuk ke portal!")
                             break
 
                 except Exception as login_err:
-                    logger.error(f"Error during auto-login: {login_err}")
+                    logger.error(f"Error during auto-login Akun {account_index}: {login_err}")
 
             raw_cookies = await context.cookies()
             for c in raw_cookies:
@@ -238,7 +281,7 @@ async def get_fresh_cookies_from_browser() -> dict:
             logger.info(f"Current final URL: {page.url} | Title: {await page.title()}")
             await context.close()
 
-        logger.info(f"🔄 Auto-synced {len(cookies_dict)} cookies from browser profile!")
+        logger.info(f"🔄 Auto-synced {len(cookies_dict)} cookies untuk Akun {account_index}!")
         
         # Simpan otomatis cookie segar ke config.py
         if "ivas_sms_session" in cookies_dict:
@@ -247,18 +290,24 @@ async def get_fresh_cookies_from_browser() -> dict:
                 cfg_path = os.path.join(os.path.dirname(__file__), "config.py")
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     cfg_text = f.read()
-                cookie_str = "COOKIES = {\n"
+                cookie_str = f"{var_name} = {{\n"
                 for k, v in cookies_dict.items():
                     cookie_str += f'    "{k}": "{v}",\n'
                 cookie_str += "}"
-                cfg_text = re.sub(r"COOKIES\s*=\s*\{[^}]*\}", cookie_str, cfg_text)
+                pattern = rf"{var_name}\s*=\s*\{{[^}}]*\}}"
+                if re.search(pattern, cfg_text):
+                    cfg_text = re.sub(pattern, cookie_str, cfg_text)
+                else:
+                    cfg_text += f"\n\n{cookie_str}\n"
                 with open(cfg_path, "w", encoding="utf-8") as f:
                     f.write(cfg_text)
-                logger.info("💾 Updated fresh cookies into config.py successfully!")
+                logger.info(f"💾 Updated fresh {var_name} into config.py successfully!")
             except Exception as save_err:
-                logger.warning(f"Failed to auto-save to config.py: {save_err}")
+                logger.warning(f"Failed to auto-save {var_name} to config.py: {save_err}")
     except Exception as e:
-        logger.error(f"❌ Failed to auto-sync cookies: {e}")
+        logger.error(f"❌ Failed to auto-sync cookies Akun {account_index}: {e}")
+
+    return cookies_dict
 
     return cookies_dict
 

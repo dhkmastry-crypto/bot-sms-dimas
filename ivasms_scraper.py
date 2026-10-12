@@ -211,19 +211,25 @@ def extract_otp(message_text: str) -> str:
     if not message_text:
         return "N/A"
 
-    # WhatsApp style: 265-192 or 265 192 -> 265192
-    wa_match = re.search(r'(?:code|kode|otp|pin)[:\s]+(\d{3}[\-\s]\d{3})', message_text, re.IGNORECASE)
+    # 1. Format dengan tanda hubung / spasi (contoh WhatsApp: 195-127 atau 195 127)
+    # Berlaku untuk semua bahasa (Votre code WhatsApp Business: 195-127, Your code: 123-456, dll)
+    wa_match = re.search(r'(?:code|kode|otp|pin|clave|código)[\s\w]*?[:\s]+(\d{3}[\-\s]\d{3})', message_text, re.IGNORECASE)
     if wa_match:
         return wa_match.group(1).replace("-", "").replace(" ", "")
 
-    # Common patterns
+    # Pola 3 digit - 3 digit berdiri sendiri di pesan (contoh: 195-127)
+    dash_match = re.search(r'(?:^|[^\d])(\d{3}[\-]\d{3})(?:[^\d]|$)', message_text)
+    if dash_match:
+        return dash_match.group(1).replace("-", "")
+
+    # 2. Pola kata kunci umum diikuti angka 4-8 digit
     patterns = [
-        r'(?:code|kode|otp|pin|verify|verification|verifikasi)[:\-\s]+(\d{4,8})',
-        r'(\d{4,8})\s*(?:is your|adalah|code|kode|otp)',
+        r'(?:code|kode|otp|pin|verify|verification|verifikasi|clave|código)[\s\w]*?[:\-\s]+(\d{4,8})',
+        r'(\d{4,8})\s*(?:is your|adalah|code|kode|otp|es tu)',
         r'(?:^|\s)(\d{6})(?:\s|$|\.|,)',   # 6 digit standalone
-        r'(?:^|\s)(\d{4})(?:\s|$|\.|,)',    # 4 digit standalone
-        r'(?:^|\s)(\d{5})(?:\s|$|\.|,)',    # 5 digit standalone
-        r'(?:^|\s)(\d{8})(?:\s|$|\.|,)',    # 8 digit standalone
+        r'(?:^|\s)(\d{4})(?:\s|$|\.|,)',   # 4 digit standalone
+        r'(?:^|\s)(\d{5})(?:\s|$|\.|,)',   # 5 digit standalone
+        r'(?:^|\s)(\d{8})(?:\s|$|\.|,)',   # 8 digit standalone
     ]
 
     for pattern in patterns:

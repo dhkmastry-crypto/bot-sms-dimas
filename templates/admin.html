@@ -22,7 +22,7 @@
                 <div class="logo-icon">⚡</div>
                 <div class="logo-text">
                     <span class="logo-title">OTP Admin</span>
-                    <span class="logo-subtitle">IVA SMS Panel</span>
+                    <span class="logo-subtitle">IVA SMS File</span>
                 </div>
             </div>
             <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
@@ -38,6 +38,10 @@
             <a href="/sms-log" class="nav-item {% if page == 'sms-log' %}active{% endif %}" data-page="sms-log">
                 <i class="fas fa-envelope"></i>
                 <span>SMS Log</span>
+            </a>
+            <a href="/accounts" class="nav-item {% if page == 'accounts' %}active{% endif %}" data-page="accounts">
+                <i class="fas fa-users-cog"></i>
+                <span>Akun IVASMS</span>
             </a>
             <a href="/auto-add" class="nav-item {% if page == 'auto-add' %}active{% endif %}" data-page="auto-add">
                 <i class="fas fa-robot"></i>
@@ -81,6 +85,7 @@
                 <h1 class="page-title" id="pageTitle">
                     {% if page == 'dashboard' %}Dashboard
                     {% elif page == 'sms-log' %}SMS Log
+                    {% elif page == 'accounts' %}Kelola Akun IVASMS
                     {% elif page == 'auto-add' %}Auto-Add Numbers
                     {% elif page == 'bot-control' %}Bot Control
                     {% elif page == 'settings' %}Settings
@@ -103,7 +108,7 @@
             <!-- ═══════════════ DASHBOARD ═══════════════ -->
             <div class="page-content" id="dashboardPage">
                 <!-- Stats Cards -->
-                <div class="stats-grid">
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));">
                     <div class="stat-card">
                         <div class="stat-icon purple"><i class="fas fa-envelope-open-text"></i></div>
                         <div class="stat-info">
@@ -111,6 +116,14 @@
                             <span class="stat-label">OTP Received</span>
                         </div>
                         <div class="stat-trend up"><i class="fas fa-arrow-up"></i></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon gold" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="statRevenue" style="color: #10b981;">$0.00</span>
+                            <span class="stat-label">Est. Revenue / Cuan</span>
+                        </div>
+                        <div class="stat-badge active" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">Live</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon cyan"><i class="fas fa-robot"></i></div>
@@ -137,8 +150,106 @@
                     </div>
                 </div>
 
-                <!-- Recent Logs & Activity -->
+                <!-- 📊 REVENUE & LEADERBOARD SECTION (FITUR GACOR) -->
+                <div class="grid-2" style="margin-bottom: 24px;">
+                    <!-- Country & Platform Leaderboard -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-trophy" style="color: #f59e0b;"></i> Top Country & Platform Leaderboard</h2>
+                            <span class="badge badge-success">🔥 Paling Cuan</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        <i class="fas fa-globe"></i> Top Negara
+                                    </h4>
+                                    <div id="countryLeaderboard" style="display: flex; flex-direction: column; gap: 8px;">
+                                        <div class="text-muted" style="font-size: 0.85rem;">Belum ada data...</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                        <i class="fas fa-mobile-alt"></i> Top Platform
+                                    </h4>
+                                    <div id="platformLeaderboard" style="display: flex; flex-direction: column; gap: 8px;">
+                                        <div class="text-muted" style="font-size: 0.85rem;">Belum ada data...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Busy Hours Tracker -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-chart-bar" style="color: #3b82f6;"></i> Jam-Jam Sibuk Traffic OTP</h2>
+                            <span class="badge badge-info">24 Jam</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted" style="font-size: 0.82rem; margin-bottom: 12px;">Visualisasi volume OTP per jam untuk melihat jam panen traffic terbanyak:</p>
+                            <div id="hourlyChartContainer" style="display: flex; align-items: flex-end; gap: 4px; height: 110px; padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                <!-- Bar chart bars generated by JS -->
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 6px;">
+                                <span>00:00</span>
+                                <span>06:00</span>
+                                <span>12:00</span>
+                                <span>18:00</span>
+                                <span>23:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telegram Live Preview & Recent Logs -->
                 <div class="grid-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fab fa-telegram"></i> Telegram OTP Message Format</h2>
+                            <span class="badge badge-success">Prefix: 6 Digit • Button: File</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted" style="margin-bottom: 12px; font-size: 0.85rem;">Pratinjau tampilan pesan OTP real-time di Telegram:</p>
+                            <div class="tg-preview-container">
+                                <div class="tg-bubble">
+                                    <div class="tg-row-title">
+                                        <span id="prevFlag">🇿🇼</span> <b id="prevCC">ZW</b> | <span id="prevAppIcon">🟢</span> <b id="prevPhone">2637 •••• 4006</b> <span class="tg-tag" id="prevTag">#EN</span>
+                                    </div>
+                                    <div class="tg-row-prefix">
+                                        🔢 <span>Prefix:</span> <b class="tg-prefix-val" id="prevPrefix">263788</b>
+                                        <span class="tg-bubble-time" id="prevTime">13:41</span>
+                                    </div>
+                                    <div class="tg-copy-card">
+                                        <span class="tg-otp-text" id="prevOtp">🔑 884-762</span>
+                                        <button class="tg-copy-icon" onclick="copyText('884-762')" title="Salin OTP">
+                                            <i class="far fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <div class="tg-action-buttons">
+                                        <a href="https://t.me/dimsongfile" target="_blank" class="tg-action-btn" id="prevBtnFile">
+                                            📁 FILE ↗
+                                        </a>
+                                        <a href="https://t.me/dimsongotp" target="_blank" class="tg-action-btn" id="prevBtnChannel">
+                                            🔔 CHANNEL ↗
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tombol Kirim Test OTP -->
+                            <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
+                                <span class="text-muted" style="font-size: 0.82rem; margin-right: auto;">Uji pengiriman pesan ke grup:</span>
+                                <button class="btn btn-primary btn-sm" id="btnQuickTest" onclick="sendQuickTestOtp()">
+                                    <i class="fas fa-paper-plane"></i> Kirim Test OTP Cepat
+                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="openCustomTestModal()">
+                                    <i class="fas fa-sliders-h"></i> Custom Test...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="card">
                         <div class="card-header">
                             <h2><i class="fas fa-clock"></i> Recent Activity</h2>
@@ -150,15 +261,17 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-terminal"></i> Live Log</h2>
-                            <button class="btn-sm" onclick="refreshLogs()"><i class="fas fa-sync-alt"></i></button>
-                        </div>
-                        <div class="card-body">
-                            <div class="log-terminal" id="logTerminal">
-                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>
-                            </div>
+                </div>
+
+                <!-- Live Log Terminal -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h2><i class="fas fa-terminal"></i> Live Log</h2>
+                        <button class="btn-sm" onclick="refreshLogs()"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-terminal" id="logTerminal">
+                            <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -193,6 +306,72 @@
                         <div class="pagination" id="smsPagination"></div>
                     </div>
                 </div>
+            {% elif page == 'accounts' %}
+            <!-- ═══════════════ KELOLA AKUN IVASMS ═══════════════ -->
+            <div class="page-content" id="accountsPage">
+                <div class="grid-2">
+                    <!-- Form Tambah / Edit Akun -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-user-plus" style="color: var(--accent);"></i> Tambah / Edit Akun IVASMS</h2>
+                            <span class="badge badge-info">Multi-Account</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 20px;">
+                                Daftarkan akun IVASMS untuk memonitor traffic SMS secara simultan. Bot akan menjalankan sesi polling otomatis untuk semua akun yang aktif.
+                            </p>
+
+                            <input type="hidden" id="accEditIndex" value="">
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                                <span id="accFormModeTitle" style="font-weight: 600; color: var(--accent);">
+                                    <i class="fas fa-plus-circle"></i> Tambah Akun Baru
+                                </span>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="resetAccForm()" id="btnCancelEdit" style="display: none;">
+                                    Batal Edit
+                                </button>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Email Akun IVASMS</label>
+                                <input type="email" id="accInputEmail" class="form-input" placeholder="contoh@domain.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Password Akun IVASMS</label>
+                                <div class="input-group">
+                                    <input type="password" id="accInputPassword" class="form-input" placeholder="••••••••">
+                                    <button class="input-addon" type="button" onclick="toggleAccPasswordVisibility()">
+                                        <i class="fas fa-eye" id="accPwdIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                                <button class="btn btn-primary" onclick="saveAccountFromMenu()" style="flex: 1;" id="btnSaveAcc">
+                                    <i class="fas fa-plus"></i> Simpan Akun
+                                </button>
+                                <button class="btn btn-secondary" onclick="resetAccForm()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Daftar Akun -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><i class="fas fa-list-ul"></i> Daftar Akun Terdaftar</h2>
+                            <button class="btn-sm" onclick="loadAccountsList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="account-cards-list" id="accountsListContainer" style="display: flex; flex-direction: column; gap: 14px;">
+                                <!-- Dinamis dirender oleh JS -->
+                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat akun...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {% elif page == 'auto-add' %}
@@ -205,6 +384,13 @@
                             <h2><i class="fas fa-plus-circle"></i> Auto-Add Configuration</h2>
                         </div>
                         <div class="card-body">
+                            <div class="form-group">
+                                <label><i class="fas fa-user-circle"></i> Gunakan Akun IVASMS</label>
+                                <select id="addAccountSelect" class="form-input" style="font-weight: 500;">
+                                    <option value="1">Memuat daftar akun...</option>
+                                </select>
+                                <small class="form-hint">Pilih akun IVASMS yang akan digunakan untuk proses add number.</small>
+                            </div>
                             <div class="form-group">
                                 <label>Range Name</label>
                                 <input type="text" id="addRangeName" class="form-input" placeholder="e.g. GERMANY, RUSSIA, UZBEKISTAN">
@@ -238,6 +424,11 @@
                             <div class="status-badge" id="autoAddStatus">Idle</div>
                         </div>
                         <div class="card-body">
+                            <div id="addRunningAccountInfo" style="display: none; padding: 9px 12px; margin-bottom: 14px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; font-size: 0.82rem; color: var(--text);">
+                                <i class="fas fa-user-check" style="color: var(--primary); margin-right: 6px;"></i>
+                                <span id="addRunningAccountText">Akun Aktif</span>
+                            </div>
+
                             <div class="progress-stats">
                                 <div class="progress-stat">
                                     <div class="progress-stat-icon green"><i class="fas fa-check"></i></div>
@@ -310,19 +501,30 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h2><i class="fas fa-plug"></i> IVASMS Connection</h2>
-                        </div>
-                        <div class="card-body center-content">
-                            <div class="bot-status-display">
-                                <div class="bot-icon" id="ivasmsIcon">
-                                    <i class="fas fa-globe"></i>
-                                </div>
-                                <h3 id="ivasmsStatusText">Unknown</h3>
-                                <p id="ivasmsStatusDesc" class="text-muted">Belum dicek</p>
-                            </div>
-                            <button class="btn btn-primary" onclick="checkIvasms()">
-                                <i class="fas fa-sync-alt"></i> Check Connection
+                            <h2><i class="fas fa-plug"></i> Status Koneksi IVASMS Per Akun</h2>
+                            <button class="btn-sm" onclick="checkIvasms()" id="btnCheckIvasms">
+                                <i class="fas fa-sync-alt"></i> Cek Koneksi
                             </button>
+                        </div>
+                        <div class="card-body">
+                            <!-- Overall indicator -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="bot-icon online" id="ivasmsIcon" style="width: 36px; height: 36px; font-size: 1rem; margin: 0;">
+                                        <i class="fas fa-globe"></i>
+                                    </div>
+                                    <div>
+                                        <b id="ivasmsStatusText" style="font-size: 0.95rem; color: var(--text);">IVASMS Multi-Account</b>
+                                        <div id="ivasmsStatusDesc" class="text-muted" style="font-size: 0.78rem;">Status semua akun terpantau</div>
+                                    </div>
+                                </div>
+                                <span class="badge badge-info" id="ivasmsAccCountBadge">2 Akun</span>
+                            </div>
+
+                            <!-- List status per akun -->
+                            <div id="ivasmsAccountsStatusList" style="display: flex; flex-direction: column; gap: 10px;">
+                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat status akun...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -385,33 +587,37 @@
                                 </div>
                             </div>
 
-                            <!-- IVASMS Section -->
+                            <!-- IVASMS Shortcut Section -->
                             <div class="settings-section">
-                                <h3><i class="fas fa-envelope"></i> IVASMS Account</h3>
-                                <div class="form-group">
-                                    <label>Email</label>
-                                    <input type="email" id="cfgEmail" class="form-input" placeholder="email@example.com">
-                                </div>
-                                <div class="form-group">
-                                    <label>Password</label>
-                                    <div class="input-group">
-                                        <input type="password" id="cfgPassword" class="form-input" placeholder="••••••••">
-                                        <button class="input-addon" onclick="togglePasswordVisibility()">
-                                            <i class="fas fa-eye" id="pwdToggleIcon"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                                <h3><i class="fas fa-users-cog"></i> IVASMS Accounts</h3>
+                                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 14px;">
+                                    Pengelolaan akun IVASMS (Akun 1 & Akun 2) sekarang dikelola secara khusus di menu terpisah <b>Akun IVASMS</b>.
+                                </p>
+                                <a href="/accounts" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-external-link-alt"></i> Buka Menu Akun IVASMS
+                                </a>
                             </div>
 
                             <!-- Links Section -->
                             <div class="settings-section">
-                                <h3><i class="fas fa-link"></i> Button Links</h3>
+                                <h3><i class="fas fa-link"></i> Button Links & Format</h3>
                                 <div class="form-group">
-                                    <label>Number Link</label>
-                                    <input type="text" id="cfgNumberLink" class="form-input" placeholder="https://t.me/...">
+                                    <label>File Link (Pengganti Panel)</label>
+                                    <input type="text" id="cfgFileLink" class="form-input" placeholder="https://t.me/dimsongfile">
+                                    <small class="form-hint">Tautan untuk tombol <b>📁 FILE ↗</b></small>
                                 </div>
                                 <div class="form-group">
-                                    <label>Owner Link</label>
+                                    <label>Channel Link</label>
+                                    <input type="text" id="cfgChannelLink" class="form-input" placeholder="https://t.me/dimsongotp">
+                                    <small class="form-hint">Tautan untuk tombol <b>🔔 CHANNEL ↗</b></small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Sensor Text (Tengah Nomor HP)</label>
+                                    <input type="text" id="cfgSensorText" class="form-input" placeholder="••••">
+                                    <small class="form-hint">Contoh: •••• atau ~ atau brand</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Owner Link (Opsional)</label>
                                     <input type="text" id="cfgOwnerLink" class="form-input" placeholder="https://t.me/...">
                                 </div>
                             </div>
@@ -423,6 +629,67 @@
 
         </div>
     </main>
+
+    <!-- Modal Custom Test OTP -->
+    <div class="modal-overlay" id="customTestModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fas fa-paper-plane"></i> Kirim Custom Test OTP</h3>
+                <button class="modal-close" onclick="closeCustomTestModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="margin-bottom: 16px; font-size: 0.88rem;">
+                    Kirim simulasi pesan OTP ke grup Telegram dengan parameter yang dapat Anda sesuaikan:
+                </p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Negara & Bendera</label>
+                        <select id="testCountry" class="form-input" onchange="updateCountryFlag()">
+                            <option value="ZW|🇿🇼">🇿🇼 Zimbabwe (ZW)</option>
+                            <option value="DE|🇩🇪">🇩🇪 Germany (DE)</option>
+                            <option value="ID|🇮🇩">🇮🇩 Indonesia (ID)</option>
+                            <option value="US|🇺🇸">🇺🇸 United States (US)</option>
+                            <option value="RU|🇷🇺">🇷🇺 Russia (RU)</option>
+                            <option value="ML|🇲🇱">🇲🇱 Mali (ML)</option>
+                            <option value="FR|🇫🇷">🇫🇷 France (FR)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Platform / Layanan</label>
+                        <select id="testPlatform" class="form-input">
+                            <option value="WhatsApp">🟢 WhatsApp</option>
+                            <option value="Telegram">🔵 Telegram</option>
+                            <option value="Google">🔴 Google</option>
+                            <option value="TikTok">⚫ TikTok</option>
+                            <option value="Instagram">🟣 Instagram</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nomor HP (Lengkap)</label>
+                        <input type="text" id="testPhone" class="form-input mono" value="263788124006" placeholder="Contoh: 263788124006">
+                        <small class="form-hint">6 digit pertama akan otomatis jadi <b>Prefix</b></small>
+                    </div>
+                    <div class="form-group">
+                        <label>Kode OTP</label>
+                        <div class="input-group">
+                            <input type="text" id="testOtp" class="form-input mono" value="884762" placeholder="Contoh: 884762">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="randomizeOtp()" title="Acak OTP">
+                                <i class="fas fa-dice"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCustomTestModal()">Batal</button>
+                <button class="btn btn-primary" id="btnSubmitTest" onclick="submitCustomTestOtp()">
+                    <i class="fas fa-paper-plane"></i> Kirim ke Telegram Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Notification -->
     <div class="toast-container" id="toastContainer"></div>

@@ -40,7 +40,48 @@ BATCH_SIZE = 50
 
 # ────────────────────────────────────────────
 
-USER_DATA_DIR = os.path.abspath("browser_profile")
+def get_account_config(account_index: int = 1) -> dict:
+    """Muat konfigurasi dan direktori profile browser untuk akun IVASMS terpilih."""
+    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        try:
+            import config
+            if getattr(config, "IVASMS_EMAIL", "") and getattr(config, "IVASMS_PASSWORD", ""):
+                accounts.append({"email": config.IVASMS_EMAIL, "password": config.IVASMS_PASSWORD})
+            if getattr(config, "IVASMS_EMAIL_2", "") and getattr(config, "IVASMS_PASSWORD_2", ""):
+                accounts.append({"email": config.IVASMS_EMAIL_2, "password": config.IVASMS_PASSWORD_2})
+        except Exception:
+            pass
+
+    email = ""
+    pwd = ""
+    if accounts and 1 <= account_index <= len(accounts):
+        email = accounts[account_index - 1].get("email", "")
+        pwd = accounts[account_index - 1].get("password", "")
+    elif accounts:
+        email = accounts[0].get("email", "")
+        pwd = accounts[0].get("password", "")
+
+    if account_index == 1:
+        user_data_dir = os.path.abspath("browser_profile")
+    else:
+        user_data_dir = os.path.abspath(f"browser_profile_acc{account_index}")
+
+    return {
+        "index": account_index,
+        "email": email,
+        "password": pwd,
+        "user_data_dir": user_data_dir
+    }
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -60,9 +101,15 @@ async def wait_cloudflare(page, max_wait=30):
     return False
 
 
-async def auto_login_if_needed(page, context):
-    """Auto-login jika session expired"""
-    from config import IVASMS_EMAIL, IVASMS_PASSWORD
+async def auto_login_if_needed(page, context, email: str = "", password: str = ""):
+    """Auto-login jika session expired menggunakan akun yang dipilih"""
+    if not email or not password:
+        try:
+            from config import IVASMS_EMAIL, IVASMS_PASSWORD
+            email = email or IVASMS_EMAIL
+            password = password or IVASMS_PASSWORD
+        except Exception:
+            pass
 
     url = page.url
     if "/login" not in url:
@@ -70,10 +117,10 @@ async def auto_login_if_needed(page, context):
         if not has_login:
             return True  # Already logged in
 
-    logger.info("🔑 Session expired, melakukan auto-login...")
+    logger.info(f"🔑 Session expired, melakukan auto-login dengan {email}...")
     try:
-        await page.fill("input[name='email']", IVASMS_EMAIL)
-        await page.fill("input[name='password']", IVASMS_PASSWORD)
+        await page.fill("input[name='email']", email)
+        await page.fill("input[name='password']", password)
 
         remember = await page.query_selector("input[name='remember']")
         if remember and not await remember.is_checked():
@@ -223,14 +270,26 @@ async def main():
     range_name = RANGE_NAME
     max_add = MAX_ADD
     delay = DELAY_SECONDS
+    account_idx = 1
 
-    # Bisa override via command line: python auto_add_numbers.py "RUSSIA 1" 10 60
+    # Bisa override via command line: python auto_add_numbers.py "RUSSIA 1" [MAX_ADD] [DELAY] [ACCOUNT_INDEX]
     if len(sys.argv) >= 2:
         range_name = sys.argv[1]
     if len(sys.argv) >= 3:
-        max_add = int(sys.argv[2])
+        try:
+            max_add = int(sys.argv[2])
+        except Exception:
+            max_add = 0
     if len(sys.argv) >= 4:
-        delay = int(sys.argv[3])
+        try:
+            delay = int(sys.argv[3])
+        except Exception:
+            delay = 60
+    if len(sys.argv) >= 5:
+        try:
+            account_idx = int(sys.argv[4])
+        except Exception:
+            account_idx = 1
 
     if not range_name:
         print("=" * 60)
@@ -239,21 +298,40 @@ async def main():
         print()
         print("  Cara penggunaan:")
         print()
-        print('  python auto_add_numbers.py "RANGE_NAME" [MAX_ADD] [DELAY]')
+        print('  python auto_add_numbers.py "RANGE_NAME" [MAX_ADD] [DELAY] [ACCOUNT_INDEX]')
         print()
         print("  Contoh:")
         print('    python auto_add_numbers.py "RUSSIA 1"')
         print('    python auto_add_numbers.py "RUSSIA 1" 10')
-        print('    python auto_add_numbers.py "RUSSIA 1" 10 60')
-        print('    python auto_add_numbers.py "UZBEKISTAN" 0 30')
+        print('    python auto_add_numbers.py "RUSSIA 1" 10 60 1')
+        print('    python auto_add_numbers.py "UZBEKISTAN" 0 30 2')
         print()
         print("  Parameter:")
-        print("    RANGE_NAME  : Nama range (case-insensitive, partial match)")
-        print("    MAX_ADD     : Maks jumlah add (0 = semua). Default: 0")
-        print("    DELAY       : Delay per action dalam detik. Default: 60")
+        print("    RANGE_NAME    : Nama range (case-insensitive, partial match)")
+        print("    MAX_ADD       : Maks jumlah add (0 = semua). Default: 0")
+        print("    DELAY         : Delay per action dalam detik. Default: 60")
+        print("    ACCOUNT_INDEX : Nomor index akun IVASMS (1, 2, dst). Default: 1")
         print()
 
         # Interactive mode
+        acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+        accounts_list = []
+        if os.path.exists(acc_file):
+            try:
+                with open(acc_file, "r", encoding="utf-8") as f:
+                    accounts_list = json.load(f)
+            except Exception:
+                pass
+
+        if accounts_list:
+            print("  📋 Daftar Akun IVASMS Tersedia:")
+            for i, a in enumerate(accounts_list, start=1):
+                print(f"    [{i}] Akun #{i}: {a.get('email')}")
+            acc_input = input(f"  Pilih Akun [1-{len(accounts_list)}] (default 1): ").strip()
+            if acc_input.isdigit():
+                account_idx = int(acc_input)
+            print()
+
         range_name = input("  Masukkan Range Name: ").strip()
         if not range_name:
             print("  [!] Range name tidak boleh kosong!")
@@ -265,10 +343,18 @@ async def main():
         delay_input = input("  Delay per action (detik) [60]: ").strip()
         delay = int(delay_input) if delay_input else 60
 
+    # Dapatkan konfigurasi akun & direktori browser profile yang sesuai
+    acc_info = get_account_config(account_idx)
+    user_data_dir = acc_info["user_data_dir"]
+    login_email = acc_info["email"]
+    login_password = acc_info["password"]
+
     print()
     logger.info("═" * 55)
     logger.info("  AUTO ADD NUMBERS - IVASMS")
     logger.info("═" * 55)
+    logger.info(f"  👤 Akun IVASMS: Akun #{account_idx} ({login_email or 'Default'})")
+    logger.info(f"  📁 Profile Dir: {user_data_dir}")
     logger.info(f"  🔍 Range Name : {range_name}")
     logger.info(f"  📊 Max Add    : {'Unlimited' if max_add == 0 else max_add}")
     logger.info(f"  ⏱️  Delay      : {delay} detik")
@@ -276,7 +362,7 @@ async def main():
 
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
-            user_data_dir=USER_DATA_DIR,
+            user_data_dir=user_data_dir,
             channel="msedge",
             headless=False,
             args=[
@@ -307,8 +393,8 @@ async def main():
 
         await asyncio.sleep(3)
 
-        # Auto-login if needed
-        if not await auto_login_if_needed(page, context):
+        # Auto-login if needed dengan kredensial akun terpilih
+        if not await auto_login_if_needed(page, context, email=login_email, password=login_password):
             await context.close()
             return
 

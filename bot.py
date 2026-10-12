@@ -19,6 +19,7 @@ import logging
 import signal
 import sys
 import os
+import json
 from datetime import datetime
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -28,11 +29,12 @@ try:
 except Exception:
     pass
 
-from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import Bot, CopyTextButton, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.constants import ParseMode
 
 # Local imports
+import re
 from config import (
     BOT_TOKEN,
     GROUP_CHAT_ID,
@@ -48,6 +50,20 @@ from config import (
     ELITE_SMS_URL,
     ELITE_SMS_API_KEY,
 )
+
+try:
+    from config import COOKIES_2, IVASMS_EMAIL_2, IVASMS_PASSWORD_2
+except ImportError:
+    COOKIES_2 = {}
+    IVASMS_EMAIL_2 = ""
+    IVASMS_PASSWORD_2 = ""
+
+try:
+    from config import FILE_LINK, CHANNEL_LINK, SENSOR_TEXT
+except ImportError:
+    FILE_LINK = NUMBER_LINK
+    CHANNEL_LINK = GROUP_LINK
+    SENSOR_TEXT = "••••"
 from ivasms_scraper import IVASMSClient
 from elite_sms_client import EliteSMSClient
 from cookie_sync import get_fresh_cookies_from_browser
@@ -77,74 +93,125 @@ logging.getLogger("cloudscraper").setLevel(logging.WARNING)
 # ────────────────────────────────────────────
 def format_otp_message(sms_data: dict) -> str:
     """
-    Format pesan OTP sesuai screenshot:
+    Format pesan OTP:
 
-    🇿🇼 ZW • 💬 2637 ~ 1419 17:12
-    🪙 803-146
+    🇿🇼 ZW | 🟢 2637 •••• 4006 #EN
+    🔢 Prefix: 263788
     """
     flag = sms_data.get("flag", "🏳️")
     country = sms_data.get("country_code", "??")
     platform = sms_data.get("platform", "SMS")
-    
+
     # Platform icon
     p_lower = platform.lower()
-    if "whatsapp" in p_lower:
+    if "whatsapp" in p_lower or "wa " in p_lower:
         platform_icon = "🟢"
     elif "telegram" in p_lower:
         platform_icon = "🔵"
     else:
         platform_icon = sms_data.get("platform_emoji", "💬")
 
-    phone_masked = sms_data.get("phone_masked", sms_data.get("phone", "???"))
-    otp = sms_data.get("otp", "N/A")
+    # Ambil angka murni nomor telepon
+    phone = str(sms_data.get("phone", "")).strip()
+    digits = re.sub(r'\D', '', phone)
 
-    # Baris 1: [Flag] [CC] • [PlatformIcon] [4 awal ~ 4 akhir]
-    line1 = f"{flag} *{country}* • {platform_icon} *{phone_masked}*"
+    # Prefix = 6 nomer pertama
+    prefix_6 = digits[:6] if len(digits) >= 6 else digits
 
-    # Baris 2: OTP (klik untuk salin otomatis / copy-to-clipboard)
-    if otp and otp != "N/A":
-        line2 = f"🪙 `{otp}`"
+    # Mask nomor telepon (4 angka depan & 4 angka belakang)
+    sensor = SENSOR_TEXT or "••••"
+    if len(digits) >= 8:
+        phone_masked = f"{digits[:4]} {sensor} {digits[-4:]}"
+    elif len(digits) > 4:
+        phone_masked = f"{digits[:4]} {sensor}"
     else:
-        line2 = f"🪙 `N/A`"
+        phone_masked = digits or "???"
+
+    # Tag bahasa (#EN / #ID / dsb)
+    msg_text = sms_data.get("message", "").lower()
+    if any(w in msg_text for w in ["kode", "adalah", "jangan", "rahasia"]):
+        lang_tag = "#ID"
+    elif any(w in msg_text for w in ["codigo", "código", "es tu", "clave"]):
+        lang_tag = "#ES"
+    else:
+        lang_tag = "#EN"
+
+    # Baris 1: 🇿🇼 ZW | 🟢 2637 •••• 4006 #EN
+    line1 = f"{flag} {country} | {platform_icon} {phone_masked} {lang_tag}"
+
+    # Baris 2: 🔢 Prefix: 263788
+    line2 = f"🔢 Prefix: {prefix_6}"
 
     return f"{line1}\n{line2}"
 
 
-def create_keyboard(sms_data: dict, number_link: str = "", owner_link: str = "") -> InlineKeyboardMarkup:
+def create_keyboard(sms_data: dict, file_link: str = "", channel_link: str = "", otp_text: str = "") -> InlineKeyboardMarkup:
     """
-    Buat inline keyboard:
-    [ 🔴 NUMBER ↗ ]   [ 🧠 OWNER ↗ ]
+    Buat inline keyboard persis screenshot:
+    [           🔑 758-347            ]  <-- copy button (highlighted)
+    [ 📁 FILE ↗ ]   [ 🔔 CHANNEL ↗ ]
     """
-    num_btn = (
-        InlineKeyboardButton("🔴 NUMBER ↗", url=number_link)
-        if number_link
-        else InlineKeyboardButton("🔴 NUMBER", callback_data="btn_number")
+    f_link = (file_link or FILE_LINK or NUMBER_LINK or "").strip()
+    c_link = (channel_link or CHANNEL_LINK or GROUP_LINK or "").strip()
+
+    def ensure_url(url: str) -> str:
+        if not url:
+            return ""
+        if not url.startswith("http://") and not url.startswith("https://"):
+            return "https://" + url
+        return url
+
+    f_url = ensure_url(f_link)
+    c_url = ensure_url(c_link)
+
+    # Ambil OTP angka murni & formatted
+    raw_otp = otp_text or sms_data.get("otp", "") or ""
+    clean_otp = str(raw_otp).strip()
+    if len(clean_otp) == 6 and clean_otp.isdigit():
+        otp_display = f"{clean_otp[:3]}-{clean_otp[3:]}"
+    else:
+        otp_display = clean_otp
+
+    # Row 1: Tombol Salin OTP persis screenshot: 🔑 758-347
+    copy_btn = InlineKeyboardButton(
+        f"🔑 {otp_display}",
+        copy_text=CopyTextButton(text=clean_otp),
     )
 
-    owner_btn = (
-        InlineKeyboardButton("🧠 OWNER ↗", url=owner_link)
-        if owner_link
-        else InlineKeyboardButton("🧠 OWNER", callback_data="btn_owner")
+    # Row 2: FILE & CHANNEL (tanpa panah)
+    file_btn = (
+        InlineKeyboardButton("📁 FILE", url=f_url)
+        if f_url
+        else InlineKeyboardButton("📁 FILE", callback_data="btn_file")
+    )
+
+    channel_btn = (
+        InlineKeyboardButton("🔔 CHANNEL", url=c_url)
+        if c_url
+        else InlineKeyboardButton("🔔 CHANNEL", callback_data="btn_channel")
     )
 
     buttons = [
-        [num_btn, owner_btn]
+        [copy_btn],              # Row 1: Copy OTP
+        [file_btn, channel_btn], # Row 2: File & Channel
     ]
 
     return InlineKeyboardMarkup(buttons)
 
 
 # ────────────────────────────────────────────
-#  STATISTICS TRACKER
+#  STATISTICS TRACKER & REVENUE COUNTER
 # ────────────────────────────────────────────
 class StatsTracker:
-    """Track statistik OTP yang sudah dikirim."""
+    """Track statistik OTP, estimasi cuan/revenue, dan tren jam sibuk."""
 
     def __init__(self):
         self.total_sent = 0
+        self.total_revenue = 0.0
         self.start_time = datetime.now()
         self.platform_counts = {}
         self.country_counts = {}
+        self.hourly_counts = {f"{h:02d}:00": 0 for h in range(24)}
 
     def record(self, sms_data: dict):
         self.total_sent += 1
@@ -152,6 +219,20 @@ class StatsTracker:
         country = sms_data.get("country_code", "??")
         self.platform_counts[platform] = self.platform_counts.get(platform, 0) + 1
         self.country_counts[country] = self.country_counts.get(country, 0) + 1
+
+        # Hitung revenue ($0.05 default jika tidak tertera)
+        rev_str = str(sms_data.get("revenue", "$0.00")).replace("$", "").replace("€", "").strip()
+        try:
+            val = float(rev_str)
+            if val <= 0:
+                val = 0.05  # Estimasi rata-rata rate per OTP IVASMS
+            self.total_revenue += val
+        except Exception:
+            self.total_revenue += 0.05
+
+        # Catat jam pengiriman (tren jam sibuk)
+        hour_key = datetime.now().strftime("%H:00")
+        self.hourly_counts[hour_key] = self.hourly_counts.get(hour_key, 0) + 1
 
     def get_summary(self) -> str:
         uptime = datetime.now() - self.start_time
@@ -174,6 +255,7 @@ class StatsTracker:
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"⏱ Uptime: `{hours}h {minutes}m {seconds}s`\n"
             f"📨 Total OTP: *{self.total_sent}*\n"
+            f"💰 Est. Revenue: *${self.total_revenue:.2f}*\n"
             f"\n"
             f"📱 *Platform:*\n{platform_text}\n"
             f"\n"
@@ -206,6 +288,61 @@ def store_full_message(sms_id: str, message: str):
 stats = StatsTracker()
 
 
+bot_accounts_status = {}
+
+def update_bot_status(ivasms_ok: bool = None, elite_ok: bool = None, accounts_status: list = None, acc_idx: int = None, acc_connected: bool = None):
+    """Simpan status bot & setiap akun IVASMS real-time ke status.json agar dashboard web sinkron 100%."""
+    global bot_accounts_status
+    try:
+        status_file = os.path.join(os.path.dirname(__file__), "status.json")
+        data = {}
+        if os.path.exists(status_file):
+            try:
+                with open(status_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except Exception:
+                pass
+        data["bot_running"] = True
+        data["pid"] = os.getpid()
+        data["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if ivasms_ok is not None:
+            data["ivasms_connected"] = bool(ivasms_ok)
+        if elite_ok is not None:
+            data["elite_connected"] = bool(elite_ok)
+
+        # Update status per akun
+        if accounts_status is not None:
+            for item in accounts_status:
+                if isinstance(item, dict) and "index" in item:
+                    bot_accounts_status[item["index"]] = item
+        elif acc_idx is not None and acc_connected is not None:
+            if acc_idx in bot_accounts_status:
+                bot_accounts_status[acc_idx]["connected"] = bool(acc_connected)
+                bot_accounts_status[acc_idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                bot_accounts_status[acc_idx] = {
+                    "index": acc_idx,
+                    "connected": bool(acc_connected),
+                    "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+
+        if bot_accounts_status:
+            data["accounts_status"] = list(bot_accounts_status.values())
+
+        data["total_sent"] = getattr(stats, "total_sent", 0)
+        data["total_revenue"] = round(getattr(stats, "total_revenue", 0.0), 2)
+        data["platform_counts"] = getattr(stats, "platform_counts", {})
+        data["country_counts"] = getattr(stats, "country_counts", {})
+        data["hourly_counts"] = getattr(stats, "hourly_counts", {})
+        temp_file = status_file + ".tmp"
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        if os.path.exists(temp_file):
+            os.replace(temp_file, status_file)
+    except Exception as e:
+        logger.debug(f"Status file update error: {e}")
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler untuk /start command."""
     welcome_msg = (
@@ -230,19 +367,32 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler untuk /status command."""
-    global active_client, active_elite_client
+    global active_clients, active_elite_client
     await update.message.reply_text("🔄 Checking providers connection...", parse_mode=ParseMode.MARKDOWN)
 
-    # Cek IVASMS
-    if not active_client:
-        active_client = IVASMSClient(COOKIES, IVASMS_URL)
+    # Cek status semua akun IVASMS aktif
+    ivasms_any_ok = False
+    status_lines = [
+        f"🤖 *Bot Status: RUNNING*",
+        f"━━━━━━━━━━━━━━━━━━━━",
+    ]
 
-    is_ivasms_ok = active_client.check_connection()
-    if not is_ivasms_ok:
-        fresh_c = await get_fresh_cookies_from_browser()
-        if fresh_c:
-            active_client.update_cookies(fresh_c)
-            is_ivasms_ok = active_client.check_connection()
+    accounts = load_ivasms_accounts()
+    for idx, acc in enumerate(accounts, start=1):
+        email_disp = acc.get("email", f"Akun {idx}")
+        # Cek jika ada client terdaftar
+        is_ok = False
+        if idx - 1 < len(active_clients):
+            cl = active_clients[idx - 1]
+            is_ok = cl.check_connection()
+            if not is_ok:
+                fresh_c = await get_fresh_cookies_from_browser(account_index=idx, email=acc.get("email"), password=acc.get("password"))
+                if fresh_c:
+                    cl.update_cookies(fresh_c)
+                    is_ok = cl.check_connection()
+        if is_ok:
+            ivasms_any_ok = True
+        status_lines.append(f"🌐 IVASMS (Akun {idx}): {'✅ Connected' if is_ok else '❌ Disconnected'} - `{email_disp}`")
 
     # Cek Elite-SMS
     is_elite_ok = False
@@ -251,15 +401,15 @@ async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
             active_elite_client = EliteSMSClient(ELITE_SMS_API_KEY, ELITE_SMS_URL)
         is_elite_ok = active_elite_client.check_connection()
 
-    status_lines = [
-        f"🤖 *Bot Status: RUNNING*",
-        f"━━━━━━━━━━━━━━━━━━━━",
-        f"🌐 IVASMS: {'✅ Connected' if is_ivasms_ok else '❌ Disconnected'}",
+    # Sinkronisasi status ke status.json agar dashboard web langsung update
+    update_bot_status(ivasms_ok=ivasms_any_ok, elite_ok=is_elite_ok)
+
+    status_lines.extend([
         f"🌐 Elite-SMS: {'✅ Connected' if is_elite_ok else '❌ Offline/Disabled' if ELITE_SMS_ENABLED else '⚪ Disabled'}",
         f"⚡ Interval: `{POLL_INTERVAL}s`",
         f"📨 Total OTP sent: *{stats.total_sent}*",
         f"━━━━━━━━━━━━━━━━━━━━",
-    ]
+    ])
     await update.message.reply_text("\n".join(status_lines), parse_mode=ParseMode.MARKDOWN)
 
 
@@ -282,12 +432,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data or ""
     await query.answer()
 
-    if data == "btn_number":
-        await query.answer("Link NUMBER belum diisi.", show_alert=True)
+    if data in ("btn_file", "btn_number"):
+        await query.answer("Link FILE belum diisi di config.py.", show_alert=True)
         return
 
-    if data == "btn_owner":
-        await query.answer("Link OWNER belum diisi.", show_alert=True)
+    if data in ("btn_channel", "btn_owner"):
+        await query.answer("Link CHANNEL belum diisi di config.py.", show_alert=True)
         return
 
     if data.startswith("file_"):
@@ -309,9 +459,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ────────────────────────────────────────────
 #  OTP POLLING LOOP
 # ────────────────────────────────────────────
-async def poll_otp(bot: Bot, client: IVASMSClient, chat_id: str):
-    """Loop utama untuk polling OTP dari IVASMS."""
-    logger.info("🚀 OTP polling started")
+async def poll_otp(bot: Bot, client: IVASMSClient, chat_id: str, account_idx: int = 1):
+    """Loop utama untuk polling OTP dari IVASMS (bisa akun 1 atau akun 2)."""
+    logger.info(f"🚀 OTP polling started (IVASMS Akun {account_idx})")
 
     consecutive_errors = 0
     max_errors = 10
@@ -320,12 +470,13 @@ async def poll_otp(bot: Bot, client: IVASMSClient, chat_id: str):
         try:
             # Ambil SMS baru
             new_sms_list = client.get_new_sms()
+            update_bot_status(ivasms_ok=True, acc_idx=account_idx, acc_connected=True)
 
             for sms_data in new_sms_list:
                 try:
-                    # Format pesan
+                    # Format pesan (sama persis tanpa pembeda notifikasi)
                     message = format_otp_message(sms_data)
-                    keyboard = create_keyboard(sms_data, NUMBER_LINK, OWNER_LINK)
+                    keyboard = create_keyboard(sms_data, FILE_LINK, CHANNEL_LINK)
 
                     # Simpan full message untuk callback
                     store_full_message(
@@ -337,15 +488,16 @@ async def poll_otp(bot: Bot, client: IVASMSClient, chat_id: str):
                     await bot.send_message(
                         chat_id=chat_id,
                         text=message,
-                        parse_mode=ParseMode.MARKDOWN,
+                        parse_mode=ParseMode.HTML,
                         reply_markup=keyboard,
                     )
 
                     # Record stats
                     stats.record(sms_data)
+                    update_bot_status(ivasms_ok=True, acc_idx=account_idx, acc_connected=True)
 
                     logger.info(
-                        f"📤 Sent OTP: {sms_data.get('country_code', '??')} | "
+                        f"📤 Sent OTP [Akun {account_idx}]: {sms_data.get('country_code', '??')} | "
                         f"{sms_data.get('platform', 'SMS')} | "
                         f"{sms_data.get('otp', 'N/A')}"
                     )
@@ -354,28 +506,30 @@ async def poll_otp(bot: Bot, client: IVASMSClient, chat_id: str):
                     await asyncio.sleep(0.5)
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to send message: {e}")
+                    logger.error(f"❌ Failed to send message [Akun {account_idx}]: {e}")
 
             consecutive_errors = 0  # Reset error counter on success
 
         except Exception as e:
             consecutive_errors += 1
-            logger.error(f"❌ Polling error ({consecutive_errors}/{max_errors}): {e}")
+            logger.error(f"❌ Polling error Akun {account_idx} ({consecutive_errors}/{max_errors}): {e}")
+            update_bot_status(acc_idx=account_idx, acc_connected=False)
 
             # Otomatis refresh cookie dari browser jika ada error sesi
             if consecutive_errors >= 1:
-                logger.info("🔄 Auto-refreshing cookies from background browser...")
+                logger.info(f"🔄 Auto-refreshing cookies Akun {account_idx} from background browser...")
                 try:
-                    fresh_c = await get_fresh_cookies_from_browser()
+                    fresh_c = await get_fresh_cookies_from_browser(account_index=account_idx)
                     if fresh_c:
                         client.update_cookies(fresh_c)
-                        logger.info("✅ Cookies successfully auto-refreshed!")
+                        logger.info(f"✅ Cookies Akun {account_idx} successfully auto-refreshed!")
                         consecutive_errors = 0
+                        update_bot_status(ivasms_ok=True, acc_idx=account_idx, acc_connected=True)
                 except Exception as sync_e:
-                    logger.error(f"Failed auto-refresh: {sync_e}")
+                    logger.error(f"Failed auto-refresh Akun {account_idx}: {sync_e}")
 
             if consecutive_errors >= max_errors:
-                logger.critical("🔴 Too many consecutive errors! Pausing for 60s...")
+                logger.critical(f"🔴 Too many consecutive errors Akun {account_idx}! Pausing for 60s...")
                 await asyncio.sleep(60)
                 consecutive_errors = 0
 
@@ -389,10 +543,11 @@ async def poll_otp_elite(bot: Bot, client: EliteSMSClient, chat_id: str):
     while True:
         try:
             new_sms_list = client.get_new_sms(limit=50)
+            update_bot_status(elite_ok=True)
             for sms_data in new_sms_list:
                 try:
                     message = format_otp_message(sms_data)
-                    keyboard = create_keyboard(sms_data, NUMBER_LINK, OWNER_LINK)
+                    keyboard = create_keyboard(sms_data, FILE_LINK, CHANNEL_LINK)
 
                     store_full_message(
                         sms_data.get("id", "unknown"),
@@ -402,11 +557,12 @@ async def poll_otp_elite(bot: Bot, client: EliteSMSClient, chat_id: str):
                     await bot.send_message(
                         chat_id=chat_id,
                         text=message,
-                        parse_mode=ParseMode.MARKDOWN,
+                        parse_mode=ParseMode.HTML,
                         reply_markup=keyboard,
                     )
 
                     stats.record(sms_data)
+                    update_bot_status(elite_ok=True)
                     logger.info(
                         f"📤 [Elite-SMS] Sent OTP: {sms_data.get('country_code', '??')} | "
                         f"{sms_data.get('platform', 'SMS')} | "
@@ -417,12 +573,34 @@ async def poll_otp_elite(bot: Bot, client: EliteSMSClient, chat_id: str):
                     logger.error(f"❌ [Elite-SMS] Failed to send message: {e}")
         except Exception as e:
             logger.error(f"❌ [Elite-SMS] Polling error: {e}")
+            update_bot_status(elite_ok=False)
 
         await asyncio.sleep(POLL_INTERVAL)
 
 
+def load_ivasms_accounts() -> list:
+    """Muat semua akun IVASMS dari ivasms_accounts.json (fallback ke config.py)."""
+    accs_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    if os.path.exists(accs_file):
+        try:
+            with open(accs_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+        except Exception as e:
+            logger.warning(f"Gagal membaca ivasms_accounts.json: {e}")
+
+    # Fallback ke konfigurasi statis
+    accs = []
+    if IVASMS_EMAIL and IVASMS_PASSWORD:
+        accs.append({"email": IVASMS_EMAIL, "password": IVASMS_PASSWORD, "cookies": COOKIES})
+    if IVASMS_EMAIL_2 and IVASMS_PASSWORD_2:
+        accs.append({"email": IVASMS_EMAIL_2, "password": IVASMS_PASSWORD_2, "cookies": COOKIES_2})
+    return accs
+
+
 # Global client instances
-active_client = None
+active_clients = []
 active_elite_client = None
 
 # ────────────────────────────────────────────
@@ -430,7 +608,7 @@ active_elite_client = None
 # ────────────────────────────────────────────
 async def post_init(application: Application):
     """Called after bot initialization."""
-    global active_client, active_elite_client
+    global active_clients, active_elite_client
     logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     logger.info(f"🤖 {BOT_NAME} is starting up...")
     logger.info(f"🌐 IVASMS URL: {IVASMS_URL}")
@@ -440,36 +618,49 @@ async def post_init(application: Application):
     logger.info(f"📤 Target chat: {GROUP_CHAT_ID}")
     logger.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-    # Inisialisasi IVASMS client
-    active_client = IVASMSClient(COOKIES, IVASMS_URL)
+    accounts = load_ivasms_accounts()
+    logger.info(f"📋 Terdeteksi {len(accounts)} akun IVASMS terdaftar.")
 
-    # Cek koneksi, jika gagal coba auto-sync dari browser profile
-    conn_ok = active_client.check_connection()
-    if not conn_ok:
-        logger.info("🔄 Checking fresh cookies from browser profile...")
+    active_clients = []
+    for idx, acc in enumerate(accounts, start=1):
+        email = acc.get("email", "").strip()
+        pwd = acc.get("password", "").strip()
+        cookies = acc.get("cookies") or (COOKIES if idx == 1 else COOKIES_2 if idx == 2 else {})
+
+        if not email or not pwd:
+            continue
+
         try:
-            fresh_c = await get_fresh_cookies_from_browser()
-            if fresh_c:
-                active_client.update_cookies(fresh_c)
-                conn_ok = active_client.check_connection()
-        except Exception as e:
-            logger.warning(f"Browser sync skipped: {e}")
+            client = IVASMSClient(cookies, IVASMS_URL)
+            conn_ok = client.check_connection()
+            if not conn_ok:
+                logger.info(f"🔄 Checking fresh cookies from browser profile (Akun {idx}: {email})...")
+                try:
+                    fresh_c = await get_fresh_cookies_from_browser(account_index=idx, email=email, password=pwd)
+                    if fresh_c:
+                        client.update_cookies(fresh_c)
+                        conn_ok = client.check_connection()
+                except Exception as e:
+                    logger.warning(f"Browser sync Akun {idx} skipped: {e}")
 
-    # Mark existing SMS as seen untuk IVASMS
-    try:
-        if conn_ok:
-            logger.info("✅ IVASMS connection verified!")
-            try:
-                existing_count = active_client.mark_initial_as_seen()
-                logger.info(f"📌 [IVASMS] Skipping {existing_count} existing SMS")
-            except Exception as ex:
-                logger.warning(f"Could not fetch initial IVASMS SMS: {ex}")
-        else:
-            logger.warning("⚠️ IVASMS session expired/belum login. Bot tetap berjalan & akan auto-sync!")
+            if conn_ok:
+                logger.info(f"✅ IVASMS connection (Akun {idx}: {email}) verified!")
+                try:
+                    existing_count = client.mark_initial_as_seen()
+                    logger.info(f"📌 [IVASMS Akun {idx}] Skipping {existing_count} existing SMS")
+                except Exception as ex:
+                    logger.warning(f"Could not fetch initial SMS Akun {idx}: {ex}")
+            else:
+                logger.warning(f"⚠️ IVASMS Akun {idx} ({email}) session expired. Bot tetap berjalan & auto-sync!")
 
-        asyncio.create_task(poll_otp(application.bot, active_client, GROUP_CHAT_ID))
-    except Exception as iva_init_err:
-        logger.error(f"⚠️ Error preparing IVASMS poller: {iva_init_err}")
+            active_clients.append(client)
+            asyncio.create_task(poll_otp(application.bot, client, GROUP_CHAT_ID, account_idx=idx))
+            update_bot_status(acc_idx=idx, acc_connected=conn_ok)
+            if conn_ok:
+                update_bot_status(ivasms_ok=True)
+        except Exception as acc_err:
+            logger.error(f"⚠️ Gagal inisialisasi IVASMS poller Akun {idx}: {acc_err}")
+            update_bot_status(acc_idx=idx, acc_connected=False)
 
     # Inisialisasi Elite-SMS Client (Multi-Provider)
     if ELITE_SMS_ENABLED and ELITE_SMS_API_KEY:
@@ -486,27 +677,8 @@ async def post_init(application: Application):
         except Exception as e_err:
             logger.error(f"❌ Failed to init Elite-SMS client: {e_err}")
 
-    # Kirim pesan startup ke grup
-    try:
-        monitored_sources = ["IVASMS"]
-        if ELITE_SMS_ENABLED and ELITE_SMS_API_KEY:
-            monitored_sources.append("Elite-SMS")
-
-        startup_msg = (
-            f"🟢 *{BOT_NAME} ONLINE*\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"⏰ `{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}`\n"
-            f"⚡ Interval: `{POLL_INTERVAL}s`\n"
-            f"📡 Sources: `{', '.join(monitored_sources)}`\n"
-            f"━━━━━━━━━━━━━━━━━━━━"
-        )
-        await application.bot.send_message(
-            chat_id=GROUP_CHAT_ID,
-            text=startup_msg,
-            parse_mode=ParseMode.MARKDOWN,
-        )
-    except Exception as e:
-        logger.warning(f"⚠️ Could not send startup message: {e}")
+    # Startup message to Telegram group disabled per user request
+    logger.info("Bot startup complete (silent startup mode)")
 
 
 def main():
@@ -568,18 +740,30 @@ def main():
     from telegram.ext import CallbackQueryHandler
     app.add_handler(CallbackQueryHandler(callback_handler))
 
-    # Run the bot
-    logger.info("🚀 Starting bot...")
-    try:
-        asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    # Run the bot with infinite auto-recovery loop
+    logger.info("🚀 Starting bot (24/7 auto-recovery mode)...")
+    retry_delay = 5
+    while True:
+        try:
+            try:
+                asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-    app.run_polling(
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,
-    )
+            app.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+            )
+            break
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Bot stopped by user.")
+            break
+        except Exception as crash_err:
+            logger.critical(f"💥 Unhandled polling crash: {crash_err}. Auto-restarting in {retry_delay}s...")
+            import time
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, 60)
 
 
 if __name__ == "__main__":
