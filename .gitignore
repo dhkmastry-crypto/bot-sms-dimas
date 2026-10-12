@@ -28,6 +28,7 @@ debug_*.html
 debug_*.png
 test_*.png
 status.json
+ivasms_accounts.json
 
 # Nested redundant folder
 OTP IVA SMS/

@@ -38,6 +38,7 @@ processes = {
     "bot": None,
     "admin": None,
     "tunnel": None,
+    "autopush": None,
 }
 
 
@@ -97,6 +98,22 @@ def start_tunnel():
         return None
 
 
+def start_autopush():
+    logger.info("🐙 Starting Git Auto-Push Daemon (git_autopush.py)...")
+    try:
+        proc = subprocess.Popen(
+            [PYTHON_EXE, "git_autopush.py"],
+            cwd=DIR_PATH,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        processes["autopush"] = proc
+        logger.info(f"✅ Git Auto-Push started with PID: {proc.pid}")
+        return proc
+    except Exception as e:
+        logger.error(f"❌ Failed to start git autopush: {e}")
+        return None
+
+
 def check_and_heal():
     """Periksa status setiap proses, auto-restart jika mati."""
     # 1. Check Bot
@@ -117,6 +134,12 @@ def check_and_heal():
             exit_code = processes["tunnel"].poll() if processes["tunnel"] else "None"
             logger.warning(f"⚠️ Tunnel is DOWN (Exit Code: {exit_code}). Auto-restarting...")
             start_tunnel()
+
+    # 4. Check Git Auto-Push Daemon
+    if processes["autopush"] is None or processes["autopush"].poll() is not None:
+        exit_code = processes["autopush"].poll() if processes["autopush"] else "None"
+        logger.warning(f"⚠️ Git Auto-Push is DOWN (Exit Code: {exit_code}). Auto-restarting...")
+        start_autopush()
 
 
 def check_session_health():
@@ -157,6 +180,8 @@ def main():
     start_bot()
     time.sleep(2)
     start_tunnel()
+    time.sleep(1)
+    start_autopush()
 
     logger.info("🚀 All services started. Entering 24/7 monitoring loop...")
 
