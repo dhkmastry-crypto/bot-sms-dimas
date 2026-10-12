@@ -25,7 +25,7 @@ import time
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session, send_file, Response
 
 # ────────────────────────────────────────────
 #  APP SETUP
@@ -1122,6 +1122,95 @@ def api_accounts_bulk_import():
         })
     except Exception as e:
         return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
+
+
+@app.route("/api/numbers", methods=["GET"])
+@login_required
+def api_numbers_list():
+    """Fetch numbers list and count for selected account"""
+    account_idx = request.args.get("account_index", "1")
+    force_refresh = request.args.get("refresh", "0") in ["1", "true", "True"]
+    try:
+        acc_num = int(account_idx)
+    except Exception:
+        acc_num = 1
+
+    try:
+        from numbers_service import fetch_account_numbers
+        result = asyncio.run(fetch_account_numbers(account_index=acc_num, force_refresh=force_refresh))
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Error in api_numbers_list: {e}")
+        return jsonify({"success": False, "message": f"Gagal mengambil nomor: {e}"})
+
+
+@app.route("/api/numbers/export/excel", methods=["GET"])
+@login_required
+def api_numbers_export_excel():
+    """Export numbers to Excel .xlsx format"""
+    account_idx = request.args.get("account_index", "1")
+    try:
+        acc_num = int(account_idx)
+    except Exception:
+        acc_num = 1
+
+    try:
+        from numbers_service import fetch_account_numbers, generate_numbers_excel
+        res = asyncio.run(fetch_account_numbers(account_index=acc_num, force_refresh=False))
+        if not res.get("success"):
+            return jsonify({"success": False, "message": res.get("message", "Gagal mengambil data")}), 400
+
+        numbers_list = res.get("numbers", [])
+        email = res.get("email", f"acc{acc_num}")
+        excel_buf = generate_numbers_excel(numbers_list, email=email)
+
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_num}"
+        filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.xlsx"
+
+        return send_file(
+            excel_buf,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error in api_numbers_export_excel: {e}")
+        return jsonify({"success": False, "message": f"Gagal export Excel: {e}"}), 500
+
+
+@app.route("/api/numbers/export/txt", methods=["GET"])
+@login_required
+def api_numbers_export_txt():
+    """Export numbers to plain text (nomor saja per baris)"""
+    account_idx = request.args.get("account_index", "1")
+    try:
+        acc_num = int(account_idx)
+    except Exception:
+        acc_num = 1
+
+    try:
+        from numbers_service import fetch_account_numbers, generate_numbers_txt
+        res = asyncio.run(fetch_account_numbers(account_index=acc_num, force_refresh=False))
+        if not res.get("success"):
+            return jsonify({"success": False, "message": res.get("message", "Gagal mengambil data")}), 400
+
+        numbers_list = res.get("numbers", [])
+        email = res.get("email", f"acc{acc_num}")
+        txt_content = generate_numbers_txt(numbers_list)
+
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_num}"
+        filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.txt"
+
+        return Response(
+            txt_content,
+            mimetype="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except Exception as e:
+        logger.error(f"Error in api_numbers_export_txt: {e}")
+        return jsonify({"success": False, "message": f"Gagal export TXT: {e}"}), 500
 
 
 # ────────────────────────────────────────────
