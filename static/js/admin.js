@@ -2013,8 +2013,14 @@ async function loadAugAddAccountSelect() {
     }
 }
 
+function setAugAddBatchCount(val) {
+    const el = document.getElementById('augAddBatchCount');
+    if (el) el.value = val;
+}
+
 async function startAugestelAutoAdd() {
     const rangeName = (document.getElementById('augAddRangeName')?.value || '').trim();
+    const batchCount = parseInt(document.getElementById('augAddBatchCount')?.value || '250', 10);
     const maxAdd = parseInt(document.getElementById('augAddMaxAdd')?.value || '0', 10);
     const delay = parseInt(document.getElementById('augAddDelay')?.value || '15', 10);
     const rawAccVal = document.getElementById('augAddAccountSelect')?.value || '1';
@@ -2032,6 +2038,7 @@ async function startAugestelAutoAdd() {
                 account_index: rawAccVal,
                 workers: workers,
                 range_name: rangeName,
+                batch_count: batchCount,
                 max_add: maxAdd,
                 delay: delay
             })

@@ -958,6 +958,8 @@ def api_augestel_auto_add_start():
     
     data = request.json or {}
     range_name = data.get("range_name", "").strip()
+    batch_count = int(data.get("batch_count", 250) or 250)
+    batch_count = max(1, min(batch_count, 1000))
     max_add = int(data.get("max_add", 0) or 0)
     delay = int(data.get("delay", 15) or 15)
     raw_acc = str(data.get("account_index", "1")).strip().lower()
@@ -988,7 +990,7 @@ def api_augestel_auto_add_start():
     
     try:
         proc = subprocess.Popen(
-            [sys.executable, "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers)],
+            [sys.executable, "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count)],
             cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -1001,6 +1003,7 @@ def api_augestel_auto_add_start():
             "account_email": account_email,
             "workers": workers,
             "range_name": range_name,
+            "batch_count": batch_count,
             "max_add": max_add,
             "delay": delay,
             "added": 0,
@@ -1008,7 +1011,7 @@ def api_augestel_auto_add_start():
             "skipped": 0,
             "total_found": 0,
             "current_action": 0,
-            "last_message": f"Memulai {workers} worker untuk {account_email}...",
+            "last_message": f"Memulai {workers} worker ({batch_count} nomor/request) untuk {account_email}...",
             "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "process": proc,
         }
