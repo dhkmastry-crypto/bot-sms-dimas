@@ -670,12 +670,12 @@ async function loadNumbersData(forceRefresh = false) {
         // Render breakdown cards jika memilih semua akun
         if (breakdownEl) {
             if (isAll && data.accounts_breakdown && data.accounts_breakdown.length > 0) {
-                breakdownEl.style.display = 'flex';
+                breakdownEl.style.display = 'grid';
                 breakdownEl.innerHTML = data.accounts_breakdown.map(b => `
-                    <div style="background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
-                        <span class="badge badge-info" style="font-size: 0.72rem;">Akun #${b.account_index}</span>
-                        <span class="text-muted" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
-                        <span style="font-weight: 700; color: #10b981; margin-left: auto;">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
+                    <div class="account-breakdown-card">
+                        <span class="account-breakdown-badge"><i class="fas fa-user-circle"></i> Akun #${b.account_index}</span>
+                        <span class="account-breakdown-email" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
+                        <span class="account-breakdown-count">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
                     </div>
                 `).join('');
             } else {
@@ -714,14 +714,14 @@ function renderNumbersTable(list, isAll = false) {
     }
 
     tbody.innerHTML = list.map((item, idx) => {
-        const accCol = isAll ? `<td><span class="badge badge-secondary" style="font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> #${item.account_index || 1}</span></td>` : '';
+        const accCol = isAll ? `<td style="text-align: center;"><span class="badge badge-secondary" style="font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> #${item.account_index || 1}</span></td>` : '';
         return `
             <tr>
-                <td class="text-muted mono" style="font-size: 0.82rem;">${idx + 1}</td>
+                <td class="text-muted mono" style="font-size: 0.82rem; text-align: center;">${idx + 1}</td>
                 ${accCol}
-                <td class="selectable mono" style="font-weight: 600; color: var(--primary);">
-                    <i class="fas fa-phone-alt" style="font-size: 0.75rem; opacity: 0.6; margin-right: 4px;"></i>
-                    <span onclick="copyText('${escapeHtml(item.number)}')">${escapeHtml(item.number)}</span>
+                <td class="selectable mono" style="font-weight: 600; color: var(--cyan);" title="Klik untuk salin" onclick="copyText('${escapeHtml(item.number)}')">
+                    <i class="fas fa-phone-alt" style="font-size: 0.72rem; opacity: 0.65; margin-right: 6px;"></i>
+                    <span>${escapeHtml(item.number)}</span>
                 </td>
                 <td><span class="badge badge-info" style="font-weight: 500;">${escapeHtml(item.range || '-')}</span></td>
                 <td class="mono">${escapeHtml(item.rate || '-')}</td>
