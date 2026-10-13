@@ -1582,15 +1582,67 @@ function toggleAugPasswordVisibility() {
     }
 }
 
+async function autoDetectAugestelKey() {
+    const email = document.getElementById('augAccInputEmail')?.value.trim();
+    const password = document.getElementById('augAccInputPassword')?.value.trim();
+    const btn = document.getElementById('btnAutoDetectKey');
+    const keyInput = document.getElementById('augAccInputApiKey');
+
+    if (!email || !password) {
+        showToast('Masukkan Email dan Password akun Augestel terlebih dahulu!', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Login...';
+    }
+
+    showToast('Menghubungkan ke portal Augestel (Switchfy)...', 'info');
+
+    try {
+        const res = await fetch('/api/augestel/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password, api_key: '' })
+        });
+        const data = await res.json();
+        if (data.success && data.api_key) {
+            if (keyInput) keyInput.value = data.api_key;
+            showToast(data.message || 'Berhasil login! API Key terdeteksi otomatis.', 'success');
+            await loadAugestelAccountsList();
+        } else {
+            showToast(data.message || 'Gagal mendeteksi API Key. Periksa email & password!', 'error');
+        }
+    } catch (e) {
+        showToast('Error login: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-bolt" style="color: var(--accent);"></i> Cek Login';
+        }
+    }
+}
+
 async function saveAugestelAccount() {
     const editIdxVal = document.getElementById('augAccEditIndex')?.value;
     const email = document.getElementById('augAccInputEmail')?.value.trim();
     const apiKey = document.getElementById('augAccInputApiKey')?.value.trim();
     const password = document.getElementById('augAccInputPassword')?.value.trim();
+    const btnSave = document.getElementById('btnSaveAugAcc');
 
-    if (!email || !apiKey) {
-        showToast('Email dan API Key Augestel wajib diisi!', 'warning');
+    if (!email) {
+        showToast('Email akun Augestel wajib diisi!', 'warning');
         return;
+    }
+    if (!password && !apiKey) {
+        showToast('Password portal Augestel wajib diisi untuk login otomatis!', 'warning');
+        return;
+    }
+
+    if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memproses Login...';
     }
 
     const payload = {
@@ -1618,8 +1670,14 @@ async function saveAugestelAccount() {
         }
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="fas fa-save"></i> Login & Simpan Akun';
+        }
     }
 }
+
 
 async function deleteAugestelAccount(index) {
     if (!confirm(`Apakah Anda yakin ingin menghapus Akun Augestel #${index + 1}?`)) return;
