@@ -1,0 +1,171 @@
+D
+
+DHIMAS TRY SAPUTRA
+
+Premium Client
+
+OVERVIEW
+
+Dashboard
+
+CLIENT SYSTEM
+
+Client Active SMS
+LIVE
+My Numbers
+My SMS Statistics
+
+TOOLS
+
+Test System
+Invoices System
+
+DEVELOPER
+
+SMS API
+Webhooks
+Telegram Bot Guide
+Contact us
+Logout
+Webhooks
+
+Welcome back, DHIMAS TRY SAPUTRA
+
+10/13/2026, 10:34:36 PM
+D
+DHIMAS TRY SAPUTRA
+Dashboard
+Webhooks
+SETUP
+Overview
+Your Endpoint
+REFERENCE
+Events
+Payload
+Other Payloads
+Signature
+Delivery & Retries
+RELATED
+SMS API reference
+Overview
+REALTIME
+
+Webhooks push events to a URL you control, costing none of your API rate limit. Number and earnings events are sent the moment they happen. Message events are found by a sweep that runs once a minute, so an SMS typically reaches you in well under a minute rather than instantly - see Delivery and Retries below.
+
+Save your endpoint below, copy the signing secret, verify a request reaches you, then switch delivery on.
+
+Your Endpoint
+CONFIGURATION
+
+Where we send your events.
+
+Endpoint URL
+
+Must be a public https:// address. Internal and loopback addresses are rejected.
+
+Deliver events to this endpoint
+Leave off while you set your receiver up, then switch it on.
+Events to send
+message.received
+A message arrived on one of your numbers
+number.assigned
+A number was added to your account
+number.removed
+A number left your account
+earnings.daily
+Yesterday's earnings summary, at 00:00 UTC
+Save endpoint
+Events
+REFERENCE
+
+Subscribe to any combination of these on your endpoint above. Unticking an event stops it being sent; unticking all of them stops delivery entirely without discarding your URL or secret.
+
+EVENT	WHEN IT FIRES	WORTH KNOWING
+message.received	A message was delivered to one of your numbers.	Failed, rejected and undelivered traffic never raises this event, so an OTP relay cannot announce a code the handset did not get.
+number.assigned	A number entered your account.	Also fires on a transfer in from another account. The payload describes the number on your terms, with the rate you are paid.
+number.removed	A number left your account.	Also fires on a transfer out, and when a number is deleted outright. The payload describes the number as you held it, not as the next holder does.
+earnings.daily	Summary of the previous UTC day, sent at 00:00 UTC.	One event per currency you earned in. A day with no traffic still sends, with zeroes, so a gap in your data means a delivery problem rather than a quiet day.
+
+Moving a number between accounts sends two events - a number.removed to the account losing it and a number.assigned to the account gaining it. Each sees only its own commercial terms. P2P is not enabled on this panel, so the number events carry the A2P rate and limit only.
+
+Payload
+MESSAGE.RECEIVED
+Copy
+{
+                "event": "message.received",
+                "data": {
+                    "source": "COMPANY",
+                    "number": "+12025551234",
+                    "message": "Your verification code is 123456",
+                    "rate": 0.0150,
+                    "status": "delivered",
+                    "type": "a2p",
+                    "received_at": "2025-01-15T10:30:05Z"
+                },
+                "timestamp": "2025-01-15T10:30:06Z"
+                }
+Other Payloads
+REFERENCE
+
+Every event uses the same envelope - event, data and timestamp - so one handler can switch on the event name. The number events describe the number exactly as GET /numbers does.
+
+Copy
+{
+                "event": "number.assigned",
+                "data": {
+                    "number": "18762360018",
+                    "range_name": "JAMAICA - FLOW 5",
+                    "a2p_rate": 0.0160,
+                    "portal_limit_a2p": 10000,
+                    "assigned_at": "2026-08-10T00:54:34+00:00"
+                },
+                "timestamp": "2026-08-10T00:54:35+00:00"
+                }
+
+                {
+                "event": "number.removed",
+                "data": {
+                    "number": "18762360018",
+                    "range_name": "JAMAICA - FLOW 5",
+                    "a2p_rate": 0.0160,
+                    "portal_limit_a2p": 10000,
+                    "removed_at": "2026-08-11T18:47:10+00:00"
+                },
+                "timestamp": "2026-08-11T18:47:10+00:00"
+                }
+
+                {
+                "event": "earnings.daily",
+                "data": {
+                    "date": "2026-08-10",
+                    "currency": "USD",
+                    "messages": 62,
+                    "a2p_messages": 62,
+                    "p2p_messages": 0,
+                    "earnings": 0.9920
+                },
+                "timestamp": "2026-08-11T00:00:03+00:00"
+                }
+
+A number moving between accounts sends two events - a number.removed to the previous holder and a number.assigned to the new one. Each describes the number on that account's own terms. earnings.daily is sent once per currency, and is sent with zeroes on a quiet day so a gap in your data means a delivery problem rather than a quiet day.
+
+Signature
+SECURITY
+
+Every request carries X-Augestel-Signature, an HMAC-SHA256 of the raw request body keyed on your signing secret. Compare it against the bytes you received, before parsing them - re-encoding the JSON first will not reproduce the same digest.
+
+Three headers accompany every request: X-Augestel-Event, X-Augestel-Signature and X-Augestel-Timestamp.
+
+Copy
+expected="sha256=$(printf '%s' "$RAW_BODY" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" -r | cut -d' ' -f1)"
+                [ "$expected" = "$SIGNATURE_HEADER" ] && echo "verified"
+Delivery & Retries
+POLICY
+
+Your endpoint should answer 200 within 5 seconds. Anything else is retried up to three times with exponential backoff - roughly 10 seconds, then a minute, then five. Respond first and do your work afterwards if it takes longer than that.
+
+Events are delivered one request at a time, so a slow endpoint delays only its own queue. After 20 consecutive failures delivery is switched off automatically and shown as paused above; your URL and secret are kept, so re-enabling is one click once your side is back.
+
+© 2026 AugesTel. All rights reserved.
+
+SWITCHFY v3.0.0
