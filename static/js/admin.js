@@ -170,6 +170,15 @@ async function loadDashboard() {
             statIvasmsBadge.className = `stat-badge ${data.stats.ivasms_connected ? 'active' : 'inactive'}`;
         }
 
+        const statAug = document.getElementById('statAugestel');
+        const statAugBadge = document.getElementById('statAugestelBadge');
+        const isAugConnected = (data.stats.augestel_connected !== undefined) ? data.stats.augestel_connected : true;
+        if (statAug) statAug.textContent = isAugConnected ? 'Connected' : 'Disconnected';
+        if (statAugBadge) {
+            statAugBadge.textContent = isAugConnected ? 'Active' : 'Offline';
+            statAugBadge.className = `stat-badge ${isAugConnected ? 'active' : 'inactive'}`;
+        }
+
         // Render Country Leaderboard
         const countryBoard = document.getElementById('countryLeaderboard');
         if (countryBoard) {

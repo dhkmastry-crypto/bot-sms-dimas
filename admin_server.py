@@ -533,6 +533,7 @@ def api_dashboard():
             "errors": error_count,
             "bot_running": bot_status["running"],
             "ivasms_connected": ivasms_status.get("connected", False),
+            "augestel_connected": shared.get("augestel_connected", True) if shared else True,
             "poll_interval": config.get("POLL_INTERVAL", "10"),
             "bot_name": config.get("BOT_NAME", "OTP_BOT"),
             "total_revenue": total_revenue,
