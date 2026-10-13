@@ -455,10 +455,22 @@ def accounts_page():
     return render_template("admin.html", page="accounts")
 
 
+@app.route("/augestel-accounts")
+@login_required
+def augestel_accounts_page():
+    return render_template("admin.html", page="augestel-accounts")
+
+
 @app.route("/auto-add")
 @login_required
 def auto_add_page():
     return render_template("admin.html", page="auto-add")
+
+
+@app.route("/auto-add-augestel")
+@login_required
+def auto_add_augestel_page():
+    return render_template("admin.html", page="auto-add-augestel")
 
 
 @app.route("/numbers")
@@ -1051,6 +1063,158 @@ def api_accounts_delete():
             return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
 
     return jsonify({"success": False, "message": "Akun tidak ditemukan."})
+
+
+# ────────────────────────────────────────────
+#  ROUTES - AKUN AUGESTEL (CRUD)
+# ────────────────────────────────────────────
+
+@app.route("/api/augestel/accounts", methods=["GET"])
+@login_required
+def api_augestel_accounts_get():
+    """Get list of all Augestel accounts"""
+    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        cfg = load_config()
+        if getattr(config, "AUGESTEL_EMAIL", ""):
+            accounts.append({
+                "email": getattr(config, "AUGESTEL_EMAIL", "saputradimas0878@gmail.com"),
+                "password": "••••••••",
+                "api_key": getattr(config, "AUGESTEL_API_KEY", "")
+            })
+
+    return jsonify({"success": True, "accounts": accounts})
+
+
+@app.route("/api/augestel/accounts", methods=["POST"])
+@login_required
+def api_augestel_accounts_save():
+    """Add or update an Augestel account"""
+    data = request.json or {}
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    api_key = data.get("api_key", "").strip()
+    index = data.get("index")
+
+    if not email:
+        return jsonify({"success": False, "message": "Email harus diisi!"})
+
+    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    new_entry = {
+        "email": email,
+        "password": password,
+        "api_key": api_key or getattr(config, "AUGESTEL_API_KEY", "")
+    }
+
+    if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
+        accounts[index] = new_entry
+    else:
+        found = False
+        for i, a in enumerate(accounts):
+            if a.get("email", "").lower() == email.lower():
+                accounts[i] = new_entry
+                found = True
+                break
+        if not found:
+            accounts.append(new_entry)
+
+    try:
+        with open(acc_file, "w", encoding="utf-8") as f:
+            json.dump(accounts, f, indent=2)
+
+        # Update primary account to config.py if it's the first account
+        if len(accounts) >= 1:
+            save_config({
+                "AUGESTEL_EMAIL": accounts[0]["email"],
+                "AUGESTEL_API_KEY": accounts[0].get("api_key", "")
+            })
+
+        return jsonify({"success": True, "message": f"Akun Augestel {email} berhasil disimpan!", "accounts": accounts})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal menyimpan akun Augestel: {e}"})
+
+
+@app.route("/api/augestel/accounts/delete", methods=["POST"])
+@login_required
+def api_augestel_accounts_delete():
+    """Delete an Augestel account by index or email"""
+    data = request.json or {}
+    index = data.get("index")
+    email = data.get("email", "").strip()
+
+    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    deleted = False
+    if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
+        accounts.pop(index)
+        deleted = True
+    elif email:
+        accounts = [a for a in accounts if a.get("email", "").lower() != email.lower()]
+        deleted = True
+
+    if deleted:
+        try:
+            with open(acc_file, "w", encoding="utf-8") as f:
+                json.dump(accounts, f, indent=2)
+            return jsonify({"success": True, "message": "Akun Augestel berhasil dihapus!", "accounts": accounts})
+        except Exception as e:
+            return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})
+
+    return jsonify({"success": False, "message": "Akun Augestel tidak ditemukan."})
+
+
+@app.route("/api/augestel/check", methods=["POST"])
+@login_required
+def api_augestel_check():
+    """Check Augestel API connection"""
+    try:
+        data = request.json or {}
+        api_key = data.get("api_key") or getattr(config, "AUGESTEL_API_KEY", "")
+        from augestel_client import AugestelClient
+        client = AugestelClient(api_key=api_key)
+        conn = client.check_connection()
+        return jsonify({"success": True, "connected": conn, "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+    except Exception as e:
+        return jsonify({"success": False, "connected": False, "message": str(e)})
+
+
+@app.route("/api/numbers/delete-all", methods=["POST"])
+@login_required
+def api_numbers_delete_all():
+    """Delete / Return all numbers for selected account (IVASMS or Augestel)"""
+    data = request.json or {}
+    raw_acc = str(data.get("account_index", "1")).strip().lower()
+
+    try:
+        from numbers_service import delete_all_account_numbers
+        res = asyncio.run(delete_all_account_numbers(account_index=raw_acc))
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error in api_numbers_delete_all: {e}")
+        return jsonify({"success": False, "message": f"Gagal menghapus semua nomor: {e}"})
 
 
 @app.route("/api/accounts/bulk-import", methods=["POST"])
