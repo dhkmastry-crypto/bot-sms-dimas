@@ -1720,15 +1720,37 @@ async function renderBotControlAugestelStatus(customResults = null) {
         }
 
         listContainer.innerHTML = accounts.map(acc => {
-            const isConn = !!acc.connected;
-            const statusDot = isConn 
-                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div>' 
-                : '<div class="status-dot offline" style="margin: 0; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></div>';
-            const badge = isConn 
-                ? '<span class="badge badge-success" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-check-circle"></i> Connected</span>' 
-                : '<span class="badge badge-danger" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-times-circle"></i> Disconnected</span>';
+            const apiOk = !!acc.api_connected;
+            const cookieOk = !!acc.cookie_connected;
+            const fullyConnected = apiOk && cookieOk;
+
+            const statusDot = fullyConnected 
+                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);" title="API & Browser Profile Aktif"></div>' 
+                : (apiOk || cookieOk)
+                    ? '<div class="status-dot" style="margin: 0; background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.6);" title="Parsial: Perlu perhatian"></div>'
+                    : '<div class="status-dot offline" style="margin: 0; box-shadow: 0 0 8px rgba(239,68,68,0.6);" title="Terputus"></div>';
+
+            const apiBadge = apiOk
+                ? '<span class="badge badge-success" style="font-size: 0.7rem; padding: 3px 6px;" title="REST API Key Valid"><i class="fas fa-key"></i> API OK</span>'
+                : '<span class="badge badge-danger" style="font-size: 0.7rem; padding: 3px 6px;" title="REST API Key Invalid"><i class="fas fa-times"></i> API Off</span>';
+
+            let cookieBadge = '';
+            if (cookieOk) {
+                if (acc.has_remember) {
+                    cookieBadge = '<span class="badge badge-success" style="font-size: 0.7rem; padding: 3px 6px;" title="Browser Profile & Sesi Remember Me Aktif (Jangka Panjang)"><i class="fas fa-cookie-bite"></i> Browser OK</span>';
+                } else {
+                    cookieBadge = '<span class="badge badge-info" style="font-size: 0.7rem; padding: 3px 6px;" title="Browser Profile Sesi Aktif (Session Cookie)"><i class="fas fa-cookie-bite"></i> Sesi OK</span>';
+                }
+            } else {
+                cookieBadge = `<span class="badge badge-warning" style="font-size: 0.7rem; padding: 3px 6px;" title="${escapeHtml(acc.cookie_status || 'Browser Belum Login')}"><i class="fas fa-exclamation-triangle"></i> Browser Off</span>`;
+            }
 
             const balInfo = acc.balance && acc.balance !== '0.00' ? ` • Saldo: $${acc.balance}` : '';
+            const cookieNote = acc.cookie_status ? ` • <span style="color: ${cookieOk ? 'var(--text-muted)' : '#f59e0b'}; font-size: 0.72rem;">${escapeHtml(acc.cookie_status)}</span>` : '';
+
+            const loginBtn = !cookieOk
+                ? `<button class="btn-sm" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24;" onclick="loginAugestelSingle(${acc.index})" id="btnLoginAug_${acc.index}" title="Login Browser Profil Akun #${acc.index}"><i class="fas fa-sign-in-alt"></i> Login</button>`
+                : '';
 
             return `
                 <div id="accStatusCard_aug_${acc.index}" style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: all 0.2s ease;">
@@ -1740,13 +1762,15 @@ async function renderBotControlAugestelStatus(customResults = null) {
                                 <span class="text-muted" style="font-size: 0.8rem; font-family: monospace;">(${escapeHtml(acc.email)})</span>
                             </div>
                             <div class="text-muted" style="font-size: 0.74rem; margin-top: 3px;" id="augAccCheckTime_${acc.index}">
-                                <i class="far fa-clock"></i> ${acc.last_check ? 'Pengecekan: ' + acc.last_check : 'Status terpantau aktif'}${balInfo}
+                                <i class="far fa-clock"></i> ${acc.last_check ? 'Cek: ' + acc.last_check : 'Status terpantau'}${balInfo}${cookieNote}
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span id="augAccBadge_${acc.index}">${badge}</span>
-                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelSingle(${acc.index})" id="btnCheckAugAcc_${acc.index}" title="Cek koneksi akun Augestel #${acc.index}">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span id="augAccApiBadge_${acc.index}">${apiBadge}</span>
+                        <span id="augAccCookieBadge_${acc.index}">${cookieBadge}</span>
+                        ${loginBtn}
+                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelSingle(${acc.index})" id="btnCheckAugAcc_${acc.index}" title="Cek status API & Browser Akun #${acc.index}">
                             <i class="fas fa-sync-alt"></i> Cek
                         </button>
                     </div>
@@ -1777,10 +1801,16 @@ async function checkAugestelSingle(index) {
             const accList = data.status.accounts || [];
             await renderBotControlAugestelStatus(accList);
             const thisAcc = accList.find(a => a.index === index);
-            if (thisAcc && thisAcc.connected) {
-                showToast(`Akun Augestel #${index} berhasil terhubung!`, 'success');
-            } else {
-                showToast(`Akun Augestel #${index} terputus / API key invalid!`, 'error');
+            if (thisAcc) {
+                if (thisAcc.api_connected && thisAcc.cookie_connected) {
+                    showToast(`Akun #${index}: API Key & Browser Profile aktif!`, 'success');
+                } else if (thisAcc.api_connected && !thisAcc.cookie_connected) {
+                    showToast(`Akun #${index}: API OK, Browser Cookie belum aktif (${thisAcc.cookie_status})`, 'warning');
+                } else if (!thisAcc.api_connected && thisAcc.cookie_connected) {
+                    showToast(`Akun #${index}: Browser aktif, namun API Key bermasalah!`, 'warning');
+                } else {
+                    showToast(`Akun #${index}: Terputus (API & Browser tidak aktif)`, 'error');
+                }
             }
         } else {
             showToast(`Gagal cek akun Augestel #${index}: ${data.message || 'Error'}`, 'error');
@@ -1795,13 +1825,45 @@ async function checkAugestelSingle(index) {
     }
 }
 
+async function loginAugestelSingle(index) {
+    const btn = document.getElementById(`btnLoginAug_${index}`);
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    }
+
+    try {
+        const res = await fetch('/api/augestel/login-single', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Auto re-check in 8 seconds after login completes
+            setTimeout(() => checkAugestelSingle(index), 8000);
+        } else {
+            showToast(data.message || 'Gagal memulai login browser', 'error');
+        }
+    } catch (e) {
+        showToast('Error login akun: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
 async function checkAugestelConnection() {
     const text = document.getElementById('augStatusText');
     const desc = document.getElementById('augStatusDesc');
     const btn = document.getElementById('btnCheckAugestel');
 
     if (text) text.textContent = 'Memeriksa Semua Akun Augestel...';
-    if (desc) desc.textContent = 'Memvalidasi API key dan status koneksi per akun...';
+    if (desc) desc.textContent = 'Memvalidasi REST API & Browser Profile Cookies per akun...';
     if (btn) {
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memeriksa...';
@@ -1818,8 +1880,10 @@ async function checkAugestelConnection() {
         if (data.success && data.status) {
             const accList = data.status.accounts || [];
             await renderBotControlAugestelStatus(accList);
-            const connectedCount = accList.filter(a => a.connected).length;
-            showToast(`Selesai cek Augestel: ${connectedCount}/${accList.length} akun terhubung!`, connectedCount > 0 ? 'success' : 'warning');
+            const bothCount = accList.filter(a => a.api_connected && a.cookie_connected).length;
+            const apiCount = accList.filter(a => a.api_connected).length;
+            const cookieCount = accList.filter(a => a.cookie_connected).length;
+            showToast(`Cek Augestel selesai: API (${apiCount}/${accList.length}) • Browser (${cookieCount}/${accList.length})`, bothCount > 0 ? 'success' : 'warning');
         } else {
             showToast(`Gagal cek akun Augestel: ${data.message || 'Error'}`, 'error');
         }
