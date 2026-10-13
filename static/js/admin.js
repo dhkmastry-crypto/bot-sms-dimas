@@ -77,10 +77,14 @@ function initPage(page) {
         loadSmsLog(1);
     } else if (page === 'accounts') {
         loadAccountsList();
+    } else if (page === 'augestel-accounts') {
+        loadAugestelAccountsList();
     } else if (page === 'auto-add') {
         loadAutoAddAccountsOptions();
         checkAutoAddStatus();
         autoAddInterval = setInterval(checkAutoAddStatus, 3000);
+    } else if (page === 'auto-add-augestel') {
+        loadAugAddAccountSelect();
     } else if (page === 'numbers') {
         initNumbersPage();
     } else if (page === 'bot-control') {
@@ -776,11 +780,52 @@ function downloadNumbersExport(format) {
         return;
     }
 
-    const label = isAll ? 'TOTAL (Semua Akun)' : `Akun #${accIdx}`;
+    const label = isAll ? 'TOTAL (Semua Akun)' : (accIdx === 'augestel' ? 'Augestel Portal' : `Akun #${accIdx}`);
     showToast(`Menyiapkan export ${format.toUpperCase()} ${label}...`, 'info');
     const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
     window.location.href = downloadUrl;
 }
+
+async function deleteAllNumbersCurrentAccount() {
+    const select = document.getElementById('numAccountSelect');
+    const accIdx = select ? select.value : '1';
+
+    let accLabel = `Akun #${accIdx}`;
+    if (accIdx === 'all') accLabel = 'SEMUA AKUN IVASMS';
+    else if (accIdx === 'augestel') accLabel = 'Akun AUGESTEL';
+
+    const confirmMsg = `PERINGATAN: Apakah Anda yakin ingin MENGHAPUS / MENGEMBALIKAN SEMUA NOMOR untuk ${accLabel}?\n\nSemua nomor yang terikat pada akun ini akan dihapus/dilepas dari portal.`;
+    if (!confirm(confirmMsg)) return;
+
+    const btn = document.getElementById('btnDeleteAllNumbers');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menghapus...';
+    }
+
+    try {
+        const res = await fetch('/api/numbers/delete-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account_index: accIdx })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Semua nomor berhasil dihapus / dikembalikan!', 'success');
+            await loadNumbersData(true);
+        } else {
+            showToast(data.message || 'Gagal menghapus nomor!', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete All Numbers';
+        }
+    }
+}
+
 
 // ────────────────────────────────────────────
 //  BOT CONTROL
