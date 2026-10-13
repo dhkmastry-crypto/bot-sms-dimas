@@ -602,10 +602,11 @@ async function loadNumbersAccountOptions() {
             const idx = i + 1;
             return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
         }).join('');
+        html += `<option value="augestel">🌐 Augestel Portal (500 Nomor - ECONET)</option>`;
 
         select.innerHTML = html;
 
-        if (currentVal && (currentVal === 'all' || accounts[parseInt(currentVal, 10) - 1])) {
+        if (currentVal && (currentVal === 'all' || currentVal === 'augestel' || accounts[parseInt(currentVal, 10) - 1])) {
             select.value = currentVal;
         }
     } catch (e) {
