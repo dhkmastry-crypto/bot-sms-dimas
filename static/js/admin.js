@@ -2302,33 +2302,98 @@ async function sendTestWebhookPing() {
 
 let augAutoAddInterval = null;
 
+let augAddAccountsCache = [];
+
 async function loadAugAddAccountSelect() {
-    const select = document.getElementById('augAddAccountSelect');
-    if (!select) return;
+    const container = document.getElementById('augAddAccountsContainer');
+    const summary = document.getElementById('augAddSelectedSummary');
+    if (!container) return;
 
     try {
         const res = await fetch('/api/augestel/accounts');
         const data = await res.json();
         const accounts = data.accounts || [];
+        augAddAccountsCache = accounts;
 
         if (accounts.length === 0) {
-            select.innerHTML = '<option value="">Belum ada akun Augestel (Tambahkan di Akun Augestel)</option>';
+            container.innerHTML = '<div class="text-danger" style="font-size: 0.85rem; padding: 8px;">Belum ada akun Augestel yang terdaftar!</div>';
+            if (summary) summary.textContent = 'Tidak ada akun';
             return;
         }
 
-        const currentVal = select.value;
-        let html = '';
-        if (accounts.length > 1) {
-            html += `<option value="all">⚡ SEMUA AKUN SEKALIGUS (Parallel ${accounts.length} Akun)</option>`;
+        // Coba ambil jumlah nomor terkini dari API numbers jika ada
+        let numbersBreakdown = {};
+        try {
+            const numRes = await fetch('/api/numbers?account_index=augestel_all&refresh=0');
+            const numData = await numRes.json();
+            if (numData.success && numData.accounts_breakdown) {
+                numData.accounts_breakdown.forEach(b => {
+                    numbersBreakdown[b.account_index] = b.total || 0;
+                });
+            }
+        } catch (ex) {
+            console.debug('Failed to load numbers breakdown for auto add:', ex);
         }
-        html += accounts.map((acc, i) => {
-            return `<option value="${i + 1}">Akun #${i + 1} (${escapeHtml(acc.email)})</option>`;
-        }).join('');
 
-        select.innerHTML = html;
-        if (currentVal) select.value = currentVal;
+        let html = '';
+        accounts.forEach((acc, i) => {
+            const idx = i + 1;
+            const currentTotal = numbersBreakdown[idx] !== undefined ? numbersBreakdown[idx] : (acc.total_numbers || 0);
+            const isFull = currentTotal >= 2500;
+            const badgeBg = isFull ? 'rgba(239, 68, 68, 0.2)' : (currentTotal > 0 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.08)');
+            const badgeColor = isFull ? '#f87171' : (currentTotal > 0 ? '#38bdf8' : '#94a3b8');
+            const badgeText = isFull ? `${currentTotal.toLocaleString('id-ID')}/2.500 🔒 FULL` : `${currentTotal.toLocaleString('id-ID')}/2.500`;
+
+            // Default dicentang jika belum penuh
+            const isChecked = !isFull;
+
+            html += `
+                <label class="aug-account-chk-card" style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; cursor: pointer; user-select: none; transition: all 0.2s;">
+                    <input type="checkbox" class="aug-acc-chk" value="${idx}" ${isChecked ? 'checked' : ''} onchange="updateAugAddSelectedSummary()" style="width: 17px; height: 17px; accent-color: #0ea5e9; cursor: pointer;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 2px;">
+                            <span style="font-weight: 700; font-size: 0.85rem; color: #f1f5f9;">Akun #${idx}</span>
+                            <span class="badge" style="font-size: 0.68rem; padding: 2px 6px; background: ${badgeBg}; color: ${badgeColor}; font-weight: 600;">
+                                ${badgeText}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.74rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(acc.email)}">
+                            ${escapeHtml(acc.email)}
+                        </div>
+                    </div>
+                </label>
+            `;
+        });
+
+        container.innerHTML = html;
+        updateAugAddSelectedSummary();
     } catch (e) {
         console.error('Failed to load Augestel accounts for auto-add:', e);
+        if (container) container.innerHTML = '<div class="text-danger" style="padding: 8px;">Gagal memuat akun Augestel.</div>';
+    }
+}
+
+function selectAllAugAddAccounts(selectAll) {
+    const checkboxes = document.querySelectorAll('.aug-acc-chk');
+    checkboxes.forEach(cb => {
+        cb.checked = !!selectAll;
+    });
+    updateAugAddSelectedSummary();
+}
+
+function updateAugAddSelectedSummary() {
+    const checkboxes = document.querySelectorAll('.aug-acc-chk:checked');
+    const summary = document.getElementById('augAddSelectedSummary');
+    if (!summary) return;
+
+    const selectedVals = Array.from(checkboxes).map(cb => parseInt(cb.value, 10)).sort((a, b) => a - b);
+    if (selectedVals.length === 0) {
+        summary.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle"></i> Tidak ada akun yang dipilih (pilih minimal 1 akun)!</span>';
+    } else if (selectedVals.length === augAddAccountsCache.length) {
+        summary.innerHTML = `<span style="color: #38bdf8;"><i class="fas fa-check-circle"></i> <b>Semua Akun (${selectedVals.length} akun)</b> dipilih untuk Auto-Add</span>`;
+    } else {
+        const labels = selectedVals.map(v => `#${v}`).join(', ');
+        summary.innerHTML = `<span style="color: #38bdf8;"><i class="fas fa-check-circle"></i> <b>${selectedVals.length} Akun Dipilih:</b> Akun ${labels}</span>`;
     }
 }
 
@@ -2342,8 +2407,17 @@ async function startAugestelAutoAdd() {
     const batchCount = parseInt(document.getElementById('augAddBatchCount')?.value || '250', 10);
     const maxAdd = parseInt(document.getElementById('augAddMaxAdd')?.value || '0', 10);
     const delay = parseInt(document.getElementById('augAddDelay')?.value || '15', 10);
-    const rawAccVal = document.getElementById('augAddAccountSelect')?.value || '1';
     const workers = parseInt(document.getElementById('augAddWorkers')?.value || '2', 10);
+
+    const checkedBoxes = document.querySelectorAll('.aug-acc-chk:checked');
+    const selectedAccounts = Array.from(checkedBoxes).map(cb => cb.value.trim()).filter(Boolean);
+
+    if (selectedAccounts.length === 0) {
+        showToast('Pilih minimal satu akun Augestel untuk Auto-Add!', 'warning');
+        return;
+    }
+
+    const accountArg = selectedAccounts.join(',');
 
     const btnStart = document.getElementById('btnStartAugAdd');
     const btnStop = document.getElementById('btnStopAugAdd');
@@ -2354,7 +2428,7 @@ async function startAugestelAutoAdd() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                account_index: rawAccVal,
+                account_index: accountArg,
                 workers: workers,
                 range_name: rangeName,
                 batch_count: batchCount,
@@ -2409,27 +2483,28 @@ async function checkAugestelAutoAddStatus() {
         const statTotal = document.getElementById('augStatTotal');
         const bar = document.getElementById('augProgressBar');
         const msg = document.getElementById('augLastMessage');
-        const accSelect = document.getElementById('augAddAccountSelect');
         const runningInfo = document.getElementById('augAddRunningAccountInfo');
         const runningText = document.getElementById('augAddRunningAccountText');
+
+        // Toggle checkbox disabled state while running
+        const chks = document.querySelectorAll('.aug-acc-chk');
+        chks.forEach(cb => { cb.disabled = !!state.running; });
 
         if (state.running) {
             if (btnStart) { btnStart.style.display = 'none'; btnStart.disabled = false; }
             if (btnStop) { btnStop.style.display = 'inline-flex'; }
             if (badge) { badge.textContent = 'Running'; badge.className = 'status-badge active'; }
-            if (accSelect) { accSelect.disabled = true; }
             if (runningInfo && state.account_email) {
                 runningInfo.style.display = 'block';
                 if (runningText) {
                     const workerBadge = state.workers ? ` <span class="badge badge-info" style="font-size:0.75rem;"><i class="fas fa-bolt"></i> ${state.workers} Workers</span>` : '';
-                    runningText.innerHTML = `Sedang berjalan menggunakan: <b>${escapeHtml(state.account_email)}</b>${workerBadge}`;
+                    runningText.innerHTML = `Sedang berjalan pada: <b>${escapeHtml(state.account_email)}</b>${workerBadge}`;
                 }
             }
         } else {
             if (btnStart) { btnStart.style.display = 'inline-flex'; btnStart.disabled = false; }
             if (btnStop) { btnStop.style.display = 'none'; }
             if (badge) { badge.textContent = 'Idle'; badge.className = 'status-badge'; }
-            if (accSelect) { accSelect.disabled = false; }
             if (runningInfo) { runningInfo.style.display = 'none'; }
         }
 
