@@ -1097,7 +1097,7 @@ def api_augestel_accounts_get():
 @app.route("/api/augestel/accounts", methods=["POST"])
 @login_required
 def api_augestel_accounts_save():
-    """Add or update an Augestel account"""
+    """Add or update an Augestel account with automatic login and API Key detection"""
     data = request.json or {}
     email = data.get("email", "").strip()
     password = data.get("password", "").strip()
@@ -1105,7 +1105,24 @@ def api_augestel_accounts_save():
     index = data.get("index")
 
     if not email:
-        return jsonify({"success": False, "message": "Email harus diisi!"})
+        return jsonify({"success": False, "message": "Email akun Augestel wajib diisi!"})
+
+    if not password and not api_key:
+        return jsonify({"success": False, "message": "Password portal Augestel wajib diisi untuk auto-login!"})
+
+    # Jika API key belum diisi, lakukan auto-login dan deteksi API key otomatis
+    detected_auto = False
+    if not api_key and password:
+        from augestel_client import AugestelClient
+        ext_res = AugestelClient.login_and_extract_api_key(email=email, password=password)
+        if ext_res.get("success") and ext_res.get("api_key"):
+            api_key = ext_res["api_key"]
+            detected_auto = True
+        else:
+            return jsonify({
+                "success": False,
+                "message": ext_res.get("message", "Gagal auto-login & mendeteksi API Key. Pastikan email & password benar!")
+            })
 
     acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
     accounts = []
@@ -1146,7 +1163,16 @@ def api_augestel_accounts_save():
                 "AUGESTEL_API_KEY": accounts[0].get("api_key", "")
             })
 
-        return jsonify({"success": True, "message": f"Akun Augestel {email} berhasil disimpan!", "accounts": accounts})
+        msg = f"Akun Augestel {email} berhasil disimpan!"
+        if detected_auto:
+            msg = f"✅ Berhasil Login ke portal Augestel! API Key otomatis terdeteksi ({api_key[:12]}...)."
+
+        return jsonify({
+            "success": True,
+            "message": msg,
+            "api_key": api_key,
+            "accounts": accounts
+        })
     except Exception as e:
         return jsonify({"success": False, "message": f"Gagal menyimpan akun Augestel: {e}"})
 
