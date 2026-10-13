@@ -211,7 +211,7 @@ async def get_termination_details(page, termination_id: str) -> dict:
     return res
 
 
-async def submit_add_number(page, term_data: dict, cfg: dict, count: int = 1) -> dict:
+async def submit_add_number(page, term_data: dict, cfg: dict, count: int = 250) -> dict:
     """Kirim POST request untuk menambahkan nomor ke akun."""
     res = await page.evaluate('''async (args) => {
         const { url, token, termId, requestToken, termTermId, count } = args;
@@ -249,7 +249,7 @@ async def submit_add_number(page, term_data: dict, cfg: dict, count: int = 1) ->
     return res
 
 
-async def run_worker(worker_id: int, account_idx: int, account_email: str, page, queue: asyncio.Queue, shared_stats: dict, stats_lock: asyncio.Lock, delay: int, max_add: int):
+async def run_worker(worker_id: int, account_idx: int, account_email: str, page, queue: asyncio.Queue, shared_stats: dict, stats_lock: asyncio.Lock, delay: int, max_add: int, batch_count: int = 250):
     """Worker task independen yang mengeksekusi penambahan nomor dari antrian."""
     while not queue.empty():
         async with stats_lock:
@@ -272,7 +272,7 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             continue
 
         logger.info(f"── [Worker #{worker_id} | Akun #{account_idx}] Action #{action_num} ──")
-        logger.info(f"  📋 Range: {term_name} | 📱 Number: {test_number} | 🆔 ID: {term_id}")
+        logger.info(f"  📋 Range: {term_name} | 📱 Number: {test_number} | 🆔 ID: {term_id} | 🔢 Request: {batch_count} nomor")
 
         # Step 1: Ambil detail termination & request token
         info_res = await get_termination_details(page, term_id)
@@ -317,13 +317,14 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             continue
 
         # Step 2: Request penambahan nomor
-        add_res = await submit_add_number(page, term, cfg, count=1)
+        add_res = await submit_add_number(page, term, cfg, count=batch_count)
         if add_res.get("ok"):
             added_nums = add_res.get("data", {}).get("numbers", [])
-            num_str = ", ".join(added_nums) if added_nums else test_number
-            logger.info(f"  ✅ BERHASIL: Nomor berhasil ditambahkan ({num_str})!")
+            actual_added = len(added_nums) if added_nums else batch_count
+            num_preview = ", ".join(added_nums[:3]) + (f" ... (+{actual_added - 3} lainnya)" if actual_added > 3 else "") if added_nums else f"{actual_added} nomor"
+            logger.info(f"  ✅ BERHASIL: {actual_added} nomor berhasil ditambahkan ({num_preview})!")
             async with stats_lock:
-                shared_stats["added"] += 1
+                shared_stats["added"] += actual_added
         else:
             msg = add_res.get("message", "Gagal request")
             if "limit" in msg.lower():
@@ -343,7 +344,7 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             await asyncio.sleep(delay)
 
 
-async def process_account(account_idx: int, range_filter: str, max_add: int, delay: int, workers_count: int, shared_stats: dict, stats_lock: asyncio.Lock):
+async def process_account(account_idx: int, range_filter: str, max_add: int, delay: int, workers_count: int, batch_count: int, shared_stats: dict, stats_lock: asyncio.Lock):
     """Menjalankan proses auto-add pada satu akun Augestel."""
     acc_conf = get_account_config(account_idx)
     email = acc_conf["email"]
