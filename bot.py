@@ -785,6 +785,7 @@ async def post_init(application: Application):
                 existing_aug = cl.mark_initial_as_seen()
                 logger.info(f"📌 [Augestel Akun #{a_idx}: {a_email}] Skipping {existing_aug} existing SMS")
                 asyncio.create_task(poll_otp_augestel(application.bot, cl, GROUP_CHAT_ID, account_idx=a_idx))
+                await asyncio.sleep(1.5)
             except Exception as aug_err:
                 logger.error(f"❌ Failed to init Augestel client Akun #{a_idx}: {aug_err}")
 
