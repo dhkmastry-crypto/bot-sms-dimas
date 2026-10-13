@@ -16,6 +16,8 @@ except Exception:
     pass
 
 import asyncio
+import hashlib
+import hmac
 import json
 import logging
 import re
