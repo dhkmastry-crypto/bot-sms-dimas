@@ -26,6 +26,7 @@ MAX_ADD = 0
 DELAY_SECONDS = 15
 BATCH_SIZE = 25
 BATCH_COUNT = 250  # Default 250 nomor per request sesuai form Augestel
+MAX_ACCOUNT_NUMBERS = 2500  # Batas maksimal nomor per akun portal Augestel
 
 # ────────────────────────────────────────────
 
@@ -51,12 +52,15 @@ def get_account_config(account_index: int = 1) -> dict:
 
     email = ""
     pwd = ""
+    api_key = ""
     if accounts and 1 <= account_index <= len(accounts):
         email = accounts[account_index - 1].get("email", "")
         pwd = accounts[account_index - 1].get("password", "")
+        api_key = accounts[account_index - 1].get("api_key", "")
     elif accounts:
         email = accounts[0].get("email", "")
         pwd = accounts[0].get("password", "")
+        api_key = accounts[0].get("api_key", "")
 
     user_data_dir = os.path.abspath(f"browser_profile_augestel_{account_index}")
 
@@ -64,8 +68,57 @@ def get_account_config(account_index: int = 1) -> dict:
         "index": account_index,
         "email": email,
         "password": pwd,
+        "api_key": api_key,
         "user_data_dir": user_data_dir
     }
+
+
+async def get_account_current_numbers_count(page, account_idx: int, api_key: str = "", email: str = "") -> int:
+    """Cek total nomor yang sudah aktif di portal untuk akun ini."""
+    # 1. Coba lewat API Augestel (tercepat ~200ms)
+    if api_key:
+        try:
+            from augestel_client import AugestelClient
+            c = AugestelClient(api_key=api_key, email=email)
+            res = c.get_numbers(page=1, per_page=1)
+            if res.get("success"):
+                tot = res.get("pagination", {}).get("total")
+                if tot is not None:
+                    return int(tot)
+        except Exception as e:
+            logger.debug(f"API check total numbers gagal: {e}")
+
+    # 2. Coba lewat browser session yang sedang terbuka
+    if page:
+        try:
+            cnt = await page.evaluate('''async () => {
+                try {
+                    const resp = await fetch('/Switchfy/client/numbers?draw=1&start=0&length=1', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        return data.recordsTotal !== undefined ? data.recordsTotal : (data.recordsFiltered || 0);
+                    }
+                } catch(e) {}
+                return -1;
+            }''')
+            if cnt >= 0:
+                return int(cnt)
+        except Exception:
+            pass
+
+    # 3. Fallback ke disk cache lokal jika ada
+    try:
+        cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
+        if os.path.exists(cache_file):
+            with open(cache_file, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                return int(d.get("total", 0))
+    except Exception:
+        pass
+
+    return 0
 
 
 logging.basicConfig(
