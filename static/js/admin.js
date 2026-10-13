@@ -593,13 +593,19 @@ async function loadNumbersAccountOptions() {
             return;
         }
 
-        const currentVal = select.value || '1';
-        select.innerHTML = accounts.map((acc, i) => {
+        const currentVal = select.value;
+        let html = '';
+        if (accounts.length > 1) {
+            html += `<option value="all">⚡ SEMUA AKUN (Total Gabungan ${accounts.length} Akun)</option>`;
+        }
+        html += accounts.map((acc, i) => {
             const idx = i + 1;
             return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
         }).join('');
 
-        if (currentVal) {
+        select.innerHTML = html;
+
+        if (currentVal && (currentVal === 'all' || accounts[parseInt(currentVal, 10) - 1])) {
             select.value = currentVal;
         }
     } catch (e) {
@@ -610,12 +616,14 @@ async function loadNumbersAccountOptions() {
 async function loadNumbersData(forceRefresh = false) {
     const select = document.getElementById('numAccountSelect');
     const accIdx = select ? select.value : '1';
+    const isAll = accIdx === 'all';
     const tbody = document.getElementById('numbersTableBody');
     const statTotal = document.getElementById('numStatTotal');
     const statAcc = document.getElementById('numStatAccount');
     const statLast = document.getElementById('numStatLastCheck');
     const summary = document.getElementById('numCountSummary');
     const btnRef = document.getElementById('btnRefreshNumbers');
+    const breakdownEl = document.getElementById('numAccountsBreakdown');
 
     if (btnRef) {
         btnRef.disabled = true;
@@ -625,10 +633,10 @@ async function loadNumbersData(forceRefresh = false) {
     if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center" style="padding: 30px;">
+                <td colspan="${isAll ? 8 : 7}" class="text-center" style="padding: 30px;">
                     <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--primary);"></i>
                     <div style="margin-top: 10px; font-weight: 500;">
-                        ${forceRefresh ? 'Membuka portal ivasms.com & mendeteksi nomor realtime...' : 'Memuat data nomor akun...'}
+                        ${isAll ? 'Membuka portal ivasms.com & mendeteksi nomor dari seluruh akun terdaftar...' : (forceRefresh ? 'Membuka portal ivasms.com & mendeteksi nomor realtime...' : 'Memuat data nomor akun...')}
                     </div>
                 </td>
             </tr>
@@ -642,9 +650,10 @@ async function loadNumbersData(forceRefresh = false) {
         if (!data.success) {
             showToast(data.message || 'Gagal mengambil nomor dari portal', 'error');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isAll ? 8 : 7}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
             }
             if (statTotal) statTotal.textContent = '0';
+            if (breakdownEl) breakdownEl.style.display = 'none';
             return;
         }
 
@@ -652,18 +661,37 @@ async function loadNumbersData(forceRefresh = false) {
         const total = data.total || allNumbersList.length;
 
         if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
-        if (statAcc) statAcc.textContent = `Akun #${data.account_index} (${data.email})`;
+        if (statAcc) {
+            statAcc.textContent = isAll ? `Semua Akun (${(data.accounts_breakdown || []).length} Akun)` : `Akun #${data.account_index} (${data.email})`;
+        }
         if (statLast) statLast.textContent = data.cached_at || 'Baru saja';
-        if (summary) summary.innerHTML = `Menampilkan <b>${allNumbersList.length}</b> dari total <b>${total}</b> nomor`;
+        if (summary) summary.innerHTML = `Menampilkan <b>${allNumbersList.length}</b> dari total <b>${total}</b> nomor${isAll ? ' (Semua Akun)' : ''}`;
 
-        renderNumbersTable(allNumbersList);
+        // Render breakdown cards jika memilih semua akun
+        if (breakdownEl) {
+            if (isAll && data.accounts_breakdown && data.accounts_breakdown.length > 0) {
+                breakdownEl.style.display = 'flex';
+                breakdownEl.innerHTML = data.accounts_breakdown.map(b => `
+                    <div style="background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; display: flex; align-items: center; gap: 8px;">
+                        <span class="badge badge-info" style="font-size: 0.72rem;">Akun #${b.account_index}</span>
+                        <span class="text-muted" style="max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
+                        <span style="font-weight: 700; color: #10b981; margin-left: auto;">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
+                    </div>
+                `).join('');
+            } else {
+                breakdownEl.style.display = 'none';
+                breakdownEl.innerHTML = '';
+            }
+        }
+
+        renderNumbersTable(allNumbersList, isAll);
         if (forceRefresh) {
-            showToast(`Berhasil mendeteksi ${total} nomor di akun #${accIdx}!`, 'success');
+            showToast(`Berhasil mendeteksi total ${total} nomor!`, 'success');
         }
     } catch (e) {
         showToast(`Error: ${e.message}`, 'error');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${isAll ? 8 : 7}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
         }
     } finally {
         if (btnRef) {
@@ -673,19 +701,24 @@ async function loadNumbersData(forceRefresh = false) {
     }
 }
 
-function renderNumbersTable(list) {
+function renderNumbersTable(list, isAll = false) {
     const tbody = document.getElementById('numbersTableBody');
+    const thAcc = document.getElementById('thAccountCol');
+    if (thAcc) thAcc.style.display = isAll ? '' : 'none';
+
     if (!tbody) return;
 
     if (!list || list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor yang ditemukan untuk akun ini.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${isAll ? 8 : 7}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor yang ditemukan.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = list.map((item, idx) => {
+        const accCol = isAll ? `<td><span class="badge badge-secondary" style="font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> #${item.account_index || 1}</span></td>` : '';
         return `
             <tr>
                 <td class="text-muted mono" style="font-size: 0.82rem;">${idx + 1}</td>
+                ${accCol}
                 <td class="selectable mono" style="font-weight: 600; color: var(--primary);">
                     <i class="fas fa-phone-alt" style="font-size: 0.75rem; opacity: 0.6; margin-right: 4px;"></i>
                     <span onclick="copyText('${escapeHtml(item.number)}')">${escapeHtml(item.number)}</span>
@@ -703,9 +736,11 @@ function renderNumbersTable(list) {
 function filterNumbersTable() {
     const query = (document.getElementById('numSearchInput')?.value || '').toLowerCase().trim();
     const summary = document.getElementById('numCountSummary');
+    const select = document.getElementById('numAccountSelect');
+    const isAll = select && select.value === 'all';
 
     if (!query) {
-        renderNumbersTable(allNumbersList);
+        renderNumbersTable(allNumbersList, isAll);
         if (summary) summary.innerHTML = `Menampilkan <b>${allNumbersList.length}</b> nomor`;
         return;
     }
@@ -713,23 +748,26 @@ function filterNumbersTable() {
     const filtered = allNumbersList.filter(item => {
         return (item.number && item.number.toLowerCase().includes(query)) ||
                (item.range && item.range.toLowerCase().includes(query)) ||
+               (item.account_email && item.account_email.toLowerCase().includes(query)) ||
                (item.id && item.id.includes(query));
     });
 
-    renderNumbersTable(filtered);
+    renderNumbersTable(filtered, isAll);
     if (summary) summary.innerHTML = `Ditemukan <b>${filtered.length}</b> hasil dari <b>${allNumbersList.length}</b> nomor`;
 }
 
 function downloadNumbersExport(format) {
     const select = document.getElementById('numAccountSelect');
     const accIdx = select ? select.value : '1';
+    const isAll = accIdx === 'all';
 
     if (allNumbersList.length === 0) {
         showToast('Tidak ada data nomor untuk diexport. Lakukan deteksi terlebih dahulu!', 'warning');
         return;
     }
 
-    showToast(`Menyiapkan export ${format.toUpperCase()}...`, 'info');
+    const label = isAll ? 'TOTAL (Semua Akun)' : `Akun #${accIdx}`;
+    showToast(`Menyiapkan export ${format.toUpperCase()} ${label}...`, 'info');
     const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
     window.location.href = downloadUrl;
 }
