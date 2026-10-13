@@ -4,7 +4,6 @@ import os
 import re
 import sys
 import time
-import cloudscraper
 from playwright.async_api import async_playwright
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -21,30 +20,9 @@ ACCOUNTS_TO_GENERATE = [
 ACC_FILE = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
 
 
-def wait_for_cooldown():
-    """Wait until Laravel login rate limit (429) clears"""
-    scraper = cloudscraper.create_scraper()
-    while True:
-        try:
-            r = scraper.get("https://augestel.com/Switchfy", timeout=12)
-            m = re.search(r'name="_token" value="([^"]+)"', r.text)
-            token = m.group(1) if m else ""
-            res = scraper.post("https://augestel.com/Switchfy/login", data={"_token": token, "email": "test@test.com", "password": "dummy"}, timeout=12)
-            retry = res.headers.get("Retry-After")
-            if not retry:
-                print("✅ Cooldown selesai! Rate limit aktif telah terbuka.")
-                return
-            sec = int(retry)
-            print(f"⏳ Menunggu rate-limit cooldown portal Augestel: {sec} detik tersisa...")
-            time.sleep(min(sec + 2, 15))
-        except Exception as e:
-            print(f"⚠️ Error checking cooldown: {e}")
-            time.sleep(5)
-
-
 async def generate_key_for_account(p, email, password):
     print(f"\n==================================================")
-    print(f"🔑 Memproses pembuatan API Key untuk: {email}")
+    print(f"🔑 Memproses akun: {email}")
     print(f"==================================================")
 
     browser = await p.chromium.launch(
@@ -60,88 +38,101 @@ async def generate_key_for_account(p, email, password):
     api_key_found = ""
 
     try:
-        # 1. Buka halaman login
-        print("1. Membuka https://augestel.com/Switchfy ...")
+        print("1. Membuka portal login...")
         await page.goto("https://augestel.com/Switchfy", timeout=35000, wait_until="domcontentloaded")
         await page.wait_for_timeout(2000)
 
-        # 2. Input kredensial
-        print("2. Memasukkan kredensial login...")
-        email_input = await page.query_selector("#loginEmail, input[name='email']")
-        pwd_input = await page.query_selector("#loginPassword, input[name='password']")
+        # Cek jika ada lockout countdown
+        lock = await page.query_selector("#loginLock")
+        if lock:
+            secs = await lock.get_attribute("data-seconds")
+            print(f"⚠️ Lockout aktif pada form login: {secs} detik.")
+            return ""
 
-        if email_input and pwd_input:
-            await email_input.fill(email)
-            await pwd_input.fill(password)
-            submit_btn = await page.query_selector("button[type='submit'], #loginSubmit")
-            if submit_btn:
-                await submit_btn.click()
-            else:
-                await page.keyboard.press("Enter")
-            
-            print("   Menunggu redirect dashboard...")
-            await page.wait_for_timeout(6000)
+        print("2. Mengisi kredensial...")
+        await page.fill("#loginEmail", email)
+        await page.fill("#loginPassword", password)
+        await page.wait_for_timeout(500)
 
-        print(f"   URL setelah login: {page.url}")
+        # Klik submit
+        submit_btn = await page.query_selector("form#loginForm button[type='submit'], #loginSubmit, button:has-text('Sign in')")
+        if submit_btn:
+            await submit_btn.click()
+        else:
+            await page.keyboard.press("Enter")
 
-        # 3. Kunjungi halaman Developer API Documentation
+        print("   Menunggu redirect...")
+        for _ in range(12):
+            await page.wait_for_timeout(1000)
+            if "test/live-sms" in page.url or "/login" not in page.url:
+                break
+
+        print(f"   URL: {page.url}")
+
+        if "/login" in page.url:
+            print("⚠️ Gagal login, masih di halaman login.")
+            return ""
+
         print("3. Membuka https://augestel.com/Switchfy/api/documentation ...")
         await page.goto("https://augestel.com/Switchfy/api/documentation", timeout=35000, wait_until="domcontentloaded")
-        await page.wait_for_timeout(3000)
+        await page.wait_for_timeout(2500)
 
-        # 4. Cek apakah tombol Generate API Key ada
+        # Cek apakah key sudah ada
         content = await page.content()
-        existing_keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
-        if existing_keys:
-            api_key_found = existing_keys[0]
-            print(f"✅ API Key sudah aktif: {api_key_found}")
-        else:
-            print("4. Mencari tombol 'Generate API Key'...")
-            # Coba cari tombol generate
-            gen_btn = await page.query_selector("button:has-text('Generate API Key'), button[onclick*='generateApiKey'], #no-api-key-box button")
-            if gen_btn:
-                print("👉 Mengklik tombol 'Generate API Key'...")
-                await gen_btn.click()
-                await page.wait_for_timeout(2000)
+        keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
+        if keys:
+            api_key_found = keys[0]
+            print(f"✅ Key sudah aktif: {api_key_found}")
+            return api_key_found
 
-                # Jika ada SweetAlert dialog konfirmasi
-                swal_confirm = await page.query_selector(".swal2-confirm, button:has-text('Yes'), button:has-text('Generate')")
-                if swal_confirm:
-                    print("   Mengklik konfirmasi SweetAlert...")
-                    await swal_confirm.click()
-                    await page.wait_for_timeout(3000)
-                else:
-                    await page.wait_for_timeout(2000)
+        # Klik tombol Generate API Key
+        print("4. Mencari tombol Generate API Key...")
+        gen_btn = await page.query_selector("#no-api-key-box button, button[onclick*='generateApiKey']")
+        if gen_btn:
+            print("👉 Mengklik tombol Generate API Key...")
+            await gen_btn.click()
+            await page.wait_for_timeout(1500)
 
-                # Tunggu dan baca ulang isi halaman
-                await page.wait_for_timeout(3000)
-                new_content = await page.content()
-                new_keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", new_content)
-                if new_keys:
-                    api_key_found = new_keys[0]
-                    print(f"🎉 SUKSES GENERATE API KEY: {api_key_found}")
-                else:
-                    # Coba cari di dalam code atau input atau span
-                    code_el = await page.query_selector("code, #api-key-display, .font-mono")
-                    if code_el:
-                        txt = await code_el.inner_text()
-                        m = re.search(r"sk_live_[a-zA-Z0-9_\-]+", txt)
-                        if m:
-                            api_key_found = m.group(0)
-                            print(f"🎉 SUKSES MENDAPATKAN KEY DARI ELEMEN: {api_key_found}")
+            # Konfirmasi SweetAlert via JS
+            await page.evaluate("""() => {
+                if (typeof Swal !== 'undefined' && typeof Swal.clickConfirm === 'function') {
+                    Swal.clickConfirm();
+                }
+            }""")
+            swal_btn = page.locator("button.swal2-confirm")
+            if await swal_btn.count() > 0:
+                try:
+                    await swal_btn.first.click(force=True, timeout=3000)
+                except Exception:
+                    pass
+
+            # Tunggu respons generate key
+            await page.wait_for_timeout(4000)
+
+            # Jika ada SweetAlert sukses ("Success"), klik juga
+            await page.evaluate("""() => {
+                if (typeof Swal !== 'undefined' && typeof Swal.clickConfirm === 'function') {
+                    Swal.clickConfirm();
+                }
+            }""")
+            await page.wait_for_timeout(1500)
+
+            # Baca ulang isi halaman
+            new_content = await page.content()
+            new_keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", new_content)
+            if new_keys:
+                api_key_found = new_keys[0]
+                print(f"🎉 SUKSES GENERATE KEY: {api_key_found}")
             else:
-                print("⚠️ Tombol Generate API Key tidak ditemukan secara visual.")
-
-        # Fallback: jika belum ketemu, cek halaman Webhooks
-        if not api_key_found:
-            print("5. Mengecek halaman Webhooks...")
-            await page.goto("https://augestel.com/Switchfy/api/webhooks", timeout=20000)
-            await page.wait_for_timeout(2000)
-            wh_content = await page.content()
-            wh_keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", wh_content)
-            if wh_keys:
-                api_key_found = wh_keys[0]
-                print(f"🎉 Ditemukan API Key di halaman Webhooks: {api_key_found}")
+                code_el = await page.query_selector("code, #api-key-display")
+                if code_el:
+                    txt = await code_el.inner_text()
+                    m = re.search(r"sk_live_[a-zA-Z0-9_\-]+", txt)
+                    if m:
+                        api_key_found = m.group(0)
+                        print(f"🎉 SUKSES DARI ELEMEN: {api_key_found}")
+        else:
+            print("⚠️ Tombol Generate API Key tidak ditemukan.")
 
     except Exception as e:
         print(f"❌ Error saat memproses {email}: {e}")
@@ -153,8 +144,6 @@ async def generate_key_for_account(p, email, password):
 
 
 async def main():
-    wait_for_cooldown()
-
     # Muat accounts yang sudah ada
     all_accounts = []
     if os.path.exists(ACC_FILE):
@@ -169,33 +158,25 @@ async def main():
             key = await generate_key_for_account(p, email, pwd)
 
             # Update entry di all_accounts
-            updated = False
             for acc in all_accounts:
                 if acc.get("email", "").lower() == email.lower():
                     if key:
                         acc["api_key"] = key
-                    updated = True
                     break
-            if not updated:
-                all_accounts.append({
-                    "email": email,
-                    "password": pwd,
-                    "api_key": key or ""
-                })
 
             # Simpan langsung ke augestel_accounts.json
             with open(ACC_FILE, "w", encoding="utf-8") as f:
                 json.dump(all_accounts, f, indent=2)
-            print(f"💾 Disimpan ke augestel_accounts.json untuk {email} (Key: {key or 'Belum ada'})")
+            print(f"💾 Update augestel_accounts.json untuk {email} -> {key or '(Belum berhasil)'}")
 
-            # Jeda antar akun agar tidak kena rate limit
-            await asyncio.sleep(5)
+            # Jeda 6 detik antar akun
+            await asyncio.sleep(6)
 
     print("\n==================================================")
-    print("🏁 SEMUA AKUN SELESAI DIPROSES!")
+    print("🏁 HASIL AKHIR DAFTAR AKUN & API KEY:")
     print("==================================================")
     for i, a in enumerate(all_accounts, 1):
-        print(f"{i}. {a['email']} -> {a.get('api_key') or '(Kosong)'}")
+        print(f"{i}. {a['email']} | API Key: {a.get('api_key') or '(Kosong)'}")
 
 
 if __name__ == "__main__":
