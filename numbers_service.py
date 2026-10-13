@@ -658,28 +658,131 @@ def generate_numbers_txt(numbers_data: list) -> str:
     return "\n".join(lines)
 
 
+async def return_all_augestel_portal(account_idx: int) -> dict:
+    """Melakukan bulk-return-all pada portal Augestel untuk akun terpilih."""
+    accs = get_augestel_accounts()
+    if not accs or account_idx < 1 or account_idx > len(accs):
+        return {"success": False, "message": f"Akun Augestel #{account_idx} tidak ditemukan!"}
+
+    acc = accs[account_idx - 1]
+    email = acc.get("email", "")
+    pwd = acc.get("password", "")
+    user_data_dir = os.path.abspath(f"browser_profile_augestel_{account_idx}")
+
+    logger.info(f"🗑️ Menjalankan Return All Numbers Augestel untuk Akun #{account_idx} ({email})...")
+
+    async with async_playwright() as p:
+        try:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                channel="msedge",
+                headless=False,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--window-position=-2000,-2000",
+                ]
+            )
+        except Exception as e:
+            return {"success": False, "message": f"Browser gagal dibuka: {e}"}
+
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        try:
+            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=45000)
+            await asyncio.sleep(2)
+
+            # Auto-login jika belum aktif
+            login_input = await page.query_selector("#loginEmail, input[name='email']")
+            if login_input:
+                await page.fill("#loginEmail, input[name='email']", email)
+                await page.fill("#loginPassword, input[name='password']", pwd)
+                btn = await page.query_selector("#loginSubmit, button[type='submit']")
+                if btn:
+                    await btn.click()
+                await asyncio.sleep(3)
+                await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
+
+            res = await page.evaluate('''async () => {
+                try {
+                    const cfg = window.__cfg_clients_dashboard_numbers_3 || {};
+                    const url = cfg.k6 || 'https://augestel.com/Switchfy/client/numbers/bulk-return-all';
+                    const tokenEl = document.querySelector('meta[name="csrf-token"]') || document.querySelector('input[name="_token"]');
+                    const token = cfg.k7 || (tokenEl ? (tokenEl.content || tokenEl.value) : '');
+
+                    const resp = await window.jQuery.ajax({
+                        url: url,
+                        type: 'POST',
+                        data: { _token: token }
+                    });
+                    return { ok: true, data: resp };
+                } catch(e) {
+                    return { ok: false, status: e.status, message: e.responseJSON?.message || e.statusText };
+                }
+            }''')
+
+            await context.close()
+
+            # Bersihkan cache akun ini
+            _NUMBERS_CACHE.pop(f"augestel_{account_idx}", None)
+            _NUMBERS_CACHE.pop("augestel_all", None)
+            cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
+            if os.path.exists(cache_file):
+                try:
+                    os.remove(cache_file)
+                except Exception:
+                    pass
+            all_cache = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+            if os.path.exists(all_cache):
+                try:
+                    os.remove(all_cache)
+                except Exception:
+                    pass
+
+            if res.get("ok"):
+                msg = res.get("data", {}).get("message", "Semua nomor berhasil dikembalikan ke sistem!")
+                return {"success": True, "message": f"Berhasil return/hapus semua nomor pada Akun Augestel #{account_idx} ({email}): {msg}"}
+            else:
+                return {"success": False, "message": f"Gagal return nomor Augestel: {res.get('message')}"}
+
+        except Exception as e:
+            try:
+                await context.close()
+            except Exception:
+                pass
+            return {"success": False, "message": f"Error eksekusi return all Augestel: {e}"}
+
+
 async def delete_all_account_numbers(account_index=1) -> dict:
     """
     Menghapus/mengembalikan semua nomor ke sistem (Return All Numbers).
     Mendukung akun IVASMS (via /portal/numbers/return/allnumber/bluck)
-    dan Augestel (info status / clearing local cache).
+    dan Augestel (via /Switchfy/client/numbers/bulk-return-all).
     """
     acc_str = str(account_index).strip().lower()
 
     if acc_str.startswith("aug"):
-        for k in list(_NUMBERS_CACHE.keys()):
-            if "aug" in k:
-                _NUMBERS_CACHE.pop(k, None)
-        try:
-            for fname in os.listdir(os.path.dirname(__file__)):
-                if fname.startswith("augestel_numbers_cache") and fname.endswith(".json"):
-                    os.remove(os.path.join(os.path.dirname(__file__), fname))
-        except Exception:
-            pass
-        return {
-            "success": True,
-            "message": "Cache nomor Augestel berhasil dibersihkan & direset! Di platform Augestel IPRN, nomor aktif dikelola langsung oleh administrator portal."
-        }
+        aug_accounts = get_augestel_accounts()
+        if not aug_accounts:
+            return {"success": False, "message": "Tidak ada akun Augestel terdaftar!"}
+
+        if "all" in acc_str:
+            # Hapus semua akun Augestel
+            succ = 0
+            for i in range(1, len(aug_accounts) + 1):
+                r = await return_all_augestel_portal(i)
+                if r.get("success"):
+                    succ += 1
+            return {
+                "success": succ > 0,
+                "message": f"Selesai return all nomor untuk {succ}/{len(aug_accounts)} akun Augestel!"
+            }
+        else:
+            # Single account
+            clean_idx = re.sub(r"[^\d]", "", acc_str)
+            target_idx = int(clean_idx) if clean_idx else 1
+            return await return_all_augestel_portal(target_idx)
 
     try:
         acc_idx = int(account_index)
