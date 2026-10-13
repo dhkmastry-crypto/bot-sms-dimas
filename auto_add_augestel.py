@@ -145,13 +145,33 @@ async def fetch_test_terminations(page, range_search: str = "", start: int = 0, 
             url.searchParams.set('draw', '1');
             url.searchParams.set('start', start.toString());
             url.searchParams.set('length', length.toString());
-            url.searchParams.set('columns[0][data]', 'name');
+
+            const cols = [
+                { data: 'name', name: 'name', searchable: true, orderable: true },
+                { data: 'country', name: 'country_code', searchable: true, orderable: true },
+                { data: 'test_number', name: 'test_number', searchable: true, orderable: true },
+                { data: 'a2p_rate', name: 'client_a2p_rate', searchable: true, orderable: true },
+                { data: 'portal_limit_a2p', name: 'portal_limit_a2p' },
+                { data: 'a2p_sid_range', name: 'a2p_sid_range' },
+                { data: 'a2p_multi_limit', name: 'a2p_multi_limit' },
+                { data: 'a2p_sid_did_limit', name: 'a2p_sid_did_limit' },
+                { data: 'created_at', name: 'terminations.created_at', searchable: false },
+                { data: 'action', name: 'action', searchable: false, orderable: false }
+            ];
+
+            cols.forEach((col, i) => {
+                url.searchParams.set('columns[' + i + '][data]', col.data);
+                if (col.name) url.searchParams.set('columns[' + i + '][name]', col.name);
+                if (col.searchable !== undefined) url.searchParams.set('columns[' + i + '][searchable]', col.searchable.toString());
+                if (col.orderable !== undefined) url.searchParams.set('columns[' + i + '][orderable]', col.orderable.toString());
+            });
+
             if (rangeSearch) {
                 url.searchParams.set('columns[0][search][value]', rangeSearch);
             }
-            url.searchParams.set('search[value]', '');
             url.searchParams.set('order[0][column]', '8');
             url.searchParams.set('order[0][dir]', 'desc');
+            url.searchParams.set('search[value]', '');
 
             const resp = await fetch(url.toString(), {
                 headers: {
@@ -160,7 +180,7 @@ async def fetch_test_terminations(page, range_search: str = "", start: int = 0, 
                 }
             });
             if (!resp.ok) {
-                return { error: `HTTP ${resp.status}`, data: [], recordsTotal: 0, recordsFiltered: 0 };
+                return { error: 'HTTP ' + resp.status, data: [], recordsTotal: 0, recordsFiltered: 0 };
             }
             return await resp.json();
         } catch(e) {
