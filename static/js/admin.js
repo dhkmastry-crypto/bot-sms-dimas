@@ -1666,40 +1666,162 @@ async function submitBulkAccounts() {
 
 let currentAugestelAccounts = [];
 
-async function checkAugestelConnection() {
-    const card = document.getElementById('augConnectionCard');
-    const dot = document.getElementById('augStatusDot');
-    const badge = document.getElementById('augBadge');
-    const desc = document.getElementById('augStatusDesc');
-    const btn = document.getElementById('btnCheckAugestel');
+async function renderBotControlAugestelStatus(customResults = null) {
+    const listContainer = document.getElementById('augAccountsStatusList');
+    if (!listContainer) return;
 
+    try {
+        let accounts = [];
+        if (customResults && Array.isArray(customResults) && customResults.length > 0) {
+            accounts = customResults;
+        } else {
+            const res = await fetch('/api/augestel/accounts');
+            const data = await res.json();
+            accounts = (data.accounts || []).map((a, i) => ({
+                index: i + 1,
+                email: a.email,
+                connected: a.connected !== undefined ? a.connected : !!a.api_key,
+                balance: a.balance || '0.00',
+                last_check: a.last_check || (a.api_key ? 'Status Terpantau (Aktif)' : 'Belum ada API Key')
+            }));
+        }
+
+        const countBadge = document.getElementById('augAccCountBadge');
+        if (countBadge) {
+            countBadge.textContent = `${accounts.length} Akun Terdaftar`;
+        }
+
+        const icon = document.getElementById('augIcon');
+        const text = document.getElementById('augStatusText');
+        const desc = document.getElementById('augStatusDesc');
+
+        const anyConn = accounts.some(a => a.connected);
+
+        if (icon) {
+            icon.className = anyConn ? 'bot-icon online' : 'bot-icon offline';
+        }
+        if (text) {
+            text.textContent = 'Augestel Multi-Account';
+        }
+        if (desc) {
+            const connCount = accounts.filter(a => a.connected).length;
+            desc.textContent = anyConn 
+                ? `Status semua akun terpantau (${connCount}/${accounts.length} Terhubung)` 
+                : 'Tidak ada akun yang terhubung';
+        }
+
+        if (accounts.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-muted" style="font-size: 0.85rem; padding: 14px; text-align: center; background: rgba(255,255,255,0.02); border-radius: 8px;">
+                    Belum ada akun Augestel terdaftar. <a href="/accounts" style="color: #a78bfa; text-decoration: underline;">Kelola Akun</a> untuk menambahkan akun.
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = accounts.map(acc => {
+            const isConn = !!acc.connected;
+            const statusDot = isConn 
+                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div>' 
+                : '<div class="status-dot offline" style="margin: 0; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></div>';
+            const badge = isConn 
+                ? '<span class="badge badge-success" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-check-circle"></i> Connected</span>' 
+                : '<span class="badge badge-danger" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-times-circle"></i> Disconnected</span>';
+
+            const balInfo = acc.balance && acc.balance !== '0.00' ? ` • Saldo: $${acc.balance}` : '';
+
+            return `
+                <div id="accStatusCard_aug_${acc.index}" style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; transition: all 0.2s ease;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        ${statusDot}
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <b style="font-size: 0.92rem; color: var(--text);">Akun #${acc.index}</b>
+                                <span class="text-muted" style="font-size: 0.8rem; font-family: monospace;">(${escapeHtml(acc.email)})</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.74rem; margin-top: 3px;" id="augAccCheckTime_${acc.index}">
+                                <i class="far fa-clock"></i> ${acc.last_check ? 'Pengecekan: ' + acc.last_check : 'Status terpantau aktif'}${balInfo}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="augAccBadge_${acc.index}">${badge}</span>
+                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelSingle(${acc.index})" id="btnCheckAugAcc_${acc.index}" title="Cek koneksi akun Augestel #${acc.index}">
+                            <i class="fas fa-sync-alt"></i> Cek
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        listContainer.innerHTML = `<div class="text-danger" style="font-size: 0.8rem;">Gagal memuat status: ${e.message}</div>`;
+    }
+}
+
+async function checkAugestelSingle(index) {
+    const btn = document.getElementById(`btnCheckAugAcc_${index}`);
+    const originalHtml = btn ? btn.innerHTML : '';
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Cek...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
     }
 
     try {
-        const res = await fetch('/api/augestel/check', { method: 'POST' });
+        const res = await fetch('/api/augestel/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        const data = await res.json();
+        if (data.success && data.status) {
+            const accList = data.status.accounts || [];
+            await renderBotControlAugestelStatus(accList);
+            const thisAcc = accList.find(a => a.index === index);
+            if (thisAcc && thisAcc.connected) {
+                showToast(`Akun Augestel #${index} berhasil terhubung!`, 'success');
+            } else {
+                showToast(`Akun Augestel #${index} terputus / API key invalid!`, 'error');
+            }
+        } else {
+            showToast(`Gagal cek akun Augestel #${index}: ${data.message || 'Error'}`, 'error');
+        }
+    } catch (e) {
+        showToast(`Gagal cek akun Augestel #${index}: ${e.message}`, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+async function checkAugestelConnection() {
+    const text = document.getElementById('augStatusText');
+    const desc = document.getElementById('augStatusDesc');
+    const btn = document.getElementById('btnCheckAugestel');
+
+    if (text) text.textContent = 'Memeriksa Semua Akun Augestel...';
+    if (desc) desc.textContent = 'Memvalidasi API key dan status koneksi per akun...';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Memeriksa...';
+    }
+
+    try {
+        const res = await fetch('/api/augestel/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
         const data = await res.json();
 
-        if (data.success && data.status && data.status.connected) {
-            if (dot) dot.className = 'status-dot online';
-            if (badge) {
-                badge.className = 'badge badge-success';
-                badge.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-            }
-            if (desc) {
-                desc.innerHTML = `<i class="fas fa-check"></i> API Aktif • Saldo: $${data.status.balance || 0} • ${data.status.total_numbers || 0} Nomor`;
-            }
-            showToast(`Augestel Connected! Saldo: $${data.status.balance || 0}, ${data.status.total_numbers || 0} Nomor terdeteksi.`, 'success');
+        if (data.success && data.status) {
+            const accList = data.status.accounts || [];
+            await renderBotControlAugestelStatus(accList);
+            const connectedCount = accList.filter(a => a.connected).length;
+            showToast(`Selesai cek Augestel: ${connectedCount}/${accList.length} akun terhubung!`, connectedCount > 0 ? 'success' : 'warning');
         } else {
-            if (dot) dot.className = 'status-dot offline';
-            if (badge) {
-                badge.className = 'badge badge-danger';
-                badge.innerHTML = '<i class="fas fa-times-circle"></i> Error';
-            }
-            if (desc) desc.textContent = data.message || 'Koneksi API Augestel gagal';
-            showToast(`Gagal koneksi Augestel: ${data.message || 'Unknown error'}`, 'error');
+            showToast(`Gagal cek akun Augestel: ${data.message || 'Error'}`, 'error');
         }
     } catch (e) {
         showToast('Error cek Augestel: ' + e.message, 'error');
