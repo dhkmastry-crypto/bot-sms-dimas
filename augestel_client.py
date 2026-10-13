@@ -185,11 +185,17 @@ class AugestelClient:
                 elif r.status_code == 429:
                     retry_sec = 13
                     try:
-                        hdr = r.headers.get("Retry-After")
-                        if hdr and hdr.isdigit():
-                            retry_sec = max(int(hdr), 13)
+                        retry_sec = int(r.json().get("error", {}).get("retry_after", 0)) or 13
                     except Exception:
                         pass
+                    try:
+                        hdr = r.headers.get("Retry-After")
+                        if hdr and hdr.isdigit():
+                            retry_sec = max(int(hdr), retry_sec)
+                    except Exception:
+                        pass
+                    retry_sec = max(retry_sec, 12)
+                    self.rate_limit_until = time.time() + retry_sec
                     logger.info(f"Augestel API rate limited (429). Menunggu {retry_sec} detik...")
                     time.sleep(retry_sec)
                     continue
