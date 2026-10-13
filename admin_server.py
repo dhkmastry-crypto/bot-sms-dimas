@@ -1130,7 +1130,12 @@ def api_numbers_list():
     """Fetch numbers list and count for selected account or all accounts"""
     raw_idx = str(request.args.get("account_index", "1")).strip().lower()
     force_refresh = request.args.get("refresh", "0") in ["1", "true", "True"]
-    acc_arg = "all" if raw_idx == "all" else (int(raw_idx) if raw_idx.isdigit() else 1)
+    if raw_idx == "all":
+        acc_arg = "all"
+    elif raw_idx == "augestel":
+        acc_arg = "augestel"
+    else:
+        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
     try:
         from numbers_service import fetch_account_numbers
@@ -1146,7 +1151,12 @@ def api_numbers_list():
 def api_numbers_export_excel():
     """Export numbers to Excel .xlsx format for selected account or all accounts"""
     raw_idx = str(request.args.get("account_index", "1")).strip().lower()
-    acc_arg = "all" if raw_idx == "all" else (int(raw_idx) if raw_idx.isdigit() else 1)
+    if raw_idx == "all":
+        acc_arg = "all"
+    elif raw_idx == "augestel":
+        acc_arg = "augestel"
+    else:
+        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
     try:
         from numbers_service import fetch_account_numbers, generate_numbers_excel
@@ -1161,6 +1171,8 @@ def api_numbers_export_excel():
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         if acc_arg == "all":
             filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
+        elif acc_arg == "augestel":
+            filename = f"augestel_numbers_{date_str}.xlsx"
         else:
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
             filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.xlsx"
@@ -1181,7 +1193,12 @@ def api_numbers_export_excel():
 def api_numbers_export_txt():
     """Export numbers to plain text (nomor saja per baris) for selected account or all accounts"""
     raw_idx = str(request.args.get("account_index", "1")).strip().lower()
-    acc_arg = "all" if raw_idx == "all" else (int(raw_idx) if raw_idx.isdigit() else 1)
+    if raw_idx == "all":
+        acc_arg = "all"
+    elif raw_idx == "augestel":
+        acc_arg = "augestel"
+    else:
+        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
     try:
         from numbers_service import fetch_account_numbers, generate_numbers_txt
@@ -1196,6 +1213,8 @@ def api_numbers_export_txt():
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         if acc_arg == "all":
             filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.txt"
+        elif acc_arg == "augestel":
+            filename = f"augestel_numbers_{date_str}.txt"
         else:
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
             filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.txt"
