@@ -457,7 +457,8 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
                         shared_stats=shared_stats,
                         stats_lock=stats_lock,
                         delay=delay,
-                        max_add=max_add
+                        max_add=max_add,
+                        batch_count=batch_count
                     )
                 )
             )
@@ -473,6 +474,7 @@ async def main():
     delay = int(sys.argv[3]) if len(sys.argv) > 3 else DELAY_SECONDS
     account_arg = sys.argv[4].strip().lower() if len(sys.argv) > 4 else "1"
     workers = int(sys.argv[5]) if len(sys.argv) > 5 else 2
+    batch_count = int(sys.argv[6]) if len(sys.argv) > 6 else BATCH_COUNT
 
     # Load daftar akun
     acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
@@ -508,7 +510,7 @@ async def main():
         if max_add > 0 and shared_stats["added"] >= max_add:
             logger.info(f"🎯 Target max_add ({max_add}) telah tercapai!")
             break
-        await process_account(idx, range_filter, max_add, delay, workers, shared_stats, stats_lock)
+        await process_account(idx, range_filter, max_add, delay, workers, batch_count, shared_stats, stats_lock)
 
     logger.info("═" * 60)
     logger.info("🏁 AUTO ADD AUGESTEL SELESAI!")
