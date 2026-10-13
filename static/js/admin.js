@@ -2164,6 +2164,32 @@ async function runBatchLoginAugestel() {
     }
 }
 
+async function setupAllAugestelWebhooks() {
+    const btn = document.getElementById('btnSetupAllWebhooks');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menyiapkan Webhook...';
+    }
+    showToast('Memasang Webhook ke seluruh akun Augestel (Bypass 429 Limit)...', 'info');
+    try {
+        const res = await fetch('/api/augestel/webhooks/setup-all', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Webhook berhasil dikonfigurasi ke seluruh akun Augestel!', 'success');
+        } else {
+            showToast(data.message || 'Gagal memasang webhook', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText || '<i class="fas fa-satellite-dish"></i> Pasang Webhook (Bypass Limit 429)';
+        }
+    }
+}
+
 // ────────────────────────────────────────────
 //  AUTO-ADD AUGESTEL (SEPARATE NAVIGATION)
 // ────────────────────────────────────────────
