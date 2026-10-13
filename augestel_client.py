@@ -87,9 +87,17 @@ class AugestelClient:
             if r.status_code == 429:
                 retry_after = 15
                 try:
-                    retry_after = int(r.json().get("error", {}).get("retry_after", 15))
+                    retry_after = int(r.json().get("error", {}).get("retry_after", 0))
                 except Exception:
                     pass
+                if not retry_after:
+                    try:
+                        hdr = r.headers.get("Retry-After")
+                        if hdr and hdr.isdigit():
+                            retry_after = int(hdr)
+                    except Exception:
+                        pass
+                retry_after = max(retry_after or 15, 12)
                 self.rate_limit_until = time.time() + retry_after
                 logger.warning(f"Augestel ({self.email}) rate limit (429), retry after {retry_after}s")
                 return []

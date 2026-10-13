@@ -383,12 +383,27 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
 
         # Fetch terminations matching range_filter
         logger.info(f"🔍 Mencari terminations dengan filter: '{range_filter}'...")
-        dt_res = await fetch_test_terminations(page, range_filter, start=0, length=100)
+        raw_rows = []
+        page_size = 100
+        start_idx = 0
+        total_found = 0
+        while True:
+            dt_res = await fetch_test_terminations(page, range_filter, start=start_idx, length=page_size)
+            if not dt_res or dt_res.get("error"):
+                break
+            total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or total_found
+            chunk = dt_res.get("data", [])
+            if not chunk:
+                break
+            raw_rows.extend(chunk)
+            if max_add > 0 and len(raw_rows) >= max_add:
+                raw_rows = raw_rows[:max_add]
+                break
+            start_idx += len(chunk)
+            if start_idx >= total_found or len(chunk) < page_size:
+                break
         
-        total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or 0
-        raw_rows = dt_res.get("data", [])
-
-        logger.info(f"📋 Ditemukan {total_found} total records untuk filter '{range_filter}'")
+        logger.info(f"📋 Ditemukan {total_found} total records ({len(raw_rows)} diambil) untuk filter '{range_filter}'")
 
         if not raw_rows:
             logger.warning(f"⚠️ Tidak ada termination yang cocok dengan '{range_filter}'.")
