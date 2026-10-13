@@ -94,6 +94,14 @@ ivasms_status = {
     "connected": False,
     "last_check": None,
     "cookies_valid": False,
+    "accounts": [],
+}
+
+# Augestel connection state
+augestel_status = {
+    "connected": False,
+    "last_check": None,
+    "accounts": [],
 }
 
 # Admin credentials
@@ -429,6 +437,96 @@ async def check_ivasms_connection(target_index: int = None):
         pass
 
     return ivasms_status
+
+
+def check_augestel_multi_connection(target_index: int = None):
+    """Check Augestel connection for each registered account, or specific account if target_index given"""
+    global augestel_status
+    acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        cfg = load_config()
+        if cfg.get("AUGESTEL_EMAIL") and cfg.get("AUGESTEL_API_KEY"):
+            accounts.append({"email": cfg["AUGESTEL_EMAIL"], "api_key": cfg["AUGESTEL_API_KEY"]})
+
+    existing_results = {r.get("index"): r for r in augestel_status.get("accounts", []) if isinstance(r, dict)}
+    results = []
+    any_connected = False
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    from augestel_client import AugestelClient
+
+    for idx, acc in enumerate(accounts, start=1):
+        email = acc.get("email", "")
+        api_key = acc.get("api_key", "")
+        if not email:
+            continue
+
+        # If checking a single account, preserve others
+        if target_index is not None and idx != target_index:
+            prev = existing_results.get(idx, {
+                "index": idx,
+                "email": email,
+                "connected": bool(api_key),
+                "balance": acc.get("balance", "0.00"),
+                "last_check": "-"
+            })
+            if prev.get("connected"):
+                any_connected = True
+            results.append(prev)
+            continue
+
+        connected = False
+        balance = "0.00"
+
+        if api_key:
+            try:
+                client = AugestelClient(api_key=api_key, email=email)
+                connected = client.check_connection()
+                if connected:
+                    stats = client.get_statistics()
+                    balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
+            except Exception as e:
+                logger.error(f"Error checking Augestel acc {idx}: {e}")
+                connected = False
+
+        if connected:
+            any_connected = True
+
+        results.append({
+            "index": idx,
+            "email": email,
+            "connected": connected,
+            "balance": balance,
+            "last_check": now_str
+        })
+
+    augestel_status["connected"] = any_connected
+    augestel_status["last_check"] = now_str
+    augestel_status["accounts"] = results
+
+    # Sync to status.json
+    try:
+        status_file = os.path.join(BASE_DIR, "status.json")
+        s_data = {}
+        if os.path.exists(status_file):
+            with open(status_file, "r", encoding="utf-8") as f:
+                s_data = json.load(f)
+        s_data["augestel_connected"] = any_connected
+        s_data["augestel_accounts_status"] = results
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump(s_data, f, indent=2)
+    except Exception:
+        pass
+
+    return augestel_status
 
 
 # ────────────────────────────────────────────
