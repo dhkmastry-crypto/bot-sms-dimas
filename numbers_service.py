@@ -717,12 +717,10 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                     if login_input:
                         await page.fill("#loginEmail, input[name='email']", email)
                         await page.fill("#loginPassword, input[name='password']", pwd)
-                        rem = await page.query_selector("input[name='remember']")
-                        if rem:
-                            try:
-                                await rem.check()
-                            except Exception:
-                                pass
+                        try:
+                            await page.evaluate("() => { const el = document.querySelector(\"input[name='remember']\"); if (el) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); } }")
+                        except Exception:
+                            pass
                         await asyncio.sleep(0.5)
 
                         btn = await page.query_selector("#loginSubmit, button[type='submit']")

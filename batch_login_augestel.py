@@ -77,12 +77,11 @@ async def login_single_account(account_idx: int, email: str, password: str) -> d
             await page.fill("#loginEmail, input[name='email']", email)
             await page.fill("#loginPassword, input[name='password']", password)
 
-            rem = await page.query_selector("input[name='remember']")
-            if rem:
-                try:
-                    await rem.check()
-                except Exception:
-                    pass
+            # Centang Remember Me agar sesi tersimpan jangka panjang (remember_client cookie)
+            try:
+                await page.evaluate("() => { const el = document.querySelector(\"input[name='remember']\"); if (el) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); } }")
+            except Exception:
+                pass
 
             await asyncio.sleep(1)
 
@@ -129,6 +128,11 @@ async def login_single_account(account_idx: int, email: str, password: str) -> d
 
 
 async def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Batch or Single Login Augestel")
+    parser.add_argument("--account", type=int, default=None, help="Spesifik nomor akun (1-indexed)")
+    args = parser.parse_args()
+
     acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
     if not os.path.exists(acc_file):
         logger.error("❌ File augestel_accounts.json tidak ditemukan!")
@@ -136,6 +140,19 @@ async def main():
 
     with open(acc_file, "r", encoding="utf-8") as f:
         accounts = json.load(f)
+
+    target_acc = args.account
+    if target_acc is not None:
+        if 1 <= target_acc <= len(accounts):
+            acc = accounts[target_acc - 1]
+            logger.info(f"🚀 Memulai login akun tunggal #{target_acc} ({acc.get('email')})...")
+            res = await login_single_account(target_acc, acc.get("email", ""), acc.get("password", ""))
+            status_icon = "✅" if res.get("success") else "❌"
+            logger.info(f"{status_icon} Hasil Akun #{target_acc}: {res.get('message')}")
+            return
+        else:
+            logger.error(f"❌ Akun #{target_acc} di luar jangkauan (Total: {len(accounts)})")
+            return
 
     logger.info("═" * 60)
     logger.info(f"🚀 Memulai Batch Login untuk {len(accounts)} akun Augestel...")
