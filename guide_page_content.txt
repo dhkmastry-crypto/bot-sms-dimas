@@ -1,0 +1,505 @@
+D
+
+DHIMAS TRY SAPUTRA
+
+Premium Client
+
+OVERVIEW
+
+Dashboard
+
+CLIENT SYSTEM
+
+Client Active SMS
+LIVE
+My Numbers
+My SMS Statistics
+
+TOOLS
+
+Test System
+Invoices System
+
+DEVELOPER
+
+SMS API
+Webhooks
+Telegram Bot Guide
+Contact us
+Logout
+Telegram Bot Guide
+
+Welcome back, DHIMAS TRY SAPUTRA
+
+10/13/2026, 10:37:29 PM
+D
+DHIMAS TRY SAPUTRA
+Dashboard
+Telegram Bot
+BEFORE YOU START
+What you are building
+How it works
+What you need
+YOUR BOT
+Create the bot
+Find your chat id
+Send a test message
+PICK A ROUTE
+Webhook or polling
+ROUTE A, WEBHOOK
+Write the receiver
+Verify the signature
+Point us at it
+Send it to Telegram
+ROUTE B, POLLING
+The polling loop
+WHEN IT GOES WRONG
+Troubleshooting
+Before you call it done
+RELATED
+Webhooks settings
+SMS API reference
+What you are building
+START HERE
+
+By the end of this page, an SMS that lands on one of your numbers will appear as a message in your Telegram chat. You do not need to be an experienced developer. You do need to be able to copy a command into a terminal and edit a file.
+
+There are two ways to get messages out of this panel and we cover both. One has us push each message to a small program you run. The other has your program ask us for new messages on a timer. Neither is difficult; they suit different situations, and a section below helps you pick.
+
+Rough time: about 20 minutes for the polling route, which runs on your laptop. About an hour for the webhook route, plus however long it takes you to get a server with a public address.
+
+How it works
+MENTAL MODEL
+
+Three parties are involved: this panel, a small program you write, and Telegram. The important thing to hold on to is that your bot only ever sends to Telegram. It never receives anything from Telegram. You are not building a chat bot that answers questions, you are building a one way notifier.
+
+THIS PANEL
+YOUR SERVER
+TELEGRAM
+costs none of your API rate limit
+1. SMS arrives
+on one of your numbers
+2. We find it
+a sweep runs every minute
+3. We POST to you
+signed JSON
+X-Augestel-Signature
+4. You check it
+answer 200 within 5s
+signature wrong, answer 401 and stop
+5. you call sendMessage
+6. It appears in the chat
+on your phone
+Every arrow that crosses a lane is a network hop. Only the two hops out of your server are yours to write. Everything in the top lane is ours.
+this panel
+code you write
+Telegram
+the failure branch
+
+The word webhook means two different things here. Ours is us calling your server. Telegram also has a webhook feature, which is Telegram calling your server. You will not use that one at all, and you should not call setWebhook on any bot. Keep the two apart in your head and the rest of this page is straightforward.
+
+What you need
+CHECKLIST
+Both routes
+A Telegram account on your phone
+At least one number assigned to your account
+PHP 8.1 or later, or Python 3.9 or later
+curl
+for testing
+Webhook route only
+A public HTTPS address
+that we can reach from the internet
+A web server, or a tunnel such as ngrok or cloudflared
+
+We reject addresses that are not public, so your laptop on its own will not work for this route. If you cannot get a public address in the next hour, use the polling route instead. It does everything you need and runs anywhere.
+
+Create the bot
+STEP 1
+
+Make your own bot. Do not use ours. This panel runs a Telegram bot of its own for verifying client contact details. Its token is not available to you and support cannot hand it out. More importantly, a Telegram bot can only have one owner pointing it anywhere, so using ours would break contact verification for every client on the platform. The bot you make below is free, takes two minutes, and is entirely yours.
+
+Open Telegram and search for @BotFather. Check for the blue verified tick, because imitation accounts exist. Send it /newbot and it will ask you two things in order. People mix these up, so read carefully:
+
+1
+A display name. Anything you like, for example "My OTP Alerts". This is what shows at the top of the chat.
+2
+A username. Must be unique across all of Telegram and must end in bot, for example acme_otp_alerts_bot. If it says the name is taken, that is normal, just try another.
+Copy
+You: /newbot
+BotFather: Alright, a new bot. How are we going to call it?
+You: My OTP Alerts
+BotFather: Good. Now let's choose a username for your bot.
+You: acme_otp_alerts_bot
+BotFather: Done! Use this token to access the HTTP API:
+           1234567890:AAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+That long string is your bot token and it is a password. Anyone who has it can send messages as your bot. Keep it out of screenshots, out of chat messages and out of your source code. We will put it in an environment variable in a moment.
+
+Find your chat id
+STEP 2
+
+Your bot needs to know where to send messages. That address is a number called the chat id. There is one rule that catches everybody: a bot cannot start a conversation with you, so you have to message it first.
+
+1
+Open the t.me/your_bot_username link BotFather gave you, press Start and send any message.
+2
+Run the command below, replacing the token.
+3
+Read the number at result[0].message.chat.id. That is your chat id.
+Copy
+curl "https://api.telegram.org/bot1234567890:AAxxxxx/getUpdates"
+
+Got {"ok":true,"result":[]} with nothing in it? Two possible reasons. Either you have not messaged the bot yet, or you already ran this command once and it consumed the update. Send your bot another message and run it again. This is the single most common place people stall, and it is not a broken token.
+
+For a personal chat the id is a positive number. For a group it is negative and usually starts with -100: add the bot to the group, send a message there, and run the command again.
+
+Send a test message
+STEP 3
+
+Before this panel is involved at all, prove you can make your phone buzz. Doing this on its own means that if something breaks later, you already know this part works. Put the token and chat id in environment variables so they never end up in your code.
+
+Copy
+export TG_TOKEN="1234567890:AAxxxxx"
+export TG_CHAT="123456789"
+
+curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" -d "chat_id=$TG_CHAT" -d "text=Hello from my bot"
+
+Your phone should buzz. The variable names here are only suggestions; if you connect to more than one panel, give each its own prefix so they cannot collide. Now the same thing as a function you will reuse for the rest of this guide. Save this as lib.php or lib.py in the folder you are working in. Every later file loads it, so it is the one place your two helpers live.
+
+PHP
+Python
+Copy
+<?php
+function sendTelegram(string $text): bool
+{
+    $token = getenv('TG_TOKEN');
+    $chat  = getenv('TG_CHAT');
+
+    // Telegram rejects anything past 4096 characters, so trim rather than fail.
+    if (mb_strlen($text) > 4096) {
+        $text = mb_substr($text, 0, 4093) . '...';
+    }
+
+    $ch = curl_init("https://api.telegram.org/bot{$token}/sendMessage");
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        // No parse_mode on purpose. With Markdown or HTML enabled, Telegram rejects
+        // the WHOLE message if the text contains a stray underscore or angle bracket,
+        // and real messages contain both. Plain text always arrives.
+        CURLOPT_POSTFIELDS     => http_build_query([
+            'chat_id'                  => $chat,
+            'text'                     => $text,
+            'disable_web_page_preview' => true,
+        ]),
+    ]);
+
+    $body = curl_exec($ch);
+    curl_close($ch);
+
+    // Telegram answers 200 with ok:false for some errors, so read the body.
+    $json = json_decode((string) $body, true);
+    if (empty($json['ok'])) {
+        error_log('Telegram refused it: ' . ($json['description'] ?? 'no response'));
+        return false;
+    }
+
+    return true;
+}
+
+Both versions deliberately leave parse_mode unset. It is tempting to switch on formatting so codes come out in bold, but Telegram refuses the entire message if the text contains a character it reads as markup, and message bodies routinely do. This panel's own Telegram sender makes the same choice for the same reason.
+
+Webhook or polling
+DECISION
+
+Both routes work. Pick with the table, not with instinct, because the honest answer is less obvious than it sounds.
+
+	WEBHOOK	POLLING
+Needs a public address	Yes	No, runs anywhere
+Uses your API rate limit	None at all	All of it
+Typical delay for an SMS	Under a minute	Your poll gap, 12s at best
+Something must stay running	A web server	Your script, always
+Number and earnings events	Yes	Not available
+Effort	Higher, signature check	Lower, a loop
+
+Worth knowing before you choose: message events are found by a sweep that runs once a minute, so a webhook is not instant for SMS and a tight poller can sometimes be quicker. Webhooks still win on everything else: they cost none of your rate limit, they need no process kept alive, and they are the only way to get number and earnings events. If you have a server, use webhooks. If you do not, poll, and it will keep working indefinitely.
+
+Write the receiver
+ROUTE A, STEP 1
+
+A receiver is just a page on your server that accepts a POST. There is one rule that matters more than the code: answer us first, do the work afterwards. You have five seconds to reply. If you call Telegram before replying and Telegram is slow, we give up waiting, retry, and you get the same message twice.
+
+The version below writes the request to a file and replies immediately. A separate script sends it on. That is not a shortcut, it is the shape you want: the slow part cannot affect the part we are timing.
+
+PHP
+Python
+Copy
+<?php
+// webhook.php - point your web server at this file.
+require __DIR__ . '/lib.php';   // sendTelegram() and verifySignature() live here
+
+// The RAW bytes. Not $_POST, and never json_decode then json_encode: re encoding
+// changes spacing and key order, and the signature is over the exact bytes we sent.
+$raw = file_get_contents('php://input');
+
+$signature = $_SERVER['HTTP_X_AUGESTEL_SIGNATURE'] ?? '';
+$secret    = getenv('PANEL_WEBHOOK_SECRET');
+
+if (! verifySignature($raw, $signature, $secret)) {
+    http_response_code(401);
+    exit;
+}
+
+// Queue it and answer straight away. Sending to Telegram here would risk the
+// five second budget.
+file_put_contents(__DIR__ . '/queue.jsonl', $raw . "\n", FILE_APPEND | LOCK_EX);
+
+http_response_code(200);
+echo 'ok';
+
+Test it before we are involved. Point curl at your own endpoint with any JSON body: you should get a 401, because the signature will not match. A 401 at this stage means the endpoint is alive and the check is running.
+
+Verify the signature
+ROUTE A, STEP 2
+
+Your endpoint is on the public internet, so anyone who finds the address can post to it. Without this check your bot will cheerfully forward fake codes to your phone. The check is short: we both know a secret, we both run the message through the same one way function, and if the answers match then it came from us and nothing was altered.
+
+The raw body bytes
+exactly as they arrived
+not a parsed object re encoded back to JSON
+Your signing secret
+from the Webhooks page
+HMAC SHA256
+what arrived in the header
+X-Augestel-Signature
+Compare
+constant time, never ==
+equal
+200, handle
+401, drop
+Hash the bytes you received, not a parsed object turned back into JSON. Re encoding changes key order and spacing, which changes every character of the result.
+
+This is the one that wastes an evening. Hash the raw body, not a parsed object turned back into JSON. In PHP that means file_get_contents('php://input'), not $_POST. In Flask it means request.get_data(), not request.json.
+
+Here is exactly why, because it is worth seeing once. We send forward slashes unescaped. A plain re encode escapes them. So the moment a message contains a link, which verification codes very often do, the bytes differ and the check fails:
+
+Copy
+what we sent you   ... log in: https://t.me/login/54602
+after a re encode  ... log in: https:\/\/t.me\/login\/54602
+
+The cruel part is that it often works while you are testing. A short message with no link, no accents and no unusual characters re encodes to exactly the same bytes, so the check passes and you ship. It then starts failing on real traffic, for some messages and not others, which is a genuinely hard bug to chase. Hash the raw bytes and it cannot happen.
+
+PHP
+Python
+Copy
+function verifySignature(string $raw, string $header, string $secret): bool
+{
+    // We send it prefixed with the algorithm, so strip that before comparing.
+    $expected = 'sha256=' . hash_hmac('sha256', $raw, $secret);
+
+    // hash_equals, never ==. A plain comparison stops at the first wrong character,
+    // and the time it took tells an attacker how much they guessed correctly.
+    return hash_equals($expected, $header);
+}
+
+Add this to the same lib.php or lib.py you made earlier, next to the send function.
+
+The header on this panel is X-Augestel-Signature. Your secret is on the Webhooks page, generated by us. Put it in an environment variable, never in your code.
+
+Point us at it
+ROUTE A, STEP 3
+
+Go to the Webhooks page and fill the form in this order. The order matters, and doing it the other way round causes a problem that is hard to spot.
+
+1
+Paste your public HTTPS address.
+2
+Leave delivery switched off while you are still building.
+3
+Tick only message.received for now. Add the rest once one event works end to end.
+4
+Save, then copy the signing secret into your environment.
+5
+Deploy your receiver, then come back and switch delivery on.
+
+Switching delivery on before the receiver exists starts the failure counter against a webhook that was never broken. After twenty consecutive failures we disable the endpoint and you have to switch it back on by hand.
+
+IF THE ADDRESS IS REFUSED
+
+We check the address when you save it and refuse anything we could not reach from the internet. There are three messages you might see, and each means exactly what it says:
+
+MESSAGE	WHAT TO DO
+The webhook URL must be an http:// or https:// address.	You left the scheme off, or typed something that is not a web address.
+That hostname could not be resolved.	The domain does not resolve from our servers. Check the spelling and that DNS has propagated.
+The webhook URL must point at a public address, not an internal or loopback one.	You used localhost, 127.0.0.1 or a private range. Use a real server or a tunnel.
+
+Quickest way to get a public address for testing: ngrok http 8080 or cloudflared tunnel. With free ngrok the address changes every restart, and you have to save the new one here each time.
+
+Send it to Telegram
+ROUTE A, STEP 4
+
+The receiver wrote each request to a queue file. This script drains it and sends each one on with the sendTelegram function from earlier. Run it from cron every minute, or as a small loop.
+
+PHP
+Python
+Copy
+<?php
+// drain.php - run from cron every minute.
+require __DIR__ . '/lib.php';
+
+$queue = __DIR__ . '/queue.jsonl';
+if (! is_file($queue)) { exit; }
+
+// Rename first, then read the renamed copy. Reading and then blanking the original
+// looks equivalent but is not: a webhook that arrives between those two steps is
+// appended to a file you are about to empty, and that message is gone. A rename is
+// atomic, so the receiver immediately starts a fresh queue file and nothing is lost.
+$batch = $queue . '.' . getmypid();
+if (! @rename($queue, $batch)) { exit; }
+
+$lines = file($batch, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+unlink($batch);
+
+foreach ($lines as $line) {
+    $event = json_decode($line, true);
+    if (! $event) { continue; }
+
+    // One endpoint receives every event you subscribed to, so branch on the name.
+    if (($event['event'] ?? '') !== 'message.received') { continue; }
+
+    $d = $event['data'];
+    sendTelegram(
+        "SMS on {$d['number']}\n" .
+        "From: {$d['source']}\n\n" .
+        $d['message']
+    );
+}
+
+You will occasionally get the same event twice. If your server answered successfully but slowly, we may already have given up and queued a retry. Keep a note of what you have already forwarded and skip repeats, using the same key described in the polling section below. We try four times in all, waiting about 10 seconds, then a minute, then five minutes.
+
+The polling loop
+ROUTE B
+
+No public address needed. Your script asks us for recent messages on a timer and sends the new ones to Telegram. Generate an API key on the SMS API page first. Keys look like sk_live_... and go in a header, never in the address.
+
+five requests a minute is the whole budget - about twelve seconds between polls
+1. Sleep
+at least 12 seconds
+2. GET /messages
+with start_date
+3. Seen this one before?
+there is no id, build a key
+4. Send new
+to Telegram
+round again
+Save the keys to disk
+in memory only means a restart
+Every box here is code you write and keep running. Compare that with the webhook diagram above, where the top lane is ours.
+
+The trap that costs people an hour. Called with no parameters, the messages endpoint returns today only, not the most recent messages. At five past midnight an empty list is the correct answer, not a broken key. Always pass start_date so you know what window you are asking about.
+
+There is no message id. Each poll returns overlapping results and nothing in the response uniquely identifies a message, so you have to build your own key out of the number, the timestamp, the sender and the text, and remember which keys you have already sent. Keep that list on disk, or a restart re sends everything from today.
+
+The limit is five requests a minute per key, so about twelve seconds between polls is the fastest you can safely go, and that uses your whole allowance. Running the script twice at once halves the gap and gets you refused. Cron once a minute is the calmer choice and is roughly as fresh as the webhook route.
+
+PHP
+Python
+Copy
+<?php
+// poll.php - run from cron every minute.
+require __DIR__ . '/lib.php';
+
+$key   = getenv('PANEL_API_KEY');
+$state = __DIR__ . '/seen.json';
+$seen  = is_file($state) ? json_decode(file_get_contents($state), true) : null;
+
+// First ever run: record what is already there and send nothing, otherwise the very
+// first execution fires every message from today at your phone at once.
+$firstRun = ($seen === null);
+$seen = $seen ?: [];
+
+// Always pass start_date. With no parameters this endpoint returns today only.
+$from = date('Y-m-d', strtotime('-1 day'));
+$url  = 'https://augestel.com/api/v1/iprn/messages?per_page=200&start_date=' . $from;
+
+$ch = curl_init($url);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT        => 20,
+    CURLOPT_HTTPHEADER     => ["Authorization: Bearer {$key}", 'Accept: application/json'],
+]);
+$body   = curl_exec($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($status === 429) {
+    // Too fast. The body tells you how long to wait.
+    $wait = json_decode($body, true)['error']['retry_after'] ?? 60;
+    error_log("Rate limited, wait {$wait}s");
+    exit;
+}
+
+foreach (json_decode($body, true)['data'] ?? [] as $m) {
+    // No id is returned, so build a stable key from the fields that identify it.
+    $id = hash('sha256', $m['number'] . '|' . $m['received_at'] . '|' . $m['source'] . '|' . $m['message']);
+
+    if (isset($seen[$id])) { continue; }
+    $seen[$id] = time();
+
+    if (! $firstRun) {
+        sendTelegram("SMS on {$m['number']}\nFrom: {$m['source']}\n\n{$m['message']}");
+    }
+}
+
+// Forget anything older than two days so the file does not grow without limit.
+$seen = array_filter($seen, fn ($t) => $t > time() - 172800);
+file_put_contents($state, json_encode($seen), LOCK_EX);
+
+One difference to watch if you ever use both routes: the timestamp from this endpoint looks like 2026-08-11 09:14:22 with no time zone, while the webhook sends 2026-08-11T09:14:22+00:00. Parse them separately, or comparing the two will bite you.
+
+Troubleshooting
+WHEN NOTHING ARRIVES
+
+Before you change anything, wait two minutes. Message events are found by a sweep that runs once a minute, so nothing arriving after thirty seconds is normal. Most broken bots are broken because somebody started editing working code at the forty second mark.
+
+WHAT YOU SEE	WHAT IT MEANS
+{"ok":true,"result":[]}	You have not messaged your bot yet, or a previous call already consumed the update. Send it another message and retry.
+chat not found	Wrong chat id, or you never pressed Start on the bot.
+bot was blocked by the user	You blocked your own bot while testing. Unblock it in Telegram.
+can't parse entities	You switched on a parse mode and the message text contains a character it read as markup. Leave parse mode unset.
+401 UNAUTHORIZED	API key missing, wrong, or you left off the word Bearer.
+429 RATE_LIMIT_EXCEEDED	More than five requests in a minute. Read retry_after from the body and wait. Check you are not running two copies.
+Your signature never matches	You hashed a re encoded object instead of the raw bytes. See the warning in Verify the signature.
+Empty data from the API	No parameters means today only. Pass start_date.
+The same message twice	A retry after your server answered slowly, or your seen list is not being saved to disk.
+It worked, then went quiet	Twenty consecutive failures disables the endpoint. Check the failure count on the Webhooks page and switch delivery back on.
+ISOLATE WHICH LEG IS BROKEN
+
+Three commands, in this order. The first one that fails is where the problem is.
+
+Copy
+# 1. Can you reach Telegram at all
+curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" -d "chat_id=$TG_CHAT" -d "text=test"
+
+# 2. Does your API key work
+curl -s -H "Authorization: Bearer $PANEL_API_KEY" "https://augestel.com/api/v1/iprn/messages?start_date=2026-01-01&per_page=1"
+
+# 3. Is your own receiver reachable from outside (expect 401, which means it is alive)
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://your-server.example/webhook -d '{}'
+Before you call it done
+CHECKLIST
+Bot token, API key and signing secret live in environment variables, not in your code and not in git. A key in a public repository is a live credential.
+Your receiver answers 401 to anything whose signature does not verify, before doing anything else with it.
+You compared the signature with hash_equals or compare_digest, not with a plain equals.
+Your endpoint replies in well under five seconds, with the slow work happening afterwards.
+Your list of already sent messages survives a restart.
+Your script is started by cron or a service manager, so it comes back after a reboot.
+You are not writing full codes into a log file other people can read.
+You created your own bot and never touched ours.
+Webhooks settings
+SMS API reference
+
+© 2026 AugesTel. All rights reserved.
+
+SWITCHFY v3.0.0
