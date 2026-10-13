@@ -216,7 +216,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             cached = _NUMBERS_CACHE[cache_key]
             try:
                 cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-                if (now_ts - cached_dt).total_seconds() < 300:
+                if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0):
                     return cached
             except Exception:
                 pass
@@ -225,7 +225,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             try:
                 with open(disk_cache_path, "r", encoding="utf-8") as f:
                     disk_data = json.load(f)
-                    if disk_data.get("numbers") is not None:
+                    if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0):
                         _NUMBERS_CACHE[cache_key] = disk_data
                         return disk_data
             except Exception:
@@ -236,41 +236,13 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
 
         try:
             client = AugestelClient(api_key=api_key, email=email)
-            res_first = client.get_numbers(page=1, per_page=100)
-            total_portal = res_first.get("pagination", {}).get("total", 0) if res_first.get("success") else 0
-            num_list = []
-            if res_first.get("success"):
-                for item in res_first.get("data", []):
-                    rate_val = item.get("a2p_rate", 0.0)
-                    num_list.append({
-                        "Number": str(item.get("number", "")).strip(),
-                        "range": item.get("range_name", "Augestel"),
-                        "A2P": f"${rate_val:.4f}" if isinstance(rate_val, (int, float)) else str(rate_val),
-                        "limit_a2p": item.get("portal_limit_a2p", 0),
-                    })
-
-                # Paging jika force_refresh dan ada lebih dari 1 halaman
-                last_page = res_first.get("pagination", {}).get("last_page", 1)
-                if force_refresh and last_page > 1:
-                    for p in range(2, min(last_page + 1, 10)):
-                        time.sleep(13)
-                        r_next = client.get_numbers(page=p, per_page=100)
-                        if r_next.get("success"):
-                            for item in r_next.get("data", []):
-                                rate_val = item.get("a2p_rate", 0.0)
-                                num_list.append({
-                                    "Number": str(item.get("number", "")).strip(),
-                                    "range": item.get("range_name", "Augestel"),
-                                    "A2P": f"${rate_val:.4f}" if isinstance(rate_val, (int, float)) else str(rate_val),
-                                    "limit_a2p": item.get("portal_limit_a2p", 0),
-                                })
-
+            raw_list = client.get_all_numbers_list(max_records=max_rows)
             formatted_numbers = []
-            for idx, item in enumerate(num_list, 1):
+            for idx, item in enumerate(raw_list, 1):
                 formatted_numbers.append({
                     "id": str(idx),
                     "number": item.get("Number", ""),
-                    "range": item.get("range", ""),
+                    "range": item.get("range", "Augestel"),
                     "rate": item.get("A2P", "$0.00"),
                     "limit_range": str(item.get("limit_a2p", 10000)),
                     "sid_limit": "-",
@@ -283,7 +255,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
                 "success": True,
                 "account_index": f"aug_{target_idx}",
                 "email": f"Augestel #{target_idx} ({email})",
-                "total": total_portal or len(formatted_numbers),
+                "total": len(formatted_numbers),
                 "count": len(formatted_numbers),
                 "numbers": formatted_numbers,
                 "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
@@ -305,7 +277,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         cached = _NUMBERS_CACHE[cache_key]
         try:
             cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-            if (now_ts - cached_dt).total_seconds() < 300:
+            if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0) and cached.get("total", 0) > 100:
                 return cached
         except Exception:
             pass
@@ -314,7 +286,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         try:
             with open(disk_cache_path, "r", encoding="utf-8") as f:
                 disk_data = json.load(f)
-                if disk_data.get("numbers") is not None:
+                if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0) and disk_data.get("total", 0) > 100:
                     _NUMBERS_CACHE[cache_key] = disk_data
                     return disk_data
         except Exception:
@@ -335,17 +307,18 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             if sub_res.get("success"):
                 sub_nums = sub_res.get("numbers", [])
                 sub_tot = sub_res.get("total", len(sub_nums))
-                total_portal_sum += sub_tot
-                for item in sub_nums:
-                    item_copy = dict(item)
-                    item_copy["account_index"] = f"aug_{i}"
-                    item_copy["account_email"] = em
-                    all_combined.append(item_copy)
-                breakdown.append({
-                    "account_index": i,
-                    "email": em,
-                    "total": sub_tot
-                })
+                if sub_tot > 0 or len(sub_nums) > 0:
+                    total_portal_sum += sub_tot
+                    for item in sub_nums:
+                        item_copy = dict(item)
+                        item_copy["account_index"] = f"aug_{i}"
+                        item_copy["account_email"] = em
+                        all_combined.append(item_copy)
+                    breakdown.append({
+                        "account_index": i,
+                        "email": em,
+                        "total": sub_tot
+                    })
         except Exception as e:
             logger.error(f"Error fetching Augestel #{i}: {e}")
 
@@ -355,7 +328,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     result = {
         "success": True,
         "account_index": "augestel_all",
-        "email": f"Semua Akun Augestel ({len(breakdown)} Akun)",
+        "email": f"Semua Akun Augestel ({len(breakdown)} Akun Aktif)",
         "total": total_portal_sum or len(all_combined),
         "count": len(all_combined),
         "numbers": all_combined,
