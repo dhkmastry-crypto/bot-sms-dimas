@@ -1956,6 +1956,7 @@ async function loadAugestelAccountsList() {
                 </div>
             `;
         }).join('');
+        checkWebhookStatusLive();
     } catch (e) {
         container.innerHTML = `<div class="text-danger" style="padding: 10px;">Gagal memuat akun: ${e.message}</div>`;
     }
@@ -2214,6 +2215,83 @@ async function setupAllAugestelWebhooks() {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = originalText || '<i class="fas fa-satellite-dish"></i> Pasang Webhook (Bypass Limit 429)';
+        }
+    }
+}
+
+function copyWebhookUrl() {
+    const input = document.getElementById('webhookUrlDisplay');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+        showToast('URL Webhook berhasil disalin ke clipboard!', 'success');
+    }).catch(() => {
+        input.select();
+        document.execCommand('copy');
+        showToast('URL Webhook berhasil disalin!', 'success');
+    });
+}
+
+async function checkWebhookStatusLive() {
+    const btn = document.getElementById('btnCheckWebhookLive');
+    if (btn) btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+    try {
+        const res = await fetch('/api/augestel/webhooks/status');
+        const data = await res.json();
+        if (data.success) {
+            const countEl = document.getElementById('whTotalCount');
+            const timeEl = document.getElementById('whLastTime');
+            const badgeEl = document.getElementById('webhookStatusBadge');
+            if (countEl) countEl.innerText = `${data.total_received} OTP`;
+            if (timeEl) timeEl.innerText = data.last_received ? `${data.last_received} (${data.last_event || 'event'})` : 'Belum ada';
+            if (badgeEl) badgeEl.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6rem;"></i> 200 OK - AKTIF &amp; LISTENING';
+        }
+    } catch (e) {
+        console.error('Error checking webhook status:', e);
+    } finally {
+        if (btn) btn.innerHTML = '<i class="fas fa-sync-alt"></i> Cek Status';
+    }
+}
+
+async function sendTestWebhookPing() {
+    const btn = document.getElementById('btnTestWebhookPing');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengirim Test...';
+    }
+    showToast('Mengirim simulasi webhook test ke server...', 'info');
+    try {
+        const payload = {
+            event: "message.received",
+            data: {
+                number: "+6281299887766",
+                source: "WhatsApp",
+                message: "Kode verifikasi WhatsApp Anda adalah: 852-149. Jangan bagikan ke siapapun.",
+                rate: 0.0150,
+                status: "delivered",
+                received_at: new Date().toISOString()
+            }
+        };
+        const res = await fetch('/api/augestel/webhook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Augestel-Event': 'message.received'
+            },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('✅ Test Webhook berhasil diterima & dikirim ke grup Telegram!', 'success');
+            setTimeout(checkWebhookStatusLive, 1000);
+        } else {
+            showToast('Gagal mengirim test webhook: ' + (data.message || 'error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error test webhook: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Test Kirim Webhook';
         }
     }
 }
