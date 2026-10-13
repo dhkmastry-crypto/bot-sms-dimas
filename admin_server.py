@@ -1481,7 +1481,11 @@ def api_augestel_auto_add_start():
     batch_count = max(1, min(batch_count, 1000))
     max_add = int(data.get("max_add", 0) or 0)
     delay = int(data.get("delay", 15) or 15)
-    raw_acc = str(data.get("account_index", "1")).strip().lower()
+    raw_acc_val = data.get("account_index", "1")
+    if isinstance(raw_acc_val, list):
+        raw_acc = ",".join(str(x) for x in raw_acc_val)
+    else:
+        raw_acc = str(raw_acc_val).strip().lower()
     workers = int(data.get("workers", 2) or 2)
     workers = max(1, min(workers, 12))
     
@@ -1497,6 +1501,12 @@ def api_augestel_auto_add_start():
     if raw_acc == "all":
         account_arg = "all"
         account_email = f"Semua Akun ({len(accounts_db)} Akun Terdaftar)"
+    elif "," in raw_acc:
+        parts = [p.strip() for p in raw_acc.split(",") if p.strip().isdigit()]
+        if not parts:
+            parts = ["1"]
+        account_arg = ",".join(parts)
+        account_email = f"{len(parts)} Akun Terpilih (" + ", ".join([f"#{p}" for p in parts]) + ")"
     else:
         try:
             acc_num = int(raw_acc)
@@ -1543,6 +1553,11 @@ def api_augestel_auto_add_start():
                     decoded = line.decode("utf-8", errors="replace").strip()
                     if decoded:
                         auto_add_augestel_state["last_message"] = decoded
+
+                        if "Memulai Auto-Add Augestel untuk Akun #" in decoded:
+                            m_acc = re.search(r"Akun #(\d+):?\s*(.*)", decoded)
+                            if m_acc:
+                                auto_add_augestel_state["account_email"] = f"Akun #{m_acc.group(1)} ({m_acc.group(2).strip()})"
                         
                         # Parse stats
                         if "Added=" in decoded:
