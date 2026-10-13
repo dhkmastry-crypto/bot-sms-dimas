@@ -659,7 +659,7 @@ def generate_numbers_txt(numbers_data: list) -> str:
 
 
 async def return_all_augestel_portal(account_idx: int) -> dict:
-    """Melakukan bulk-return-all pada portal Augestel untuk akun terpilih."""
+    """Melakukan bulk-return-all pada portal Augestel untuk akun terpilih via browser session."""
     accs = get_augestel_accounts()
     if not accs or account_idx < 1 or account_idx > len(accs):
         return {"success": False, "message": f"Akun Augestel #{account_idx} tidak ditemukan!"}
@@ -690,12 +690,13 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
         page = context.pages[0] if context.pages else await context.new_page()
 
         try:
-            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=45000)
-            await asyncio.sleep(2)
+            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
+            await asyncio.sleep(1.5)
 
-            # Auto-login jika belum aktif
+            # Auto-login jika sesi expired
             login_input = await page.query_selector("#loginEmail, input[name='email']")
             if login_input:
+                logger.info(f"🔑 Session expired untuk Akun #{account_idx}, mencoba auto-login...")
                 await page.fill("#loginEmail, input[name='email']", email)
                 await page.fill("#loginPassword, input[name='password']", pwd)
                 btn = await page.query_selector("#loginSubmit, button[type='submit']")
@@ -703,24 +704,44 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                     await btn.click()
                 await asyncio.sleep(3)
                 await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
+                await asyncio.sleep(1.5)
 
-            res = await page.evaluate('''async () => {
-                try {
-                    const cfg = window.__cfg_clients_dashboard_numbers_3 || {};
-                    const url = cfg.k6 || 'https://augestel.com/Switchfy/client/numbers/bulk-return-all';
-                    const tokenEl = document.querySelector('meta[name="csrf-token"]') || document.querySelector('input[name="_token"]');
-                    const token = cfg.k7 || (tokenEl ? (tokenEl.content || tokenEl.value) : '');
+            btn = await page.query_selector("#bulkReturnAllBtn")
+            res_message = ""
+            success = False
 
-                    const resp = await window.jQuery.ajax({
-                        url: url,
-                        type: 'POST',
-                        data: { _token: token }
-                    });
-                    return { ok: true, data: resp };
-                } catch(e) {
-                    return { ok: false, status: e.status, message: e.responseJSON?.message || e.statusText };
-                }
-            }''')
+            if btn and await btn.is_visible():
+                await btn.click()
+                try:
+                    confirm_btn = await page.wait_for_selector("button.swal2-confirm", timeout=5000)
+                except Exception:
+                    confirm_btn = None
+
+                if confirm_btn and await confirm_btn.is_visible():
+                    try:
+                        async with page.expect_response(lambda r: "bulk-return" in r.url, timeout=25000) as resp_info:
+                            await confirm_btn.click()
+                        resp = await resp_info.value
+                        try:
+                            resp_json = await resp.json()
+                            success = resp_json.get("success", resp.status == 200)
+                            res_message = resp_json.get("message", "Semua nomor berhasil dikembalikan!")
+                        except Exception:
+                            res_text = await resp.text()
+                            success = resp.status == 200
+                            res_message = res_text[:150]
+                    except Exception as e_resp:
+                        res_message = f"Timeout respon portal return all: {e_resp}"
+                else:
+                    res_message = "Tombol konfirmasi Swal tidak muncul."
+            else:
+                # Cek jika tabel kosong
+                empty_el = await page.query_selector(".dataTables_empty")
+                if empty_el:
+                    success = True
+                    res_message = "Tidak ada nomor aktif pada akun ini (tabel kosong)."
+                else:
+                    res_message = "Tombol '#bulkReturnAllBtn' tidak ditemukan di halaman."
 
             await context.close()
 
@@ -740,66 +761,26 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                 except Exception:
                     pass
 
-            if res.get("ok"):
-                msg = res.get("data", {}).get("message", "Semua nomor berhasil dikembalikan ke sistem!")
-                return {"success": True, "message": f"Berhasil return/hapus semua nomor pada Akun Augestel #{account_idx} ({email}): {msg}"}
+            if success:
+                return {"success": True, "message": f"Berhasil return/hapus nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
             else:
-                return {"success": False, "message": f"Gagal return nomor Augestel: {res.get('message')}"}
+                return {"success": False, "message": f"Gagal return nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
 
         except Exception as e:
             try:
                 await context.close()
             except Exception:
                 pass
-            return {"success": False, "message": f"Error eksekusi return all Augestel: {e}"}
+            return {"success": False, "message": f"Error eksekusi return all Augestel #{account_idx}: {e}"}
 
 
-async def delete_all_account_numbers(account_index=1) -> dict:
-    """
-    Menghapus/mengembalikan semua nomor ke sistem (Return All Numbers).
-    Mendukung akun IVASMS (via /portal/numbers/return/allnumber/bluck)
-    dan Augestel (via /Switchfy/client/numbers/bulk-return-all).
-    """
-    acc_str = str(account_index).strip().lower()
-
-    if acc_str.startswith("aug"):
-        aug_accounts = get_augestel_accounts()
-        if not aug_accounts:
-            return {"success": False, "message": "Tidak ada akun Augestel terdaftar!"}
-
-        if "all" in acc_str:
-            # Hapus semua akun Augestel
-            succ = 0
-            for i in range(1, len(aug_accounts) + 1):
-                r = await return_all_augestel_portal(i)
-                if r.get("success"):
-                    succ += 1
-            return {
-                "success": succ > 0,
-                "message": f"Selesai return all nomor untuk {succ}/{len(aug_accounts)} akun Augestel!"
-            }
-        else:
-            # Single account
-            clean_idx = re.sub(r"[^\d]", "", acc_str)
-            target_idx = int(clean_idx) if clean_idx else 1
-            return await return_all_augestel_portal(target_idx)
-
-    try:
-        acc_idx = int(account_index)
-    except Exception:
-        acc_idx = 1
-
-    accounts = get_accounts()
-    if not accounts or acc_idx < 1 or acc_idx > len(accounts):
-        return {"success": False, "message": f"Akun #{acc_idx} tidak ditemukan!"}
-
-    acc = accounts[acc_idx - 1]
+async def _delete_ivasms_single_account(acc_idx: int, acc: dict) -> dict:
+    """Helper eksekusi delete all numbers untuk 1 akun IVASMS."""
     email = acc.get("email", "")
     password = acc.get("password", "")
-
     user_data_dir = os.path.abspath("browser_profile") if acc_idx == 1 else os.path.abspath(f"browser_profile_acc{acc_idx}")
 
-    logger.info(f"🗑️ Menjalankan Delete All Numbers untuk Akun #{acc_idx} ({email})...")
+    logger.info(f"🗑️ Menjalankan Delete All Numbers untuk Akun IVASMS #{acc_idx} ({email})...")
 
     async with async_playwright() as p:
         try:
@@ -874,3 +855,95 @@ async def delete_all_account_numbers(account_index=1) -> dict:
             except Exception:
                 pass
             return {"success": False, "message": f"Error eksekusi return all: {e}"}
+
+
+async def delete_all_account_numbers(account_index=1) -> dict:
+    """
+    Menghapus/mengembalikan semua nomor ke sistem (Return All Numbers).
+    Mendukung akun IVASMS (via /portal/numbers/return/allnumber/bluck)
+    dan Augestel (via /Switchfy/client/numbers/bulk-return-all).
+    """
+    acc_str = str(account_index).strip().lower()
+
+    if acc_str.startswith("aug"):
+        aug_accounts = get_augestel_accounts()
+        if not aug_accounts:
+            return {"success": False, "message": "Tidak ada akun Augestel terdaftar!"}
+
+        if "all" in acc_str:
+            # Hapus semua akun Augestel secara paralel terkontrol (Semaphore 2)
+            sem = asyncio.Semaphore(2)
+
+            async def _worker(idx):
+                async with sem:
+                    return await return_all_augestel_portal(idx)
+
+            tasks = [_worker(i) for i in range(1, len(aug_accounts) + 1)]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            succ = 0
+            details = []
+            for i, r in enumerate(results, 1):
+                if isinstance(r, dict) and r.get("success"):
+                    succ += 1
+                    details.append(f"Akun #{i}: OK")
+                elif isinstance(r, dict):
+                    details.append(f"Akun #{i}: {r.get('message', 'Gagal')}")
+                else:
+                    details.append(f"Akun #{i}: Error")
+
+            # Pastikan semua cache Augestel dibersihkan
+            _NUMBERS_CACHE.clear()
+            for i in range(1, len(aug_accounts) + 1):
+                f_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+                if os.path.exists(f_path):
+                    try:
+                        os.remove(f_path)
+                    except Exception:
+                        pass
+            all_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+            if os.path.exists(all_path):
+                try:
+                    os.remove(all_path)
+                except Exception:
+                    pass
+
+            return {
+                "success": succ > 0,
+                "message": f"Selesai return all nomor untuk {succ}/{len(aug_accounts)} akun Augestel! ({', '.join(details)})"
+            }
+        else:
+            # Single account
+            clean_idx = re.sub(r"[^\d]", "", acc_str)
+            target_idx = int(clean_idx) if clean_idx else 1
+            return await return_all_augestel_portal(target_idx)
+
+    # IVASMS accounts
+    accounts = get_accounts()
+    if not accounts:
+        return {"success": False, "message": "Tidak ada akun IVASMS terdaftar!"}
+
+    if acc_str == "all":
+        succ = 0
+        details = []
+        for i in range(1, len(accounts) + 1):
+            r = await _delete_ivasms_single_account(i, accounts[i - 1])
+            if r.get("success"):
+                succ += 1
+                details.append(f"Akun #{i}: OK")
+            else:
+                details.append(f"Akun #{i}: {r.get('message', 'Gagal')}")
+        return {
+            "success": succ > 0,
+            "message": f"Selesai hapus nomor untuk {succ}/{len(accounts)} akun IVASMS! ({', '.join(details)})"
+        }
+
+    try:
+        acc_idx = int(account_index)
+    except Exception:
+        acc_idx = 1
+
+    if acc_idx < 1 or acc_idx > len(accounts):
+        return {"success": False, "message": f"Akun #{acc_idx} tidak ditemukan!"}
+
+    return await _delete_ivasms_single_account(acc_idx, accounts[acc_idx - 1])
