@@ -1391,6 +1391,23 @@ def api_augestel_accounts_delete():
     return jsonify({"success": False, "message": "Akun Augestel tidak ditemukan."})
 
 
+@app.route("/api/augestel/batch-login", methods=["POST"])
+@login_required
+def api_augestel_batch_login():
+    """Trigger background batch login for all Augestel accounts"""
+    try:
+        subprocess.Popen(
+            [sys.executable, "batch_login_augestel.py"],
+            cwd=os.path.dirname(__file__),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        return jsonify({"success": True, "message": "Proses batch login & warmup untuk semua akun Augestel telah dimulai di background!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal memulai batch login: {e}"})
+
+
 @app.route("/api/augestel/check", methods=["POST"])
 @login_required
 def api_augestel_check():

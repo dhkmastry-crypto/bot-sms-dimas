@@ -478,9 +478,12 @@
 
                     <!-- Daftar Akun Augestel Terdaftar -->
                     <div class="card">
-                        <div class="card-header" style="justify-content: space-between;">
+                        <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                             <h2><i class="fas fa-list-check"></i> Daftar Akun Augestel Terdaftar</h2>
-                            <button class="btn-sm" onclick="loadAugestelAccountsList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-sm" id="btnBatchLoginAug" onclick="runBatchLoginAugestel()" style="background: linear-gradient(135deg, #0284c7, #0ea5e9); color: white;"><i class="fas fa-bolt"></i> Login & Warmup Semua Akun</button>
+                                <button class="btn-sm" onclick="loadAugestelAccountsList()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="account-cards-list" id="augAccountsListContainer" style="display: flex; flex-direction: column; gap: 14px;">
