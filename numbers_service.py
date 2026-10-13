@@ -46,6 +46,28 @@ def get_accounts():
     return accounts
 
 
+def get_augestel_accounts():
+    """Ambil daftar akun Augestel terdaftar."""
+    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    if not accounts:
+        cfg = getattr(config, "__dict__", {})
+        if cfg.get("AUGESTEL_EMAIL"):
+            accounts.append({
+                "email": cfg.get("AUGESTEL_EMAIL", "saputradimas0878@gmail.com"),
+                "api_key": cfg.get("AUGESTEL_API_KEY", "")
+            })
+
+    return accounts
+
+
 async def auto_login_if_needed(page, email: str, password: str) -> bool:
     """Auto-login jika terlempar ke halaman /login."""
     if "/login" not in page.url:
