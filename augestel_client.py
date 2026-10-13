@@ -158,17 +158,30 @@ class AugestelClient:
         return len(all_sms)
 
     def get_numbers(self, page: int = 1, per_page: int = 100) -> dict:
-        """Ambil daftar nomor aktif dari Augestel."""
-        try:
-            url = f"{self.base_url}/numbers"
-            params = {"page": page, "per_page": min(per_page, 100)}
-            r = self.session.get(url, params=params, timeout=15)
-            if r.status_code == 200:
-                return r.json()
-            return {"success": False, "message": f"HTTP {r.status_code}"}
-        except Exception as e:
-            logger.error(f"Error fetching Augestel numbers: {e}")
-            return {"success": False, "message": str(e)}
+        """Ambil daftar nomor aktif dari Augestel dengan auto-retry jika 429."""
+        url = f"{self.base_url}/numbers"
+        params = {"page": page, "per_page": min(per_page, 100)}
+        for attempt in range(4):
+            try:
+                r = self.session.get(url, params=params, timeout=15)
+                if r.status_code == 200:
+                    return r.json()
+                elif r.status_code == 429:
+                    retry_sec = 13
+                    try:
+                        hdr = r.headers.get("Retry-After")
+                        if hdr and hdr.isdigit():
+                            retry_sec = max(int(hdr), 13)
+                    except Exception:
+                        pass
+                    logger.info(f"Augestel API rate limited (429). Menunggu {retry_sec} detik...")
+                    time.sleep(retry_sec)
+                    continue
+                return {"success": False, "message": f"HTTP {r.status_code}"}
+            except Exception as e:
+                logger.error(f"Error fetching Augestel numbers: {e}")
+                return {"success": False, "message": str(e)}
+        return {"success": False, "message": "Rate limited after retries"}
 
     def get_all_numbers_list(self, max_records: int = 50000) -> list:
         """Ambil seluruh daftar nomor Augestel dengan auto-paging hingga tuntas (tanpa batas 200)."""
@@ -178,12 +191,7 @@ class AugestelClient:
         while len(all_numbers) < max_records:
             res = self.get_numbers(page=page, per_page=per_page)
             if not res.get("success"):
-                # Jika terkena rate limit, tunggu dan coba lagi
-                if "429" in str(res.get("message", "")):
-                    time.sleep(12)
-                    res = self.get_numbers(page=page, per_page=per_page)
-                if not res.get("success"):
-                    break
+                break
             items = res.get("data", [])
             if not items:
                 break
@@ -206,9 +214,10 @@ class AugestelClient:
             if page >= last_page:
                 break
             page += 1
-            time.sleep(1.2)  # Delay aman agar tidak rate limited
+            time.sleep(13)  # Jeda 13 detik antar halaman untuk mematuhi limit 5 request/menit
 
         return all_numbers
+
 
     def get_statistics(self) -> dict:
         """Ambil ringkasan statistik dan earning dari Augestel."""
