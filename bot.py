@@ -658,11 +658,11 @@ async def poll_otp_augestel_multi(bot: Bot, clients_with_idx: list, chat_id: str
                     logger.error(f"❌ [Augestel #{account_idx}] Polling error: {e}")
                     update_bot_status(augestel_ok=False)
 
-                # Jeda aman antar akun (4.0 detik) agar tidak memicu Cloudflare 1015
-                await asyncio.sleep(4.0)
+                # Jeda aman antar akun (6.0 detik) agar tidak memicu Cloudflare 1015
+                await asyncio.sleep(6.0)
 
-            # Jeda antar putaran penuh seluruh akun (6.0 detik)
-            await asyncio.sleep(6.0)
+            # Jeda antar putaran penuh seluruh akun (15.0 detik)
+            await asyncio.sleep(15.0)
 
         except Exception as loop_err:
             logger.error(f"❌ [Augestel Poller] Unexpected loop error: {loop_err}")
