@@ -52,6 +52,19 @@ from config import (
 )
 
 try:
+    from config import (
+        AUGESTEL_ENABLED,
+        AUGESTEL_URL,
+        AUGESTEL_API_KEY,
+        AUGESTEL_EMAIL,
+    )
+except ImportError:
+    AUGESTEL_ENABLED = False
+    AUGESTEL_URL = "https://augestel.com/api/v1/iprn"
+    AUGESTEL_API_KEY = ""
+    AUGESTEL_EMAIL = ""
+
+try:
     from config import COOKIES_2, IVASMS_EMAIL_2, IVASMS_PASSWORD_2
 except ImportError:
     COOKIES_2 = {}
@@ -66,6 +79,7 @@ except ImportError:
     SENSOR_TEXT = "••••"
 from ivasms_scraper import IVASMSClient
 from elite_sms_client import EliteSMSClient
+from augestel_client import AugestelClient
 from cookie_sync import get_fresh_cookies_from_browser
 
 # ────────────────────────────────────────────
@@ -290,8 +304,8 @@ stats = StatsTracker()
 
 bot_accounts_status = {}
 
-def update_bot_status(ivasms_ok: bool = None, elite_ok: bool = None, accounts_status: list = None, acc_idx: int = None, acc_connected: bool = None):
-    """Simpan status bot & setiap akun IVASMS real-time ke status.json agar dashboard web sinkron 100%."""
+def update_bot_status(ivasms_ok: bool = None, elite_ok: bool = None, augestel_ok: bool = None, accounts_status: list = None, acc_idx: int = None, acc_connected: bool = None):
+    """Simpan status bot & setiap akun IVASMS & Augestel real-time ke status.json agar dashboard web sinkron 100%."""
     global bot_accounts_status
     try:
         status_file = os.path.join(os.path.dirname(__file__), "status.json")
@@ -309,6 +323,8 @@ def update_bot_status(ivasms_ok: bool = None, elite_ok: bool = None, accounts_st
             data["ivasms_connected"] = bool(ivasms_ok)
         if elite_ok is not None:
             data["elite_connected"] = bool(elite_ok)
+        if augestel_ok is not None:
+            data["augestel_connected"] = bool(augestel_ok)
 
         # Update status per akun
         if accounts_status is not None:
