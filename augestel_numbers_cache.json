@@ -2,7 +2,7 @@
   "success": true,
   "account_index": "augestel_all",
   "email": "Semua Akun Augestel (7 Akun Aktif)",
-  "total": 1500,
+  "total": 2750,
   "count": 1500,
   "numbers": [
     {
@@ -16510,7 +16510,7 @@
     {
       "account_index": 1,
       "email": "saputradimas0878@gmail.com",
-      "total": 1250
+      "total": 2500
     },
     {
       "account_index": 2,
@@ -16543,5 +16543,5 @@
       "total": 0
     }
   ],
-  "cached_at": "2026-10-14 06:33:48"
+  "cached_at": "2026-10-14 06:39:20"
 }
