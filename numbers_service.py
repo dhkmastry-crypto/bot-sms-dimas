@@ -162,10 +162,57 @@ async def fetch_all_accounts_numbers(force_refresh: bool = False, max_rows: int 
 
 async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, max_rows: int = 5000) -> dict:
     """
-    Fetch semua nomor dari https://www.ivasms.com/portal/numbers untuk akun tertentu atau 'all' untuk semua akun.
+    Fetch semua nomor dari https://www.ivasms.com/portal/numbers untuk akun tertentu,
+    atau 'all' untuk semua akun IVASMS, atau 'augestel' untuk portal Augestel (500 nomor).
     """
-    if str(account_index).strip().lower() == "all":
+    acc_str = str(account_index).strip().lower()
+    if acc_str == "all":
         return await fetch_all_accounts_numbers(force_refresh=force_refresh, max_rows=max_rows)
+
+    if acc_str == "augestel":
+        cache_key = "augestel_numbers"
+        now_ts = datetime.now()
+        if not force_refresh and cache_key in _NUMBERS_CACHE:
+            cached = _NUMBERS_CACHE[cache_key]
+            cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
+            if (now_ts - cached_dt).total_seconds() < 120:
+                return cached
+
+        try:
+            from augestel_client import AugestelClient
+            aug_key = getattr(config, "AUGESTEL_API_KEY", "")
+            aug_url = getattr(config, "AUGESTEL_URL", "https://augestel.com/api/v1/iprn")
+            aug_email = getattr(config, "AUGESTEL_EMAIL", "saputradimas0878@gmail.com")
+            client = AugestelClient(api_key=aug_key, base_url=aug_url, email=aug_email)
+            num_list = client.get_all_numbers_list(max_records=max_rows)
+            formatted_numbers = []
+            for idx, item in enumerate(num_list, 1):
+                formatted_numbers.append({
+                    "id": str(idx),
+                    "number": item.get("Number", ""),
+                    "range": item.get("range", ""),
+                    "rate": item.get("A2P", "$0.00"),
+                    "limit_range": str(item.get("limit_a2p", 10000)),
+                    "sid_limit": "-",
+                    "sid_did_limit": "-",
+                    "account_index": "augestel",
+                    "account_email": aug_email,
+                })
+
+            result = {
+                "success": True,
+                "account_index": "augestel",
+                "email": f"Augestel ({aug_email})",
+                "total": len(formatted_numbers),
+                "count": len(formatted_numbers),
+                "numbers": formatted_numbers,
+                "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
+            }
+            _NUMBERS_CACHE[cache_key] = result
+            return result
+        except Exception as e:
+            logger.error(f"Error fetching Augestel numbers: {e}")
+            return {"success": False, "message": f"Gagal fetch Augestel: {e}"}
 
     try:
         account_index = int(account_index)
