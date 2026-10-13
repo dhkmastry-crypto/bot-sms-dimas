@@ -57,7 +57,11 @@
             </a>
             <a href="/numbers" class="nav-item {% if page == 'numbers' %}active{% endif %}" data-page="numbers">
                 <i class="fas fa-phone-alt"></i>
-                <span>My Numbers (Export)</span>
+                <span>My Numbers IVASMS</span>
+            </a>
+            <a href="/numbers-augestel" class="nav-item {% if page == 'numbers-augestel' %}active{% endif %}" data-page="numbers-augestel">
+                <i class="fas fa-satellite-dish" style="color: #a78bfa;"></i>
+                <span>My Numbers Augestel</span>
             </a>
             <a href="/bot-control" class="nav-item {% if page == 'bot-control' %}active{% endif %}" data-page="bot-control">
                 <i class="fas fa-gamepad"></i>
@@ -101,7 +105,8 @@
                     {% elif page == 'augestel-accounts' %}Kelola Akun Augestel
                     {% elif page == 'auto-add' %}Auto-Add Numbers (IVASMS)
                     {% elif page == 'auto-add-augestel' %}Auto-Add Numbers (Augestel)
-                    {% elif page == 'numbers' %}My Numbers & Export
+                    {% elif page == 'numbers' %}My Numbers IVASMS (Export)
+                    {% elif page == 'numbers-augestel' %}My Numbers Augestel (Export)
                     {% elif page == 'bot-control' %}Bot Control
                     {% elif page == 'settings' %}Settings
                     {% endif %}
@@ -670,7 +675,7 @@
             </div>
 
             {% elif page == 'numbers' %}
-            <!-- ═══════════════ MY NUMBERS & EXPORT ═══════════════ -->
+            <!-- ═══════════════ MY NUMBERS IVASMS (EXPORT) ═══════════════ -->
             <div class="page-content" id="numbersPage">
                 <!-- Top Action Header & Stats -->
                 <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px;">
@@ -704,9 +709,9 @@
                 <div class="card">
                     <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
                         <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                            <h2><i class="fas fa-list-ol" style="color: var(--accent-light);"></i> Daftar Nomor (My Numbers)</h2>
+                            <h2><i class="fas fa-list-ol" style="color: var(--accent-light);"></i> Daftar Nomor IVASMS (My Numbers)</h2>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun:</label>
+                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun IVASMS:</label>
                                 <select id="numAccountSelect" class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: auto; min-width: 200px;" onchange="loadNumbersData(false)">
                                     <option value="1">Akun #1 (Loading...)</option>
                                 </select>
@@ -763,6 +768,108 @@
                                     <tr>
                                         <td colspan="8" class="text-center" style="padding: 30px;">
                                             <i class="fas fa-circle-notch fa-spin"></i> Sedang mendeteksi nomor dari ivasms.com...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% elif page == 'numbers-augestel' %}
+            <!-- ═══════════════ MY NUMBERS AUGESTEL (EXPORT) ═══════════════ -->
+            <div class="page-content" id="numbersAugestelPage">
+                <!-- Top Action Header & Stats -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px;">
+                    <div class="stat-card" style="border-left: 4px solid #8b5cf6;">
+                        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;"><i class="fas fa-satellite-dish"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="augNumStatTotal" style="color: #c4b5fd;">...</span>
+                            <span class="stat-label">Total Nomor di Augestel</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #38bdf8;">
+                        <div class="stat-icon" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;"><i class="fas fa-user-circle"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="augNumStatAccount" style="font-size: 1.15rem; word-break: break-all; color: #bae6fd;">-</span>
+                            <span class="stat-label">Akun Augestel Aktif</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+                        <div class="stat-icon yellow"><i class="fas fa-history"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="augNumStatLastCheck" style="font-size: 1.15rem;">-</span>
+                            <span class="stat-label">Terakhir Diperiksa</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Breakdown per account Augestel -->
+                <div id="augNumAccountsBreakdown" class="accounts-breakdown-grid" style="display: none; margin-bottom: 24px;"></div>
+
+                <!-- Main Numbers Card Augestel -->
+                <div class="card" style="border-top: 3px solid #8b5cf6;">
+                    <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
+                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                            <h2><i class="fas fa-satellite-dish" style="color: #a78bfa;"></i> Daftar Nomor Augestel IPRN</h2>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun Augestel:</label>
+                                <select id="augNumAccountSelect" class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: auto; min-width: 220px;" onchange="loadAugestelNumbersData(false)">
+                                    <option value="augestel_all">Memuat Akun Augestel...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons Augestel -->
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <button class="btn btn-secondary btn-sm" id="btnRefreshAugNumbers" onclick="loadAugestelNumbersData(true)" title="Deteksi / Sync Ulang ke Augestel" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <i class="fas fa-sync-alt"></i> Deteksi Ulang
+                            </button>
+                            <button class="btn btn-sm" id="btnExportAugExcel" onclick="downloadAugestelNumbersExport('excel')" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
+                                <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
+                            </button>
+                            <button class="btn btn-sm" id="btnExportAugTxt" onclick="downloadAugestelNumbersExport('txt')" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: white; border: none; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);">
+                                <i class="fas fa-file-alt"></i> Export TXT (Nomor Saja)
+                            </button>
+                            <button class="btn btn-danger btn-sm" id="btnDeleteAllAugNumbers" onclick="deleteAllAugestelNumbers()" style="box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);" title="Bersihkan dan Reset Cache Nomor Augestel">
+                                <i class="fas fa-trash-alt"></i> Reset Cache Nomor
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Search & Filter Bar -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 260px; max-width: 450px;">
+                                <div class="input-group" style="width: 100%;">
+                                    <input type="text" id="augNumSearchInput" class="form-input" placeholder="Cari nomor, operator, atau akun Augestel..." oninput="filterAugestelNumbersTable()">
+                                    <span class="input-addon"><i class="fas fa-search"></i></span>
+                                </div>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.85rem;" id="augNumCountSummary">
+                                Memuat data nomor Augestel...
+                            </div>
+                        </div>
+
+                        <!-- Table Wrapper -->
+                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+                            <table class="data-table">
+                                <thead style="position: sticky; top: 0; z-index: 10; background: #0e0e22; border-bottom: 2px solid var(--border);">
+                                    <tr>
+                                        <th style="width: 60px; text-align: center;">No</th>
+                                        <th id="thAugAccountCol" style="display: none; text-align: center; width: 140px;">Akun Augestel</th>
+                                        <th>Phone Number</th>
+                                        <th>Range / Operator</th>
+                                        <th>Rates (A2P)</th>
+                                        <th>Limit by Range</th>
+                                        <th>Status / Info</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="augNumbersTableBody">
+                                    <tr>
+                                        <td colspan="7" class="text-center" style="padding: 30px;">
+                                            <i class="fas fa-circle-notch fa-spin" style="color: #8b5cf6;"></i> Memuat data nomor dari Augestel...
                                         </td>
                                     </tr>
                                 </tbody>
