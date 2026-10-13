@@ -245,10 +245,31 @@ class AugestelClient:
         if not email or not password:
             return {"success": False, "message": "Email dan password Augestel wajib diisi!"}
 
-        for attempt in range(3):
+        # Optimasi 1: Cek apakah akun ini sudah pernah memiliki API Key yang valid di config / json
+        try:
+            import json, os
+            acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+            if os.path.exists(acc_file):
+                with open(acc_file, "r", encoding="utf-8") as f:
+                    saved_accs = json.load(f)
+                    for a in saved_accs:
+                        if a.get("email", "").lower() == email.lower() and a.get("api_key"):
+                            # Verifikasi cepat apakah key masih aktif (hanya ~300ms)
+                            test_client = cls(api_key=a["api_key"])
+                            if test_client.check_connection():
+                                return {
+                                    "success": True,
+                                    "api_key": a["api_key"],
+                                    "email": email,
+                                    "message": "API Key valid terverifikasi secara instan!"
+                                }
+        except Exception:
+            pass
+
+        for attempt in range(2):
             try:
-                # 1. Buka halaman login untuk mengambil CSRF token
-                login_page = scraper.get("https://augestel.com/Switchfy", timeout=20)
+                # 1. Buka halaman login untuk mengambil CSRF token (cepat: ~1s)
+                login_page = scraper.get("https://augestel.com/Switchfy", timeout=12)
                 if login_page.status_code != 200:
                     return {"success": False, "message": f"Gagal mengakses portal Augestel (HTTP {login_page.status_code})"}
 
@@ -267,15 +288,15 @@ class AugestelClient:
                     "Referer": "https://augestel.com/Switchfy",
                     "Origin": "https://augestel.com",
                 }
-                login_resp = scraper.post("https://augestel.com/Switchfy/login", data=post_data, headers=headers, timeout=20)
+                login_resp = scraper.post("https://augestel.com/Switchfy/login", data=post_data, headers=headers, timeout=12)
 
-                # Jika terkena Cloudflare rate-limit pada form login
+                # Jika terkena Cloudflare rate-limit pada form login (tunggu minimal tanpa delay berlebih)
                 if login_resp.status_code == 429:
-                    retry_sec = 20
+                    retry_sec = 10
                     try:
                         hdr = login_resp.headers.get("Retry-After")
                         if hdr and hdr.isdigit():
-                            retry_sec = min(int(hdr), 60)
+                            retry_sec = min(int(hdr), 20)
                     except Exception:
                         pass
                     logger.warning(f"Login rate limited (429), menunggu {retry_sec} detik...")
