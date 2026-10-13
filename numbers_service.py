@@ -726,10 +726,16 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                             resp_json = await resp.json()
                             success = resp_json.get("success", resp.status == 200)
                             res_message = resp_json.get("message", "Semua nomor berhasil dikembalikan!")
+                            if "no active numbers" in str(res_message).lower():
+                                success = True
+                                res_message = "Tidak ada nomor aktif yang perlu di-return (akun sudah bersih/kosong)."
                         except Exception:
                             res_text = await resp.text()
                             success = resp.status == 200
                             res_message = res_text[:150]
+                            if "no active numbers" in str(res_message).lower():
+                                success = True
+                                res_message = "Tidak ada nomor aktif yang perlu di-return (akun sudah bersih/kosong)."
                     except Exception as e_resp:
                         res_message = f"Timeout respon portal return all: {e_resp}"
                 else:
