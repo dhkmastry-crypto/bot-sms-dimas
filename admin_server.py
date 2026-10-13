@@ -68,6 +68,25 @@ auto_add_state = {
     "process": None,
 }
 
+# Auto-add Augestel state
+auto_add_augestel_state = {
+    "running": False,
+    "account_index": "1",
+    "account_email": "",
+    "workers": 2,
+    "range_name": "",
+    "max_add": 0,
+    "delay": 15,
+    "added": 0,
+    "failed": 0,
+    "skipped": 0,
+    "total_found": 0,
+    "current_action": 0,
+    "last_message": "",
+    "started_at": None,
+    "process": None,
+}
+
 # IVASMS connection state
 ivasms_status = {
     "connected": False,
@@ -919,6 +938,152 @@ def api_auto_add_stop():
 def api_auto_add_status():
     """Get auto-add status"""
     safe_state = {k: v for k, v in auto_add_state.items() if k != "process"}
+    return jsonify(safe_state)
+
+
+# ────────────────────────────────────────────
+#  API ROUTES - AUTO-ADD AUGESTEL
+# ────────────────────────────────────────────
+
+@app.route("/api/augestel/auto-add/start", methods=["POST"])
+@login_required
+def api_augestel_auto_add_start():
+    """Start auto-add numbers for Augestel"""
+    global auto_add_augestel_state
+    
+    if auto_add_augestel_state["running"]:
+        return jsonify({"success": False, "message": "Auto-add Augestel sudah berjalan!"})
+    
+    data = request.json or {}
+    range_name = data.get("range_name", "").strip()
+    max_add = int(data.get("max_add", 0) or 0)
+    delay = int(data.get("delay", 15) or 15)
+    raw_acc = str(data.get("account_index", "1")).strip().lower()
+    workers = int(data.get("workers", 2) or 2)
+    workers = max(1, min(workers, 12))
+    
+    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    accounts_db = []
+    if os.path.exists(acc_file):
+        try:
+            with open(acc_file, "r", encoding="utf-8") as f:
+                accounts_db = json.load(f)
+        except Exception:
+            pass
+
+    if raw_acc == "all":
+        account_arg = "all"
+        account_email = f"Semua Akun ({len(accounts_db)} Akun Terdaftar)"
+    else:
+        try:
+            acc_num = int(raw_acc)
+        except Exception:
+            acc_num = 1
+        account_arg = str(acc_num)
+        account_email = f"Akun #{acc_num}"
+        if 1 <= acc_num <= len(accounts_db):
+            account_email = accounts_db[acc_num - 1].get("email", account_email)
+    
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers)],
+            cwd=os.path.dirname(__file__),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        
+        auto_add_augestel_state = {
+            "running": True,
+            "account_index": account_arg,
+            "account_email": account_email,
+            "workers": workers,
+            "range_name": range_name,
+            "max_add": max_add,
+            "delay": delay,
+            "added": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total_found": 0,
+            "current_action": 0,
+            "last_message": f"Memulai {workers} worker untuk {account_email}...",
+            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "process": proc,
+        }
+        
+        # Monitor in background thread
+        def monitor_augestel_auto_add():
+            global auto_add_augestel_state
+            try:
+                for line in iter(proc.stdout.readline, b''):
+                    decoded = line.decode("utf-8", errors="replace").strip()
+                    if decoded:
+                        auto_add_augestel_state["last_message"] = decoded
+                        
+                        # Parse stats
+                        if "Added=" in decoded:
+                            m = re.search(r"Added=(\d+).*Failed=(\d+).*Skipped=(\d+)", decoded)
+                            if m:
+                                auto_add_augestel_state["added"] = int(m.group(1))
+                                auto_add_augestel_state["failed"] = int(m.group(2))
+                                auto_add_augestel_state["skipped"] = int(m.group(3))
+                        
+                        if "Action #" in decoded:
+                            m = re.search(r"Action #(\d+)", decoded)
+                            if m:
+                                auto_add_augestel_state["current_action"] = int(m.group(1))
+                        
+                        if "total records" in decoded:
+                            m = re.search(r"(\d+) total records", decoded)
+                            if m:
+                                auto_add_augestel_state["total_found"] = int(m.group(1))
+                
+                proc.wait()
+            except Exception:
+                pass
+            finally:
+                auto_add_augestel_state["running"] = False
+                auto_add_augestel_state["process"] = None
+                if auto_add_augestel_state.get("added", 0) > 0:
+                    try:
+                        from numbers_service import get_all_numbers
+                        get_all_numbers(force_refresh=True, provider="augestel")
+                    except Exception:
+                        pass
+        
+        thread = threading.Thread(target=monitor_augestel_auto_add, daemon=True)
+        thread.start()
+        
+        target_name = range_name if range_name else "Semua Range"
+        return jsonify({"success": True, "message": f"Auto-add Augestel dimulai untuk '{target_name}'!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal: {e}"})
+
+
+@app.route("/api/augestel/auto-add/stop", methods=["POST"])
+@login_required
+def api_augestel_auto_add_stop():
+    """Stop auto-add Augestel"""
+    global auto_add_augestel_state
+    
+    proc = auto_add_augestel_state.get("process")
+    if proc and proc.poll() is None:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
+    
+    auto_add_augestel_state["running"] = False
+    auto_add_augestel_state["process"] = None
+    return jsonify({"success": True, "message": "Auto-add Augestel dihentikan."})
+
+
+@app.route("/api/augestel/auto-add/status")
+@login_required
+def api_augestel_auto_add_status():
+    """Get auto-add Augestel status"""
+    safe_state = {k: v for k, v in auto_add_augestel_state.items() if k != "process"}
     return jsonify(safe_state)
 
 
