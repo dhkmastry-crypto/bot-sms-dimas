@@ -1,0 +1,46 @@
+{
+  "success": true,
+  "account_index": "augestel_all",
+  "email": "Semua Akun Augestel (7 Akun Aktif)",
+  "total": 0,
+  "count": 0,
+  "numbers": [],
+  "accounts_breakdown": [
+    {
+      "account_index": 1,
+      "email": "saputradimas0878@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 2,
+      "email": "Ekiprijipratama03@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 3,
+      "email": "Fikriramdn424@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 4,
+      "email": "dhkmastry@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 5,
+      "email": "mayateng86@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 6,
+      "email": "pakupakuwak@gmail.com",
+      "total": 0
+    },
+    {
+      "account_index": 7,
+      "email": "beras.capakor@gmail.com",
+      "total": 0
+    }
+  ],
+  "cached_at": "2026-10-14 04:40:10"
+}

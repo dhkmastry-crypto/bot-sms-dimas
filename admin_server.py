@@ -876,9 +876,43 @@ def api_bot_status():
                 "last_check": "Status Terpantau (Aktif)"
             })
 
+    # Pastikan status akun Augestel juga disertakan
+    aug_file = os.path.join(BASE_DIR, "augestel_accounts.json")
+    aug_accounts_db = []
+    if os.path.exists(aug_file):
+        try:
+            with open(aug_file, "r", encoding="utf-8") as f:
+                aug_accounts_db = json.load(f)
+        except Exception:
+            pass
+
+    merged_aug_status = []
+    existing_aug = augestel_status.get("accounts", [])
+    if existing_aug:
+        for item in existing_aug:
+            idx = item.get("index", 1)
+            email = item.get("email")
+            if not email and 1 <= idx <= len(aug_accounts_db):
+                email = aug_accounts_db[idx - 1].get("email", "")
+            merged_aug_status.append({
+                **item,
+                "email": email or f"Akun #{idx}"
+            })
+    elif aug_accounts_db:
+        for idx, a in enumerate(aug_accounts_db, start=1):
+            merged_aug_status.append({
+                "index": idx,
+                "email": a.get("email", ""),
+                "connected": bool(a.get("api_key")),
+                "balance": a.get("balance", "0.00"),
+                "last_check": "Status Terpantau (Aktif)" if a.get("api_key") else "Belum ada API Key"
+            })
+
     res = dict(bot_status)
     res["ivasms_status"] = ivasms_status
     res["accounts_status"] = merged_status
+    res["augestel_status"] = augestel_status
+    res["augestel_accounts_status"] = merged_aug_status
     return jsonify(res)
 
 
