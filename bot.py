@@ -594,12 +594,21 @@ async def poll_otp_elite(bot: Bot, client: EliteSMSClient, chat_id: str):
         await asyncio.sleep(POLL_INTERVAL)
 
 
-async def poll_otp_augestel(bot: Bot, client: AugestelClient, chat_id: str):
+async def poll_otp_augestel(bot: Bot, client: AugestelClient, chat_id: str, account_idx: int = 1):
     """Loop polling OTP dari Augestel API (https://augestel.com)."""
-    logger.info("🚀 Augestel polling started")
-    poll_gap = max(12, POLL_INTERVAL)  # Augestel rate limit aman: max 5 req/menit (~12-15s)
+    email_label = getattr(client, "email", f"Akun #{account_idx}")
+    logger.info(f"🚀 Augestel polling started (Akun #{account_idx}: {email_label})")
+    poll_gap = max(14, POLL_INTERVAL)  # 14s agar aman dari rate limit 5 req/menit
     while True:
         try:
+            # Jika sedang dalam masa cooldown rate limit
+            now_t = time.time()
+            limit_until = getattr(client, "rate_limit_until", 0)
+            if limit_until > now_t:
+                wait_time = int(limit_until - now_t) + 1
+                logger.info(f"⏳ [Augestel #{account_idx}] Menunggu cooldown 429 ({wait_time}s)...")
+                await asyncio.sleep(wait_time)
+
             new_sms_list = client.get_new_sms(per_page=100)
             update_bot_status(augestel_ok=True)
             for sms_data in new_sms_list:
@@ -622,18 +631,39 @@ async def poll_otp_augestel(bot: Bot, client: AugestelClient, chat_id: str):
                     stats.record(sms_data)
                     update_bot_status(augestel_ok=True)
                     logger.info(
-                        f"📤 [Augestel] Sent OTP: {sms_data.get('country_code', '??')} | "
+                        f"📤 [Augestel #{account_idx}] Sent OTP: {sms_data.get('country_code', '??')} | "
                         f"{sms_data.get('platform', 'SMS')} | "
                         f"{sms_data.get('otp', 'N/A')}"
                     )
                     await asyncio.sleep(0.5)
                 except Exception as e:
-                    logger.error(f"❌ [Augestel] Failed to send message: {e}")
+                    logger.error(f"❌ [Augestel #{account_idx}] Failed to send message: {e}")
         except Exception as e:
-            logger.error(f"❌ [Augestel] Polling error: {e}")
+            logger.error(f"❌ [Augestel #{account_idx}] Polling error: {e}")
             update_bot_status(augestel_ok=False)
 
         await asyncio.sleep(poll_gap)
+
+
+def load_augestel_accounts() -> list:
+    """Muat semua akun Augestel dari augestel_accounts.json (fallback ke config.py)."""
+    accs_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    if os.path.exists(accs_file):
+        try:
+            with open(accs_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return data
+        except Exception as e:
+            logger.warning(f"Gagal membaca augestel_accounts.json: {e}")
+
+    accs = []
+    if AUGESTEL_API_KEY:
+        accs.append({
+            "email": AUGESTEL_EMAIL or "saputradimas0878@gmail.com",
+            "api_key": AUGESTEL_API_KEY
+        })
+    return accs
 
 
 def load_ivasms_accounts() -> list:
@@ -736,21 +766,27 @@ async def post_init(application: Application):
         except Exception as e_err:
             logger.error(f"❌ Failed to init Elite-SMS client: {e_err}")
 
-    # Inisialisasi Augestel Client (Multi-Provider)
-    if AUGESTEL_ENABLED and AUGESTEL_API_KEY:
-        try:
-            active_augestel_client = AugestelClient(AUGESTEL_API_KEY, AUGESTEL_URL, AUGESTEL_EMAIL)
-            if active_augestel_client.check_connection():
-                logger.info("✅ Augestel connection verified!")
-                update_bot_status(augestel_ok=True)
-            else:
-                logger.warning("⚠️ Augestel connection status not verified, will still poll...")
-            
-            existing_aug = active_augestel_client.mark_initial_as_seen()
-            logger.info(f"📌 [Augestel] Skipping {existing_aug} existing SMS")
-            asyncio.create_task(poll_otp_augestel(application.bot, active_augestel_client, GROUP_CHAT_ID))
-        except Exception as aug_err:
-            logger.error(f"❌ Failed to init Augestel client: {aug_err}")
+    # Inisialisasi Augestel Client (Multi-Provider & Multi-Account)
+    if AUGESTEL_ENABLED:
+        aug_accounts = load_augestel_accounts()
+        logger.info(f"📋 Terdeteksi {len(aug_accounts)} akun Augestel terdaftar.")
+        for a_idx, a_acc in enumerate(aug_accounts, 1):
+            a_key = a_acc.get("api_key", "").strip()
+            a_email = a_acc.get("email", "").strip()
+            if not a_key:
+                continue
+            try:
+                cl = AugestelClient(api_key=a_key, base_url=AUGESTEL_URL, email=a_email)
+                if a_idx == 1:
+                    active_augestel_client = cl
+                    if cl.check_connection():
+                        logger.info(f"✅ Augestel (Akun #{a_idx}: {a_email}) connection verified!")
+                        update_bot_status(augestel_ok=True)
+                existing_aug = cl.mark_initial_as_seen()
+                logger.info(f"📌 [Augestel Akun #{a_idx}: {a_email}] Skipping {existing_aug} existing SMS")
+                asyncio.create_task(poll_otp_augestel(application.bot, cl, GROUP_CHAT_ID, account_idx=a_idx))
+            except Exception as aug_err:
+                logger.error(f"❌ Failed to init Augestel client Akun #{a_idx}: {aug_err}")
 
     # Startup message to Telegram group disabled per user request
     logger.info("Bot startup complete (silent startup mode)")
