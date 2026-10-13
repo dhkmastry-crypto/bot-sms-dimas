@@ -514,3 +514,111 @@ def generate_numbers_txt(numbers_data: list) -> str:
     """Export daftar nomor ke plain text (hanya deretan nomor per baris)."""
     lines = [str(item.get("number", "")).strip() for item in numbers_data if str(item.get("number", "")).strip()]
     return "\n".join(lines)
+
+
+async def delete_all_account_numbers(account_index=1) -> dict:
+    """
+    Menghapus/mengembalikan semua nomor ke sistem (Return All Numbers).
+    Mendukung akun IVASMS (via /portal/numbers/return/allnumber/bluck)
+    dan Augestel (info status / clearing local cache).
+    """
+    acc_str = str(account_index).strip().lower()
+
+    if acc_str == "augestel":
+        # Augestel IPRN nomor di-assign langsung dari sistem provider
+        _NUMBERS_CACHE.pop("augestel_numbers", None)
+        return {
+            "success": True,
+            "message": "Cache nomor Augestel berhasil direset. Di platform Augestel IPRN, nomor aktif dikelola & diexpirasi langsung oleh administrator portal."
+        }
+
+    try:
+        acc_idx = int(account_index)
+    except Exception:
+        acc_idx = 1
+
+    accounts = get_accounts()
+    if not accounts or acc_idx < 1 or acc_idx > len(accounts):
+        return {"success": False, "message": f"Akun #{acc_idx} tidak ditemukan!"}
+
+    acc = accounts[acc_idx - 1]
+    email = acc.get("email", "")
+    password = acc.get("password", "")
+
+    user_data_dir = os.path.abspath("browser_profile") if acc_idx == 1 else os.path.abspath(f"browser_profile_acc{acc_idx}")
+
+    logger.info(f"🗑️ Menjalankan Delete All Numbers untuk Akun #{acc_idx} ({email})...")
+
+    async with async_playwright() as p:
+        try:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                channel="msedge",
+                headless=False,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--window-position=-2000,-2000",
+                ]
+            )
+        except Exception as e:
+            return {"success": False, "message": f"Browser gagal dibuka: {e}"}
+
+        page = context.pages[0] if context.pages else await context.new_page()
+
+        try:
+            await page.goto("https://www.ivasms.com/portal/numbers", wait_until="domcontentloaded", timeout=45000)
+            await wait_cloudflare(page, 25)
+            await auto_login_if_needed(page, email, password)
+
+            if "/portal/numbers" not in page.url:
+                await page.goto("https://www.ivasms.com/portal/numbers", wait_until="domcontentloaded", timeout=45000)
+                await wait_cloudflare(page, 15)
+
+            # Eksekusi return all numbers via API endpoint internal IVASMS
+            res = await page.evaluate("""
+                async () => {
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]') || document.querySelector('input[name="_token"]');
+                        const token = tokenEl ? (tokenEl.content || tokenEl.value) : '';
+                        
+                        const resp = await fetch('https://www.ivasms.com/portal/numbers/return/allnumber/bluck', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': token,
+                                'Accept': 'application/json, text/javascript, */*; q=0.01'
+                            },
+                            body: '_token=' + encodeURIComponent(token)
+                        });
+                        
+                        const status = resp.status;
+                        let json = {};
+                        try { json = await resp.json(); } catch(e) { json = { text: await resp.text() }; }
+                        return { status, success: status >= 200 && status < 300, data: json };
+                    } catch(err) {
+                        return { status: 0, success: false, error: err.message };
+                    }
+                }
+            """)
+
+            await context.close()
+
+            # Bersihkan cache
+            _NUMBERS_CACHE.pop(f"acc_{acc_idx}", None)
+            _NUMBERS_CACHE.pop("all", None)
+
+            if res.get("success"):
+                return {"success": True, "message": f"Berhasil menghapus/return semua nomor pada Akun #{acc_idx} ({email})!"}
+            else:
+                msg = res.get("data", {}).get("message") or res.get("error") or f"HTTP {res.get('status')}"
+                return {"success": False, "message": f"Gagal return nomor: {msg}"}
+
+        except Exception as e:
+            try:
+                await context.close()
+            except Exception:
+                pass
+            return {"success": False, "message": f"Error eksekusi return all: {e}"}
