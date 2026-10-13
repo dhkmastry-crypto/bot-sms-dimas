@@ -171,18 +171,33 @@ async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, 
 
     if acc_str == "augestel":
         cache_key = "augestel_numbers"
+        disk_cache_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
         now_ts = datetime.now()
+
+        # Cek in-memory cache
         if not force_refresh and cache_key in _NUMBERS_CACHE:
             cached = _NUMBERS_CACHE[cache_key]
             cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-            if (now_ts - cached_dt).total_seconds() < 120:
+            if (now_ts - cached_dt).total_seconds() < 300:
                 return cached
+
+        # Cek disk cache jika tidak force refresh
+        if not force_refresh and os.path.exists(disk_cache_path):
+            try:
+                with open(disk_cache_path, "r", encoding="utf-8") as f:
+                    disk_data = json.load(f)
+                    if disk_data.get("numbers"):
+                        _NUMBERS_CACHE[cache_key] = disk_data
+                        return disk_data
+            except Exception:
+                pass
 
         try:
             from augestel_client import AugestelClient
-            aug_key = getattr(config, "AUGESTEL_API_KEY", "")
-            aug_url = getattr(config, "AUGESTEL_URL", "https://augestel.com/api/v1/iprn")
-            aug_email = getattr(config, "AUGESTEL_EMAIL", "saputradimas0878@gmail.com")
+            cfg = getattr(config, "__dict__", {})
+            aug_key = cfg.get("AUGESTEL_API_KEY", "")
+            aug_url = cfg.get("AUGESTEL_URL", "https://augestel.com/api/v1/iprn")
+            aug_email = cfg.get("AUGESTEL_EMAIL", "saputradimas0878@gmail.com")
             client = AugestelClient(api_key=aug_key, base_url=aug_url, email=aug_email)
             num_list = client.get_all_numbers_list(max_records=max_rows)
             formatted_numbers = []
@@ -209,6 +224,12 @@ async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, 
                 "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
             }
             _NUMBERS_CACHE[cache_key] = result
+            # Simpan ke disk cache juga
+            try:
+                with open(disk_cache_path, "w", encoding="utf-8") as f:
+                    json.dump(result, f, indent=2)
+            except Exception:
+                pass
             return result
         except Exception as e:
             logger.error(f"Error fetching Augestel numbers: {e}")
