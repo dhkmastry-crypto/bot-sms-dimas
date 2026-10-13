@@ -1105,8 +1105,9 @@ async function loadBotControl() {
             if (btnStop) btnStop.disabled = true;
         }
 
-        // Render status akun IVASMS dari backend bot status / api accounts
+        // Render status akun IVASMS dan Augestel dari backend bot status / api accounts
         await renderBotControlAccountsStatus(status.accounts_status || null);
+        await renderBotControlAugestelStatus(status.augestel_accounts_status || null);
     } catch (e) {
         console.error('Error fetching bot status:', e);
     }
