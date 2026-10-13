@@ -61,6 +61,15 @@ ELITE_SMS_URL = "https://elite-sms.com/api"
 ELITE_SMS_API_KEY = "d3a3c3c16dd897f09dfa3778a92d04331a33f876"
 
 # ────────────────────────────────────────────
+#  AUGESTEL CONFIG (https://augestel.com)
+# ────────────────────────────────────────────
+AUGESTEL_ENABLED = True
+AUGESTEL_URL = "https://augestel.com/api/v1/iprn"
+AUGESTEL_API_KEY = "sk_live_FacL1Nd9nZLCYUK317e456JPVEZaNnAGlwWXY8fS"
+AUGESTEL_EMAIL = "saputradimas0878@gmail.com"
+
+
+# ────────────────────────────────────────────
 #  COOKIES IVASMS (dari browser)
 # ────────────────────────────────────────────
 
