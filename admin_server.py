@@ -944,6 +944,260 @@ def api_test_otp():
         return jsonify({"success": False, "message": f"Gagal kirim test OTP: {str(e)}"})
 
 
+# ────────────────────────────────────────────
+#  AUGESTEL WEBHOOK RECEIVER (NO RATE LIMIT)
+# ────────────────────────────────────────────
+augestel_webhook_seen_ids = set()
+augestel_webhook_history = []
+augestel_webhook_status = {
+    "url": "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook",
+    "total_received": 0,
+    "last_received": None,
+    "last_event": None,
+    "last_sms": None,
+}
+
+
+@app.route("/api/augestel/webhook", methods=["GET", "POST"])
+def augestel_webhook():
+    """
+    Webhook endpoint untuk menerima event SMS/Numbers secara real-time dari Augestel Switchfy.
+    Menghilangkan limit polling 1 menit sepenuhnya (0 API call consumed).
+    """
+    if request.method == "GET":
+        return jsonify({
+            "status": "active",
+            "service": "Augestel Webhook Receiver",
+            "time": datetime.now().isoformat(),
+            "total_received": augestel_webhook_status["total_received"],
+            "last_received": augestel_webhook_status["last_received"],
+        }), 200
+
+    raw_data = request.get_data()
+    signature = request.headers.get("X-Augestel-Signature", "")
+    event_header = request.headers.get("X-Augestel-Event", "")
+
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        payload = {}
+
+    event_type = payload.get("event") or event_header or "unknown"
+    data = payload.get("data") or {}
+
+    augestel_webhook_status["total_received"] += 1
+    augestel_webhook_status["last_received"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    augestel_webhook_status["last_event"] = event_type
+
+    logger.info(f"📥 [Augestel Webhook] Received event '{event_type}'")
+
+    # SLA Augestel: return HTTP 200 dalam waktu < 5 detik. Kirim Telegram di daemon thread.
+    def dispatch_webhook_event(ev_type, ev_data, full_payload):
+        try:
+            if ev_type == "message.received":
+                phone = str(ev_data.get("number", "")).strip()
+                raw_message = str(ev_data.get("message", "")).strip()
+                source_sender = str(ev_data.get("source", "")).strip()
+                received_at = str(ev_data.get("received_at", "")).strip()
+                rate_val = ev_data.get("rate", 0.0)
+
+                unique_hash = hashlib.sha256(
+                    f"{phone}|{received_at}|{source_sender}|{raw_message}".encode("utf-8")
+                ).hexdigest()[:16]
+                sms_id = f"aug_{unique_hash}"
+
+                if sms_id in augestel_webhook_seen_ids:
+                    logger.info(f"Augestel Webhook: Duplicate SMS skipped ({sms_id})")
+                    return
+
+                augestel_webhook_seen_ids.add(sms_id)
+                if len(augestel_webhook_seen_ids) > 10000:
+                    augestel_webhook_seen_ids.clear()
+
+                from ivasms_scraper import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
+                from bot import format_otp_message, create_keyboard
+                from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
+                from telegram import Bot
+                from telegram.constants import ParseMode
+
+                phone_cc, phone_flag = get_country_from_phone(phone)
+                otp = extract_otp(raw_message)
+                platform, p_emoji = detect_platform(source_sender)
+                if platform == "SMS":
+                    platform, p_emoji = detect_platform(raw_message)
+
+                try:
+                    rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.00"
+                except Exception:
+                    rev_str = "$0.00"
+
+                sms_entry = {
+                    "id": sms_id,
+                    "phone": phone,
+                    "phone_masked": mask_phone_number(phone),
+                    "sender": source_sender or "Augestel",
+                    "message": raw_message,
+                    "otp": otp,
+                    "platform": platform,
+                    "platform_emoji": p_emoji,
+                    "country_code": phone_cc,
+                    "flag": phone_flag,
+                    "timestamp": received_at or datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "revenue": rev_str,
+                    "rate": rate_val,
+                    "range_name": ev_data.get("range_name", "Augestel IPRN"),
+                    "source": "Augestel",
+                }
+
+                augestel_webhook_status["last_sms"] = sms_entry
+
+                msg_text = format_otp_message(sms_entry)
+                keyboard = create_keyboard(sms_entry, FILE_LINK, CHANNEL_LINK, otp_text=otp)
+
+                async def send_tg():
+                    bot = Bot(token=BOT_TOKEN)
+                    return await bot.send_message(
+                        chat_id=GROUP_CHAT_ID,
+                        text=msg_text,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=keyboard,
+                    )
+
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                res = loop.run_until_complete(send_tg())
+                loop.close()
+
+                # Tulis log ke bot.log agar dashboard live-stream & SMS Log langsung terupdate
+                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [Augestel Webhook] Sent OTP: {phone_cc} | {platform} | {otp}\n"
+                log_path = os.path.join(BASE_DIR, "bot.log")
+                try:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(log_line)
+                except Exception:
+                    pass
+
+                logger.info(f"✅ [Augestel Webhook] Forwarded OTP {otp} for {phone} to Telegram (msg_id={res.message_id})")
+
+            elif ev_type in ["number.assigned", "number.removed"]:
+                num = ev_data.get("number")
+                rng = ev_data.get("range_name")
+                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ ℹ️ [Augestel Webhook] {ev_type}: {num} ({rng})\n"
+                log_path = os.path.join(BASE_DIR, "bot.log")
+                try:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(log_line)
+                except Exception:
+                    pass
+
+        except Exception as e:
+            logger.error(f"❌ Error processing Augestel webhook in background: {e}", exc_info=True)
+
+    threading.Thread(target=dispatch_webhook_event, args=(event_type, data, payload), daemon=True).start()
+
+    augestel_webhook_history.insert(0, {
+        "event": event_type,
+        "received_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "data": data,
+        "signature_present": bool(signature),
+    })
+    if len(augestel_webhook_history) > 50:
+        augestel_webhook_history.pop()
+
+    return jsonify({"success": True, "message": "Event received"}), 200
+
+
+@app.route("/api/augestel/webhooks/status")
+@login_required
+def api_augestel_webhooks_status():
+    """Get current status of Augestel webhooks and recent events"""
+    return jsonify({
+        "success": True,
+        "webhook_url": augestel_webhook_status["url"],
+        "total_received": augestel_webhook_status["total_received"],
+        "last_received": augestel_webhook_status["last_received"],
+        "last_event": augestel_webhook_status["last_event"],
+        "last_sms": augestel_webhook_status["last_sms"],
+        "recent_history": augestel_webhook_history[:10],
+    })
+
+
+@app.route("/api/augestel/webhooks/setup-all", methods=["POST"])
+@login_required
+def api_augestel_webhooks_setup_all():
+    """
+    Secara otomatis memasang webhook endpoint ke seluruh akun Augestel (1-7)
+    menggunakan profil browser Playwright yang sudah login.
+    """
+    webhook_url = request.json.get("webhook_url") if request.json else ""
+    if not webhook_url:
+        webhook_url = augestel_webhook_status["url"]
+
+    def run_setup_worker():
+        from playwright.sync_api import sync_playwright
+        logger.info(f"🚀 Memulai auto-setup Webhook untuk semua akun Augestel ({webhook_url})...")
+        
+        profiles = []
+        for i in range(1, 10):
+            pdir = os.path.join(BASE_DIR, f"browser_profile_augestel_{i}")
+            if os.path.exists(pdir):
+                profiles.append(i)
+                
+        results = []
+        with sync_playwright() as p:
+            for idx in profiles:
+                pdir = os.path.join(BASE_DIR, f"browser_profile_augestel_{idx}")
+                logger.info(f"Mengonfigurasi webhook pada profil #{idx}...")
+                try:
+                    ctx = p.chromium.launch_persistent_context(
+                        user_data_dir=pdir,
+                        channel="msedge",
+                        headless=False,
+                        args=["--window-position=-2000,-2000"]
+                    )
+                    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+                    page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="networkidle", timeout=30000)
+                    
+                    if "/login" in page.url.lower():
+                        logger.warning(f"Akun #{idx} belum login, melewati webhook setup")
+                        ctx.close()
+                        results.append({"account_idx": idx, "success": False, "error": "Not logged in"})
+                        continue
+                    
+                    url_input = page.wait_for_selector("#webhookUrl", timeout=10000)
+                    url_input.fill(webhook_url)
+                    
+                    active_cb = page.query_selector('input[type="checkbox"][name="is_active"]')
+                    if active_cb and not active_cb.is_checked():
+                        active_cb.check()
+                        
+                    msg_cb = page.query_selector('input[type="checkbox"][name="events[]"][value="message.received"]')
+                    if msg_cb and not msg_cb.is_checked():
+                        msg_cb.check()
+                        
+                    submit_btn = page.query_selector('button[type="submit"]:has-text("Save endpoint"), form[action*="webhook"] button[type="submit"]')
+                    if submit_btn:
+                        submit_btn.click()
+                        page.wait_for_timeout(2500)
+                        
+                    saved_val = page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
+                    ctx.close()
+                    results.append({"account_idx": idx, "success": bool(saved_val == webhook_url), "saved_url": saved_val})
+                    logger.info(f"✅ Akun #{idx} webhook terpasang: {saved_val}")
+                except Exception as e:
+                    logger.error(f"❌ Akun #{idx} gagal pasang webhook: {e}")
+                    results.append({"account_idx": idx, "success": False, "error": str(e)})
+                    
+        logger.info(f"🎉 Selesai pasang webhook ke semua akun: {results}")
+
+    threading.Thread(target=run_setup_worker, daemon=True).start()
+    return jsonify({
+        "success": True,
+        "message": "Proses pemasangan webhook ke seluruh akun Augestel sedang berjalan di background!",
+        "webhook_url": webhook_url
+    })
+
+
 @app.route("/api/bot/status")
 @login_required
 def api_bot_status():
