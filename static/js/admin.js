@@ -1036,15 +1036,21 @@ function downloadAugestelNumbersExport(format) {
 async function deleteAllAugestelNumbers() {
     const select = document.getElementById('augNumAccountSelect');
     const accIdx = select ? select.value : 'augestel_all';
+    const isAll = accIdx === 'augestel_all';
+    const accLabel = isAll ? 'SEMUA AKUN AUGESTEL' : `Akun Augestel (${accIdx.replace('augestel_', '#')})`;
 
-    const confirmMsg = `Apakah Anda yakin ingin MEMBERSIHKAN & MERESET CACHE NOMOR AUGESTEL?\n\nData nomor akan di-refresh langsung dari API Augestel saat deteksi ulang.`;
+    const confirmMsg = `Apakah Anda yakin ingin RETURN ALL / HAPUS SEMUA NOMOR untuk ${accLabel}?\n\n` +
+        `• Tindakan ini akan mengembalikan semua nomor langsung ke sistem via https://augestel.com/Switchfy/client/numbers menggunakan sesi browser resmi.\n` +
+        `• Seluruh cache nomor juga akan otomatis dibersihkan.`;
     if (!confirm(confirmMsg)) return;
 
     const btn = document.getElementById('btnDeleteAllAugNumbers');
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mereset...';
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Menghapus/Return All...';
     }
+
+    showToast(`Sedang melakukan Return All Numbers untuk ${accLabel} melalui portal Augestel...`, 'info');
 
     try {
         const res = await fetch('/api/numbers/delete-all', {
@@ -1054,17 +1060,17 @@ async function deleteAllAugestelNumbers() {
         });
         const data = await res.json();
         if (data.success) {
-            showToast(data.message || 'Cache nomor Augestel berhasil direset!', 'success');
+            showToast(data.message || 'Semua nomor Augestel berhasil di-return!', 'success');
             await loadAugestelNumbersData(true);
         } else {
-            showToast(data.message || 'Gagal reset cache nomor!', 'error');
+            showToast(data.message || 'Gagal return semua nomor!', 'error');
         }
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Cache Nomor';
+            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Return All / Hapus Semua Nomor';
         }
     }
 }
