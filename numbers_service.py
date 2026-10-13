@@ -319,6 +319,8 @@ async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, 
                 clean_id = m_id.group(1) if m_id else ""
 
                 clean_numbers.append({
+                    "account_index": account_index,
+                    "account_email": email,
                     "id": clean_id,
                     "number": num_val,
                     "range": str(item.get("range", "")).strip(),
@@ -372,16 +374,31 @@ def generate_numbers_excel(numbers_data: list, email: str = "") -> BytesIO:
         bottom=Side(style='thin', color='E2E8F0')
     )
 
-    headers = [
-        "No",
-        "Phone Number",
-        "Range Name",
-        "Rate (A2P)",
-        "Limit by Range",
-        "SID/Range Limit",
-        "SID→DID Limit",
-        "Number ID"
-    ]
+    is_all_accounts = any(item.get("account_email") for item in numbers_data) and ("Semua Akun" in str(email) or len(set(item.get("account_index", 1) for item in numbers_data)) > 1)
+
+    if is_all_accounts:
+        headers = [
+            "No",
+            "Account",
+            "Phone Number",
+            "Range Name",
+            "Rate (A2P)",
+            "Limit by Range",
+            "SID/Range Limit",
+            "SID→DID Limit",
+            "Number ID"
+        ]
+    else:
+        headers = [
+            "No",
+            "Phone Number",
+            "Range Name",
+            "Rate (A2P)",
+            "Limit by Range",
+            "SID/Range Limit",
+            "SID→DID Limit",
+            "Number ID"
+        ]
 
     ws.append(headers)
 
@@ -392,26 +409,47 @@ def generate_numbers_excel(numbers_data: list, email: str = "") -> BytesIO:
         cell.alignment = center_align
 
     for idx, item in enumerate(numbers_data, 1):
-        row = [
-            idx,
-            str(item.get("number", "")),
-            str(item.get("range", "")),
-            str(item.get("rate", "")),
-            str(item.get("limit_range", "")),
-            str(item.get("sid_limit", "")),
-            str(item.get("sid_did_limit", "")),
-            str(item.get("id", ""))
-        ]
+        if is_all_accounts:
+            acc_label = f"Akun #{item.get('account_index', '')} ({item.get('account_email', '')})" if item.get('account_email') else f"Akun #{item.get('account_index', '')}"
+            row = [
+                idx,
+                acc_label,
+                str(item.get("number", "")),
+                str(item.get("range", "")),
+                str(item.get("rate", "")),
+                str(item.get("limit_range", "")),
+                str(item.get("sid_limit", "")),
+                str(item.get("sid_did_limit", "")),
+                str(item.get("id", ""))
+            ]
+        else:
+            row = [
+                idx,
+                str(item.get("number", "")),
+                str(item.get("range", "")),
+                str(item.get("rate", "")),
+                str(item.get("limit_range", "")),
+                str(item.get("sid_limit", "")),
+                str(item.get("sid_did_limit", "")),
+                str(item.get("id", ""))
+            ]
+
         ws.append(row)
         curr_row = idx + 1
         for c_idx in range(1, len(headers) + 1):
             c = ws.cell(row=curr_row, column=c_idx)
             c.font = data_font
             c.border = thin_border
-            if c_idx in [1, 4, 5, 6, 7, 8]:
-                c.alignment = center_align
+            if is_all_accounts:
+                if c_idx in [1, 5, 6, 7, 8, 9]:
+                    c.alignment = center_align
+                else:
+                    c.alignment = left_align
             else:
-                c.alignment = left_align
+                if c_idx in [1, 4, 5, 6, 7, 8]:
+                    c.alignment = center_align
+                else:
+                    c.alignment = left_align
 
     # Auto adjust column width
     for col in ws.columns:
