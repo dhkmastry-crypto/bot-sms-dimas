@@ -314,11 +314,11 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
                         item_copy["account_index"] = f"aug_{i}"
                         item_copy["account_email"] = em
                         all_combined.append(item_copy)
-                    breakdown.append({
-                        "account_index": i,
-                        "email": em,
-                        "total": sub_tot
-                    })
+                breakdown.append({
+                    "account_index": i,
+                    "email": em,
+                    "total": sub_tot
+                })
         except Exception as e:
             logger.error(f"Error fetching Augestel #{i}: {e}")
 
