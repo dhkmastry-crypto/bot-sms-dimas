@@ -184,7 +184,39 @@ async def fetch_all_accounts_numbers(force_refresh: bool = False, max_rows: int 
     return result
 
 
-async def fetch_augestel_account_numbers(account_param: str = "augestel", force_refresh: bool = False, max_rows: int = 5000) -> dict:
+def _format_augestel_number_item(item: dict, idx: int, target_idx: int, email: str) -> dict:
+    """Format single Augestel number item standardly."""
+    num = str(item.get("number") or item.get("Number") or "").strip()
+    rng = item.get("range_name") or item.get("range") or "Augestel"
+    rate_raw = item.get("a2p_rate") if item.get("a2p_rate") is not None else item.get("A2P")
+    if isinstance(rate_raw, (int, float)):
+        rate_str = f"${rate_raw:.4f}"
+    elif rate_raw:
+        rate_str = str(rate_raw)
+        if not rate_str.startswith("$"):
+            try:
+                rate_str = f"${float(rate_str):.4f}"
+            except Exception:
+                pass
+    else:
+        rate_str = "$0.0000"
+
+    limit_val = item.get("portal_limit_a2p") if item.get("portal_limit_a2p") is not None else item.get("limit_a2p", 10000)
+
+    return {
+        "id": str(idx),
+        "number": num,
+        "range": rng,
+        "rate": rate_str,
+        "limit_range": str(limit_val or 10000),
+        "sid_limit": "-",
+        "sid_did_limit": "-",
+        "account_index": f"aug_{target_idx}",
+        "account_email": email,
+    }
+
+
+async def fetch_augestel_account_numbers(account_param: str = "augestel", force_refresh: bool = False, max_rows: int = 50000) -> dict:
     """Fetch numbers untuk akun Augestel (semua akun atau akun tertentu)."""
     accounts = get_augestel_accounts()
     if not accounts:
@@ -202,9 +234,11 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             is_all = True
 
     from augestel_client import AugestelClient
-    import time
     now_ts = datetime.now()
 
+    # ──────────────────────────────────────────
+    # 1. SINGLE ACCOUNT FETCH
+    # ──────────────────────────────────────────
     if not is_all and target_idx and 1 <= target_idx <= len(accounts):
         acc = accounts[target_idx - 1]
         email = acc.get("email", "")
@@ -212,22 +246,31 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         cache_key = f"augestel_{target_idx}"
         disk_cache_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{target_idx}.json")
 
+        disk_data = None
+        if os.path.exists(disk_cache_path):
+            try:
+                with open(disk_cache_path, "r", encoding="utf-8") as f:
+                    disk_data = json.load(f)
+            except Exception:
+                pass
+
+        # In-memory check (5 minutes TTL)
         if not force_refresh and cache_key in _NUMBERS_CACHE:
             cached = _NUMBERS_CACHE[cache_key]
             try:
                 cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-                if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0):
+                if (now_ts - cached_dt).total_seconds() < 300 and len(cached.get("numbers", [])) >= cached.get("total", 0):
                     return cached
             except Exception:
                 pass
 
-        if not force_refresh and os.path.exists(disk_cache_path):
+        # Disk cache check (5 minutes TTL)
+        if not force_refresh and disk_data:
             try:
-                with open(disk_cache_path, "r", encoding="utf-8") as f:
-                    disk_data = json.load(f)
-                    if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0):
-                        _NUMBERS_CACHE[cache_key] = disk_data
-                        return disk_data
+                cached_dt = datetime.strptime(disk_data["cached_at"], "%Y-%m-%d %H:%M:%S")
+                if (now_ts - cached_dt).total_seconds() < 300 and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0):
+                    _NUMBERS_CACHE[cache_key] = disk_data
+                    return disk_data
             except Exception:
                 pass
 
@@ -236,26 +279,44 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
 
         try:
             client = AugestelClient(api_key=api_key, email=email)
-            raw_list = client.get_all_numbers_list(max_records=max_rows)
+            # 1 single request to get exact portal total & first 100 items instantly
+            res_p1 = client.get_numbers(page=1, per_page=100)
+
+            if not res_p1.get("success"):
+                # Fallback to disk cache if rate-limited or transient network error
+                if disk_data and disk_data.get("numbers") is not None:
+                    _NUMBERS_CACHE[cache_key] = disk_data
+                    return disk_data
+                return {"success": False, "message": f"Gagal menghubungi API Augestel #{target_idx}: {res_p1.get('message', 'Error')}"}
+
+            portal_total = res_p1.get("pagination", {}).get("total", len(res_p1.get("data", [])))
+            raw_items = res_p1.get("data", [])
+
             formatted_numbers = []
-            for idx, item in enumerate(raw_list, 1):
-                formatted_numbers.append({
-                    "id": str(idx),
-                    "number": item.get("Number", ""),
-                    "range": item.get("range", "Augestel"),
-                    "rate": item.get("A2P", "$0.00"),
-                    "limit_range": str(item.get("limit_a2p", 10000)),
-                    "sid_limit": "-",
-                    "sid_did_limit": "-",
-                    "account_index": f"aug_{target_idx}",
-                    "account_email": email,
-                })
+            if portal_total == 0:
+                formatted_numbers = []
+            elif portal_total <= 100 or len(raw_items) >= portal_total:
+                # All items fit in page 1
+                for idx, item in enumerate(raw_items, 1):
+                    formatted_numbers.append(_format_augestel_number_item(item, idx, target_idx, email))
+            else:
+                # Total > 100 (e.g. 1250 or 250).
+                # Check if disk cache already has all items matching portal_total
+                if disk_data and len(disk_data.get("numbers", [])) == portal_total:
+                    formatted_numbers = disk_data.get("numbers", [])
+                elif not force_refresh and disk_data and len(disk_data.get("numbers", [])) > 0:
+                    formatted_numbers = disk_data.get("numbers", [])
+                else:
+                    # Need full fetch
+                    raw_list = client.get_all_numbers_list(max_records=max_rows, first_page_res=res_p1)
+                    for idx, item in enumerate(raw_list, 1):
+                        formatted_numbers.append(_format_augestel_number_item(item, idx, target_idx, email))
 
             result = {
                 "success": True,
                 "account_index": f"aug_{target_idx}",
                 "email": f"Augestel #{target_idx} ({email})",
-                "total": len(formatted_numbers),
+                "total": portal_total,
                 "count": len(formatted_numbers),
                 "numbers": formatted_numbers,
                 "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
@@ -268,31 +329,39 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
                 pass
             return result
         except Exception as e:
+            if disk_data:
+                return disk_data
             return {"success": False, "message": f"Gagal fetch Augestel #{target_idx}: {e}"}
 
-    # ALL AUGESTEL ACCOUNTS
+    # ──────────────────────────────────────────
+    # 2. ALL AUGESTEL ACCOUNTS FETCH
+    # ──────────────────────────────────────────
     cache_key = "augestel_all"
     disk_cache_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+
+    # In-memory check (5 minutes TTL, verify total is not stale 500)
     if not force_refresh and cache_key in _NUMBERS_CACHE:
         cached = _NUMBERS_CACHE[cache_key]
         try:
             cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-            if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0):
+            if (now_ts - cached_dt).total_seconds() < 300 and cached.get("total", 0) > 500:
                 return cached
         except Exception:
             pass
 
+    # Disk cache check (5 minutes TTL, verify total is not stale 500)
     if not force_refresh and os.path.exists(disk_cache_path):
         try:
             with open(disk_cache_path, "r", encoding="utf-8") as f:
                 disk_data = json.load(f)
-                if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0):
+                cached_dt = datetime.strptime(disk_data["cached_at"], "%Y-%m-%d %H:%M:%S")
+                if (now_ts - cached_dt).total_seconds() < 300 and disk_data.get("total", 0) > 500:
                     _NUMBERS_CACHE[cache_key] = disk_data
                     return disk_data
         except Exception:
             pass
 
-    # Aggregate accounts that have API key
+    # Fetch aggregate across all registered accounts with API key
     all_combined = []
     breakdown = []
     total_portal_sum = 0
@@ -304,21 +373,35 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             continue
         try:
             sub_res = await fetch_augestel_account_numbers(account_param=f"augestel_{i}", force_refresh=force_refresh, max_rows=max_rows)
+            sub_nums = []
+            sub_tot = 0
             if sub_res.get("success"):
                 sub_nums = sub_res.get("numbers", [])
                 sub_tot = sub_res.get("total", len(sub_nums))
-                if sub_tot > 0 or len(sub_nums) > 0:
-                    total_portal_sum += sub_tot
-                    for item in sub_nums:
-                        item_copy = dict(item)
-                        item_copy["account_index"] = f"aug_{i}"
-                        item_copy["account_email"] = em
-                        all_combined.append(item_copy)
-                breakdown.append({
-                    "account_index": i,
-                    "email": em,
-                    "total": sub_tot
-                })
+            else:
+                # Fallback to disk cache for this account
+                indiv_cache = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+                if os.path.exists(indiv_cache):
+                    try:
+                        with open(indiv_cache, "r", encoding="utf-8") as f:
+                            d = json.load(f)
+                            sub_nums = d.get("numbers", [])
+                            sub_tot = d.get("total", len(sub_nums))
+                    except Exception:
+                        pass
+
+            total_portal_sum += sub_tot
+            for item in sub_nums:
+                item_copy = dict(item)
+                item_copy["account_index"] = f"aug_{i}"
+                item_copy["account_email"] = em
+                all_combined.append(item_copy)
+
+            breakdown.append({
+                "account_index": i,
+                "email": em,
+                "total": sub_tot
+            })
         except Exception as e:
             logger.error(f"Error fetching Augestel #{i}: {e}")
 
