@@ -1112,12 +1112,17 @@ def api_augestel_accounts_save():
 
     # Jika API key belum diisi, lakukan auto-login dan deteksi API key otomatis
     detected_auto = False
+    login_without_key = False
     if not api_key and password:
         from augestel_client import AugestelClient
         ext_res = AugestelClient.login_and_extract_api_key(email=email, password=password)
-        if ext_res.get("success") and ext_res.get("api_key"):
-            api_key = ext_res["api_key"]
-            detected_auto = True
+        if ext_res.get("success"):
+            if ext_res.get("api_key"):
+                api_key = ext_res["api_key"]
+                detected_auto = True
+            else:
+                api_key = ""
+                login_without_key = True
         else:
             return jsonify({
                 "success": False,
@@ -1137,7 +1142,7 @@ def api_augestel_accounts_save():
     new_entry = {
         "email": email,
         "password": password,
-        "api_key": api_key or cfg.get("AUGESTEL_API_KEY", "")
+        "api_key": api_key
     }
 
     if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
@@ -1157,7 +1162,7 @@ def api_augestel_accounts_save():
             json.dump(accounts, f, indent=2)
 
         # Update primary account to config.py if it's the first account
-        if len(accounts) >= 1:
+        if len(accounts) >= 1 and accounts[0].get("api_key"):
             save_config({
                 "AUGESTEL_EMAIL": accounts[0]["email"],
                 "AUGESTEL_API_KEY": accounts[0].get("api_key", "")
@@ -1166,6 +1171,8 @@ def api_augestel_accounts_save():
         msg = f"Akun Augestel {email} berhasil disimpan!"
         if detected_auto:
             msg = f"✅ Berhasil Login ke portal Augestel! API Key otomatis terdeteksi ({api_key[:12]}...)."
+        elif login_without_key:
+            msg = f"✅ Berhasil Login ke portal Augestel! Akun terdaftar (API Key belum di-generate di portal)."
 
         return jsonify({
             "success": True,

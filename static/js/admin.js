@@ -1483,9 +1483,9 @@ async function loadAugestelAccountsList() {
         container.innerHTML = currentAugestelAccounts.map((acc, idx) => {
             const email = escapeHtml(acc.email || '');
             const apiKey = acc.api_key || '';
-            const maskedKey = apiKey.length > 12 
+            const maskedKey = apiKey ? (apiKey.length > 12 
                 ? `${apiKey.substring(0, 8)}••••••••${apiKey.substring(apiKey.length - 4)}` 
-                : apiKey;
+                : apiKey) : 'Login Portal Aktif (Key belum di-generate)';
             const isFirst = idx === 0;
 
             return `
