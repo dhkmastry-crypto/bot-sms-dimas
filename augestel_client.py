@@ -97,7 +97,7 @@ class AugestelClient:
                             retry_after = int(hdr)
                     except Exception:
                         pass
-                retry_after = max(retry_after or 15, 12)
+                retry_after = max(retry_after or 20, 20)
                 self.rate_limit_until = time.time() + retry_after
                 logger.warning(f"Augestel ({self.email}) rate limit (429), retry after {retry_after}s")
                 return []

@@ -604,7 +604,7 @@ async def poll_otp_augestel(bot: Bot, client: AugestelClient, chat_id: str, acco
     """Loop polling OTP dari Augestel API (https://augestel.com)."""
     email_label = getattr(client, "email", f"Akun #{account_idx}")
     logger.info(f"🚀 Augestel polling started (Akun #{account_idx}: {email_label})")
-    poll_gap = max(14, POLL_INTERVAL)  # 14s agar aman dari rate limit 5 req/menit
+    poll_gap = max(18, POLL_INTERVAL)  # 18s agar selalu di bawah limit 5 req/menit (maks ~3.3 req/menit)
     while True:
         try:
             # Jika sedang dalam masa cooldown rate limit
