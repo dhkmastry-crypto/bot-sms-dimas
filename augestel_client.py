@@ -230,3 +230,96 @@ class AugestelClient:
         except Exception as e:
             logger.error(f"Error fetching Augestel statistics: {e}")
             return {}
+
+    @classmethod
+    def login_and_extract_api_key(cls, email: str, password: str) -> dict:
+        """
+        Login otomatis ke portal Augestel (Switchfy) menggunakan email & password,
+        lalu mengekstrak API Key (sk_live_...) secara otomatis tanpa input manual.
+        """
+        import cloudscraper
+        scraper = cloudscraper.create_scraper()
+        email = (email or "").strip()
+        password = (password or "").strip()
+
+        if not email or not password:
+            return {"success": False, "message": "Email dan password Augestel wajib diisi!"}
+
+        for attempt in range(3):
+            try:
+                # 1. Buka halaman login untuk mengambil CSRF token
+                login_page = scraper.get("https://augestel.com/Switchfy", timeout=20)
+                if login_page.status_code != 200:
+                    return {"success": False, "message": f"Gagal mengakses portal Augestel (HTTP {login_page.status_code})"}
+
+                match = re.search(r'name="_token" value="([^"]+)"', login_page.text)
+                csrf_token = match.group(1) if match else ""
+                if not csrf_token:
+                    return {"success": False, "message": "CSRF Token portal Augestel tidak ditemukan."}
+
+                # 2. Kirim kredensial login
+                post_data = {
+                    "_token": csrf_token,
+                    "email": email,
+                    "password": password
+                }
+                headers = {
+                    "Referer": "https://augestel.com/Switchfy",
+                    "Origin": "https://augestel.com",
+                }
+                login_resp = scraper.post("https://augestel.com/Switchfy/login", data=post_data, headers=headers, timeout=20)
+
+                # Jika terkena Cloudflare rate-limit pada form login
+                if login_resp.status_code == 429:
+                    retry_sec = 20
+                    try:
+                        hdr = login_resp.headers.get("Retry-After")
+                        if hdr and hdr.isdigit():
+                            retry_sec = min(int(hdr), 60)
+                    except Exception:
+                        pass
+                    logger.warning(f"Login rate limited (429), menunggu {retry_sec} detik...")
+                    time.sleep(retry_sec)
+                    continue
+
+                # Cek jika login gagal (terlempar kembali ke login atau pesan error kredensial)
+                if "invalid" in login_resp.text.lower() or "credentials" in login_resp.text.lower() or "login" in login_resp.url.lower():
+                    # Jika URL tetap di login
+                    if "/login" in login_resp.url and login_resp.status_code == 200:
+                        return {"success": False, "message": "Email atau password Augestel salah! Silakan periksa kembali."}
+
+                # 3. Kunjungi halaman Developer -> SMS API (https://augestel.com/Switchfy/api/documentation)
+                doc_resp = scraper.get("https://augestel.com/Switchfy/api/documentation", headers={"Referer": login_resp.url}, timeout=20)
+                if doc_resp.status_code == 200:
+                    keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", doc_resp.text)
+                    if keys:
+                        api_key = keys[0]
+                        logger.info(f"Berhasil mendeteksi API Key Augestel untuk {email}: {api_key[:12]}...")
+                        return {
+                            "success": True,
+                            "api_key": api_key,
+                            "email": email,
+                            "message": "Login berhasil & API Key otomatis terdeteksi!"
+                        }
+
+                # Fallback: Cari di halaman Webhooks atau EDR history jika ada
+                wh_resp = scraper.get("https://augestel.com/Switchfy/api/webhooks", headers={"Referer": login_resp.url}, timeout=15)
+                if wh_resp.status_code == 200:
+                    keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", wh_resp.text)
+                    if keys:
+                        api_key = keys[0]
+                        return {
+                            "success": True,
+                            "api_key": api_key,
+                            "email": email,
+                            "message": "Login berhasil & API Key otomatis terdeteksi!"
+                        }
+
+                return {"success": False, "message": "Login berhasil, namun API Key (sk_live_...) belum dibuat di portal Augestel."}
+
+            except Exception as e:
+                logger.error(f"Error login & extract API key Augestel: {e}")
+                return {"success": False, "message": f"Terjadi kesalahan saat login: {e}"}
+
+        return {"success": False, "message": "Gagal login ke Augestel setelah beberapa percobaan."}
+
