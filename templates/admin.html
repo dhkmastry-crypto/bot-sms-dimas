@@ -611,29 +611,36 @@
                                 <select id="augAddAccountSelect" class="form-input" style="font-weight: 500;">
                                     <option value="1">Memuat akun Augestel...</option>
                                 </select>
-                                <small class="form-hint">Pilih akun Augestel yang ingin disinkronkan nomornya.</small>
+                                <small class="form-hint">Pilih akun Augestel atau semua akun sekaligus.</small>
                             </div>
                             <div class="form-group">
                                 <label><i class="fas fa-globe"></i> Filter Range / Country</label>
-                                <input type="text" id="augAddRangeName" class="form-input" placeholder="contoh: ZIMBABWE, ECONET, UK, GERMANY (kosong = semua)">
-                                <small class="form-hint">Filter nomor berdasarkan prefix nama range/provider.</small>
+                                <input type="text" id="augAddRangeName" class="form-input" placeholder="contoh: TAJIKISTAN, UZBEKISTAN, AFGHANISTAN (kosong = semua)">
+                                <small class="form-hint">Filter nomor berdasarkan nama range/country di portal Augestel (kosong = semua).</small>
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Max Quantity</label>
-                                    <input type="number" id="augAddMaxAdd" class="form-input" value="100" min="1" max="1000">
+                                    <input type="number" id="augAddMaxAdd" class="form-input" value="50" min="0">
                                 </div>
                                 <div class="form-group">
-                                    <label>Batch Delay (detik)</label>
-                                    <input type="number" id="augAddDelay" class="form-input" value="15" min="5">
+                                    <label>Delay (detik)</label>
+                                    <input type="number" id="augAddDelay" class="form-input" value="15" min="3">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-bolt" style="color: #38bdf8;"></i> Parallel Workers</label>
+                                    <input type="number" id="augAddWorkers" class="form-input" value="2" min="1" max="12">
                                 </div>
                             </div>
                             <small class="form-hint" style="margin-top: -10px; margin-bottom: 16px; display: block;">
-                                💡 Menggunakan API v1 Augestel & Auto-sync portal untuk menjaga kuota 5 requests/menit.
+                                💡 Otomatis login ke portal Switchfy dan menambahkan nomor dari https://augestel.com/Switchfy/test/numbers.
                             </small>
                             <div class="btn-group">
                                 <button class="btn btn-primary" id="btnStartAugAdd" onclick="startAugestelAutoAdd()" style="background: linear-gradient(135deg, #0284c7, #0ea5e9);">
-                                    <i class="fas fa-play"></i> Sync & Fetch Numbers
+                                    <i class="fas fa-play"></i> Start Auto-Add
+                                </button>
+                                <button class="btn btn-danger" id="btnStopAugAdd" onclick="stopAugestelAutoAdd()" style="display:none">
+                                    <i class="fas fa-stop"></i> Stop
                                 </button>
                             </div>
                         </div>
@@ -642,32 +649,52 @@
                     <!-- Status Panel Augestel -->
                     <div class="card">
                         <div class="card-header">
-                            <h2><i class="fas fa-chart-line"></i> Augestel Numbers Status</h2>
-                            <div class="status-badge active" id="augAutoAddStatus">Ready</div>
+                            <h2><i class="fas fa-chart-bar"></i> Progress (Augestel)</h2>
+                            <div class="status-badge" id="augAutoAddStatus">Idle</div>
                         </div>
                         <div class="card-body">
+                            <div id="augAddRunningAccountInfo" style="display: none; padding: 9px 12px; margin-bottom: 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 8px; font-size: 0.82rem; color: var(--text);">
+                                <i class="fas fa-user-check" style="color: #38bdf8; margin-right: 6px;"></i>
+                                <span id="augAddRunningAccountText">Akun Aktif</span>
+                            </div>
+
                             <div class="progress-stats">
                                 <div class="progress-stat">
-                                    <div class="progress-stat-icon green"><i class="fas fa-check-double"></i></div>
+                                    <div class="progress-stat-icon green"><i class="fas fa-check"></i></div>
                                     <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="augStatAssigned">500</span>
-                                        <span class="progress-stat-label">Total Assigned</span>
+                                        <span class="progress-stat-value" id="augStatAdded">0</span>
+                                        <span class="progress-stat-label">Added</span>
                                     </div>
                                 </div>
                                 <div class="progress-stat">
-                                    <div class="progress-stat-icon purple"><i class="fas fa-sim-card"></i></div>
+                                    <div class="progress-stat-icon red"><i class="fas fa-times"></i></div>
                                     <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="augStatRange">ECONET</span>
-                                        <span class="progress-stat-label">Active Range</span>
+                                        <span class="progress-stat-value" id="augStatFailed">0</span>
+                                        <span class="progress-stat-label">Failed</span>
+                                    </div>
+                                </div>
+                                <div class="progress-stat">
+                                    <div class="progress-stat-icon yellow"><i class="fas fa-forward"></i></div>
+                                    <div class="progress-stat-info">
+                                        <span class="progress-stat-value" id="augStatSkipped">0</span>
+                                        <span class="progress-stat-label">Skipped</span>
+                                    </div>
+                                </div>
+                                <div class="progress-stat">
+                                    <div class="progress-stat-icon purple"><i class="fas fa-database"></i></div>
+                                    <div class="progress-stat-info">
+                                        <span class="progress-stat-value" id="augStatTotal">0</span>
+                                        <span class="progress-stat-label">Found</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 18px; font-size: 0.85rem; line-height: 1.6;">
-                                <b style="color: var(--accent);"><i class="fas fa-info-circle"></i> Info Otomasi Augestel:</b>
-                                <p style="margin: 6px 0 0 0; color: var(--text-muted);">
-                                    Di platform Augestel IPRN, nomor disediakan secara otomatis per alokasi panel client (500 nomor aktif). Tombol <b>Sync & Fetch</b> akan otomatis merefresh dan memuat seluruh nomor ke cache database dan tabel <b>My Numbers (Export)</b>.
-                                </p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" id="augProgressBar" style="width: 0%; background: linear-gradient(90deg, #0284c7, #38bdf8);"></div>
+                            </div>
+
+                            <div class="last-message" id="augLastMessage">
+                                <i class="fas fa-info-circle"></i> Belum ada aktivitas
                             </div>
                         </div>
                     </div>
