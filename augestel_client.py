@@ -254,11 +254,40 @@ class AugestelClient:
                 return {"success": False, "message": str(e)}
         return {"success": False, "message": "Rate limited after retries"}
 
-    def get_all_numbers_list(self, max_records: int = 50000) -> list:
+    def get_all_numbers_list(self, max_records: int = 50000, first_page_res: dict = None) -> list:
         """Ambil seluruh daftar nomor Augestel dengan auto-paging hingga tuntas (tanpa batas 200)."""
         all_numbers = []
         page = 1
         per_page = 100
+
+        def _append_items(items):
+            for item in items:
+                num_str = str(item.get("number") or item.get("Number") or "").strip()
+                rate_val = item.get("a2p_rate", 0.0)
+                all_numbers.append({
+                    "Number": num_str,
+                    "number": num_str,
+                    "range": item.get("range_name", "Augestel"),
+                    "range_name": item.get("range_name", "Augestel"),
+                    "A2P": f"${rate_val:.4f}" if isinstance(rate_val, (int, float)) else str(rate_val),
+                    "a2p_rate": rate_val,
+                    "P2P": "$0.0000",
+                    "Voice": "-",
+                    "limit_a2p": item.get("portal_limit_a2p", 0),
+                    "portal_limit_a2p": item.get("portal_limit_a2p", 0),
+                    "last_message": item.get("last_message_at") or "-",
+                    "provider": "Augestel",
+                })
+
+        last_page = 1
+        if first_page_res and first_page_res.get("success"):
+            _append_items(first_page_res.get("data", []))
+            pagination = first_page_res.get("pagination", {})
+            last_page = pagination.get("last_page", 1)
+            page = 2
+            if page > last_page:
+                return all_numbers
+
         while len(all_numbers) < max_records:
             res = self.get_numbers(page=page, per_page=per_page)
             if not res.get("success"):
@@ -266,20 +295,7 @@ class AugestelClient:
             items = res.get("data", [])
             if not items:
                 break
-            for item in items:
-                num_str = str(item.get("number", "")).strip()
-                rate_val = item.get("a2p_rate", 0.0)
-                all_numbers.append({
-                    "Number": num_str,
-                    "range": item.get("range_name", "Augestel"),
-                    "A2P": f"${rate_val:.4f}" if isinstance(rate_val, (int, float)) else str(rate_val),
-                    "a2p_rate": rate_val,
-                    "P2P": "$0.0000",
-                    "Voice": "-",
-                    "limit_a2p": item.get("portal_limit_a2p", 0),
-                    "last_message": item.get("last_message_at") or "-",
-                    "provider": "Augestel",
-                })
+            _append_items(items)
             pagination = res.get("pagination", {})
             last_page = pagination.get("last_page", 1)
             if page >= last_page:
