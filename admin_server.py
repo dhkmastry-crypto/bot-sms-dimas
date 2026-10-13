@@ -25,6 +25,8 @@ import time
 from datetime import datetime, timedelta
 from functools import wraps
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, send_file, Response
 
 # ────────────────────────────────────────────

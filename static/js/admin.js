@@ -1944,6 +1944,33 @@ async function deleteAugestelAccount(index) {
     }
 }
 
+async function runBatchLoginAugestel() {
+    const btn = document.getElementById('btnBatchLoginAug');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Login Berjalan...';
+    }
+    showToast('Memulai proses login & warmup untuk semua akun Augestel di background...', 'info');
+    try {
+        const res = await fetch('/api/augestel/batch-login', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Proses batch login & warmup telah dimulai!', 'success');
+            setTimeout(loadAugestelAccountsList, 3000);
+        } else {
+            showToast(data.message || 'Gagal memulai batch login', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText || '<i class="fas fa-bolt"></i> Login & Warmup Semua Akun';
+        }
+    }
+}
+
 // ────────────────────────────────────────────
 //  AUTO-ADD AUGESTEL (SEPARATE NAVIGATION)
 // ────────────────────────────────────────────
