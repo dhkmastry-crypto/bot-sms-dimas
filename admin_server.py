@@ -439,8 +439,100 @@ async def check_ivasms_connection(target_index: int = None):
     return ivasms_status
 
 
+def check_augestel_browser_cookie(account_idx: int) -> dict:
+    """
+    Memeriksa status browser profile & cookies untuk akun Augestel.
+    Memeriksa file SQLite Cookies di browser_profile_augestel_{account_idx}.
+    """
+    import shutil
+    import sqlite3
+    import tempfile
+    import time
+
+    user_data_dir = os.path.join(BASE_DIR, f"browser_profile_augestel_{account_idx}")
+    if not os.path.exists(user_data_dir):
+        return {
+            "profile_exists": False,
+            "cookie_connected": False,
+            "status_text": "Profil Browser Belum Dibuat",
+            "has_remember": False,
+            "has_session": False,
+            "cookie_count": 0,
+        }
+
+    db_path = os.path.join(user_data_dir, "Default", "Network", "Cookies")
+    if not os.path.exists(db_path):
+        return {
+            "profile_exists": True,
+            "cookie_connected": False,
+            "status_text": "Belum Ada Sesi (Silakan Login)",
+            "has_remember": False,
+            "has_session": False,
+            "cookie_count": 0,
+        }
+
+    # Chromium epoch time in microseconds (1601-01-01)
+    now_chrome_time = int((time.time() + 11644473600) * 1000000)
+    tmp_path = None
+    try:
+        tmp_dir = tempfile.gettempdir()
+        tmp_path = os.path.join(tmp_dir, f"chk_aug_cookie_{account_idx}_{time.time()}.sqlite")
+        shutil.copyfile(db_path, tmp_path)
+
+        conn = sqlite3.connect(tmp_path)
+        cur = conn.cursor()
+        cur.execute("SELECT name, expires_utc FROM cookies WHERE host_key LIKE '%augestel.com%'")
+        rows = cur.fetchall()
+        conn.close()
+
+        has_remember = False
+        has_session = False
+
+        for name, expires_utc in rows:
+            if "remember_client" in name:
+                if expires_utc == 0 or expires_utc > now_chrome_time:
+                    has_remember = True
+            elif "augestel-session" in name:
+                if expires_utc == 0 or expires_utc > now_chrome_time:
+                    has_session = True
+
+        cookie_connected = has_remember or has_session
+        if has_remember:
+            status_text = "Sesi Aktif (Remember Me)"
+        elif has_session:
+            status_text = "Sesi Aktif (Session Cookie)"
+        elif len(rows) > 0:
+            status_text = "Sesi Kadaluarsa (Expired)"
+        else:
+            status_text = "Belum Ada Cookie Login"
+
+        return {
+            "profile_exists": True,
+            "cookie_connected": cookie_connected,
+            "status_text": status_text,
+            "has_remember": has_remember,
+            "has_session": has_session,
+            "cookie_count": len(rows),
+        }
+    except Exception as e:
+        return {
+            "profile_exists": True,
+            "cookie_connected": False,
+            "status_text": f"Error Cookie: {e}",
+            "has_remember": False,
+            "has_session": False,
+            "cookie_count": 0,
+        }
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
 def check_augestel_multi_connection(target_index: int = None):
-    """Check Augestel connection for each registered account, or specific account if target_index given"""
+    """Check Augestel connection for each registered account, checking BOTH REST API & Browser Profile Cookies"""
     global augestel_status
     acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts = []
@@ -474,36 +566,51 @@ def check_augestel_multi_connection(target_index: int = None):
             prev = existing_results.get(idx, {
                 "index": idx,
                 "email": email,
-                "connected": bool(api_key),
+                "api_connected": bool(api_key),
+                "cookie_connected": False,
+                "connected": False,
                 "balance": acc.get("balance", "0.00"),
                 "last_check": "-"
             })
-            if prev.get("connected"):
+            if prev.get("connected") or prev.get("api_connected"):
                 any_connected = True
             results.append(prev)
             continue
 
-        connected = False
+        api_connected = False
         balance = "0.00"
 
+        # 1. Cek REST API Key
         if api_key:
             try:
                 client = AugestelClient(api_key=api_key, email=email)
-                connected = client.check_connection()
-                if connected:
+                api_connected = client.check_connection()
+                if api_connected:
                     stats = client.get_statistics()
                     balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
             except Exception as e:
                 logger.error(f"Error checking Augestel acc {idx}: {e}")
-                connected = False
+                api_connected = False
 
-        if connected:
+        # 2. Cek Browser Profile & Sesi Cookie
+        cookie_info = check_augestel_browser_cookie(idx)
+        cookie_connected = cookie_info.get("cookie_connected", False)
+
+        # Connected jika API valid dan/atau browser session aktif
+        overall_connected = api_connected and cookie_connected
+        if overall_connected or api_connected or cookie_connected:
             any_connected = True
 
         results.append({
             "index": idx,
             "email": email,
-            "connected": connected,
+            "api_connected": api_connected,
+            "cookie_connected": cookie_connected,
+            "cookie_status": cookie_info.get("status_text", "-"),
+            "has_remember": cookie_info.get("has_remember", False),
+            "has_session": cookie_info.get("has_session", False),
+            "cookie_count": cookie_info.get("cookie_count", 0),
+            "connected": overall_connected,
             "balance": balance,
             "last_check": now_str
         })
