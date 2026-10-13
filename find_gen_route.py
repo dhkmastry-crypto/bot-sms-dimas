@@ -2,12 +2,15 @@ import cloudscraper
 import re
 
 scraper = cloudscraper.create_scraper()
-r = scraper.get('https://augestel.com/build/manifest.json')
-print('manifest.json status:', r.status_code)
-if r.status_code == 200:
-    print(r.text)
+# Let's inspect the HTML of /Switchfy/api/documentation
+# Wait, does /Switchfy/api/documentation need authentication or is it public?
+doc = scraper.get('https://augestel.com/Switchfy/api/documentation')
+print("Status:", doc.status_code, "Length:", len(doc.text))
+idx = doc.text.find('generateApiKey')
+print("idx of generateApiKey:", idx)
+if idx != -1:
+    # Print 2000 chars after this
+    print("=== 2000 chars around generateApiKey ===")
+    print(doc.text[idx:idx+3000])
 else:
-    # Check if there are other asset files in app JS
-    js = scraper.get('https://augestel.com/build/assets/app-BmR76E4K.js').text
-    chunks = re.findall(r'assets/[a-zA-Z0-9_\-]+\.js', js)
-    print('Chunks in app js:', set(chunks))
+    print("Not found without login. Is it behind login?")
