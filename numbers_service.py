@@ -693,20 +693,90 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
             await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
             await asyncio.sleep(1.5)
 
-            # Auto-login jika sesi expired
-            login_input = await page.query_selector("#loginEmail, input[name='email']")
-            if login_input:
-                logger.info(f"🔑 Session expired untuk Akun #{account_idx}, mencoba auto-login...")
-                await page.fill("#loginEmail, input[name='email']", email)
-                await page.fill("#loginPassword, input[name='password']", pwd)
-                btn = await page.query_selector("#loginSubmit, button[type='submit']")
-                if btn:
-                    await btn.click()
-                await asyncio.sleep(3)
-                await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
-                await asyncio.sleep(1.5)
+            # 1. Cek apakah portal sedang dalam cooldown rate-limit
+            wait_el = await page.query_selector(".wait")
+            page_title = await page.title()
+            if wait_el or "too quick" in page_title.lower() or "one moment" in page_title.lower():
+                wait_sec = (await wait_el.inner_text()).strip() if wait_el else "beberapa"
+                await context.close()
+                return {
+                    "success": False,
+                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
+                }
 
-            btn = await page.query_selector("#bulkReturnAllBtn")
+            # 2. Auto-login jika sesi expired atau terlempar ke halaman login
+            login_input = await page.query_selector("#loginEmail, input[name='email']")
+            if login_input or "/client/numbers" not in page.url:
+                if "/Switchfy" in page.url or login_input:
+                    logger.info(f"🔑 Session belum aktif untuk Akun #{account_idx} ({email}), melakukan auto-login...")
+                    if not login_input:
+                        await page.goto("https://augestel.com/Switchfy", wait_until="networkidle", timeout=45000)
+                        await asyncio.sleep(1)
+                        login_input = await page.query_selector("#loginEmail, input[name='email']")
+
+                    if login_input:
+                        await page.fill("#loginEmail, input[name='email']", email)
+                        await page.fill("#loginPassword, input[name='password']", pwd)
+                        rem = await page.query_selector("input[name='remember']")
+                        if rem:
+                            try:
+                                await rem.check()
+                            except Exception:
+                                pass
+                        await asyncio.sleep(0.5)
+
+                        btn = await page.query_selector("#loginSubmit, button[type='submit']")
+                        if btn:
+                            await btn.click()
+                        else:
+                            await page.keyboard.press("Enter")
+
+                        # Tunggu hingga login berhasil dialihkan ke dashboard/client panel
+                        logged_in = False
+                        for _ in range(20):
+                            await asyncio.sleep(1)
+                            # Cek jika muncul cooldown setelah submit
+                            wait_el_sub = await page.query_selector(".wait")
+                            if wait_el_sub:
+                                wait_sec = (await wait_el_sub.inner_text()).strip()
+                                await context.close()
+                                return {
+                                    "success": False,
+                                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
+                                }
+                            u = page.url
+                            if "/client/" in u or "/test/" in u or "/dashboard" in u:
+                                logged_in = True
+                                break
+
+                        if not logged_in and (await page.query_selector("#loginEmail, input[name='email']")):
+                            await context.close()
+                            return {
+                                "success": False,
+                                "message": f"Gagal login ke Akun Augestel #{account_idx} ({email}). Kredensial tidak valid atau Cloudflare challenge aktif."
+                            }
+
+                # Navigasi ke halaman numbers setelah login
+                if "/client/numbers" not in page.url:
+                    await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
+                    await asyncio.sleep(2)
+
+            # Cek cooldown lagi jika muncul di halaman numbers
+            wait_el = await page.query_selector(".wait")
+            if wait_el:
+                wait_sec = (await wait_el.inner_text()).strip()
+                await context.close()
+                return {
+                    "success": False,
+                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
+                }
+
+            # 3. Cari tombol Return All
+            try:
+                btn = await page.wait_for_selector("#bulkReturnAllBtn", timeout=6000)
+            except Exception:
+                btn = None
+
             res_message = ""
             success = False
 
@@ -747,7 +817,8 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                     success = True
                     res_message = "Tidak ada nomor aktif pada akun ini (tabel kosong)."
                 else:
-                    res_message = "Tombol '#bulkReturnAllBtn' tidak ditemukan di halaman."
+                    curr_title = await page.title()
+                    res_message = f"Tombol Return All tidak tersedia di portal (Title: '{curr_title}', URL: '{page.url}')."
 
             await context.close()
 

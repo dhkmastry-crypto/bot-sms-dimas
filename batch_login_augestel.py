@@ -94,11 +94,18 @@ async def login_single_account(account_idx: int, email: str, password: str) -> d
 
             # Tunggu redirect
             success_logged_in = False
-            for sec in range(15):
+            for sec in range(20):
                 await asyncio.sleep(1)
+                wait_el = await page.query_selector(".wait")
+                if wait_el:
+                    wait_sec = (await wait_el.inner_text()).strip()
+                    logger.warning(f"⏳ [Akun #{account_idx}] Terdeteksi cooldown anti-spam di portal: {wait_sec} detik tersisa.")
+                    await context.close()
+                    return {"index": account_idx, "email": email, "success": False, "message": f"Cooldown ({wait_sec}s)"}
+
                 t = await page.title()
                 u = page.url
-                if "login" not in t.lower() and u != "https://augestel.com/Switchfy":
+                if "/client/" in u or "/test/" in u or "/dashboard" in u:
                     success_logged_in = True
                     break
 
@@ -111,7 +118,7 @@ async def login_single_account(account_idx: int, email: str, password: str) -> d
                 return {"index": account_idx, "email": email, "success": True, "message": "Login success"}
             else:
                 final_t = await page.title()
-                logger.warning(f"⚠️ [Akun #{account_idx}] Login belum terkonfirmasi (Title: {final_t})")
+                logger.warning(f"⚠️ [Akun #{account_idx}] Login belum terkonfirmasi (Title: {final_t}, URL: {page.url})")
                 await context.close()
                 return {"index": account_idx, "email": email, "success": False, "message": f"Redirect timeout ({final_t})"}
 
