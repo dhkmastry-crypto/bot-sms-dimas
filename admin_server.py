@@ -1548,48 +1548,28 @@ def api_augestel_batch_login():
 @app.route("/api/augestel/check", methods=["POST"])
 @login_required
 def api_augestel_check():
-    """Check Augestel API connection"""
+    """Check Augestel connection for all accounts or single account"""
     try:
         data = request.json or {}
-        cfg = load_config()
-        api_key = data.get("api_key") or cfg.get("AUGESTEL_API_KEY", "")
-        
-        # Also check augestel_accounts.json if empty
-        if not api_key:
-            acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
-            if os.path.exists(acc_file):
-                with open(acc_file, "r", encoding="utf-8") as f:
-                    accs = json.load(f)
-                    if accs and accs[0].get("api_key"):
-                        api_key = accs[0]["api_key"]
-
-        from augestel_client import AugestelClient
-        client = AugestelClient(api_key=api_key)
-        conn = client.check_connection()
-        stats = client.get_statistics() if conn else {}
-        balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
-
-        # Also get number count from cache if exists
-        total_nums = 500
-        cache_file = os.path.join(BASE_DIR, "augestel_numbers_cache.json")
-        if os.path.exists(cache_file):
+        target_idx = data.get("index")
+        if target_idx is not None:
             try:
-                with open(cache_file, "r", encoding="utf-8") as f:
-                    cdata = json.load(f)
-                    total_nums = len(cdata.get("numbers", [])) or total_nums
+                target_idx = int(target_idx)
             except Exception:
-                pass
+                target_idx = None
 
+        result = check_augestel_multi_connection(target_index=target_idx)
         return jsonify({
             "success": True,
             "status": {
-                "connected": conn,
-                "balance": balance,
-                "total_numbers": total_nums,
-                "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "connected": result.get("connected", False),
+                "accounts": result.get("accounts", []),
+                "total_accounts": len(result.get("accounts", [])),
+                "last_check": result.get("last_check")
             }
         })
     except Exception as e:
+        logger.error(f"Error in api_augestel_check: {e}")
         return jsonify({"success": False, "status": {"connected": False}, "message": str(e)})
 
 

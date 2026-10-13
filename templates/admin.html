@@ -965,26 +965,26 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <!-- Augestel Live Status Block -->
-                            <div id="augConnectionCard" style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div class="status-dot online" id="augStatusDot" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);"></div>
+                            <!-- Overall Augestel indicator -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--border);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="bot-icon online" id="augIcon" style="width: 36px; height: 36px; font-size: 1rem; margin: 0; background: rgba(139, 92, 246, 0.2); color: #a78bfa;">
+                                        <i class="fas fa-satellite-dish"></i>
+                                    </div>
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 8px;">
-                                            <b style="font-size: 0.92rem; color: var(--text);"><i class="fas fa-satellite-dish" style="color: #a78bfa;"></i> Augestel API Portal</b>
+                                            <b id="augStatusText" style="font-size: 0.95rem; color: var(--text);">Augestel Multi-Account</b>
                                             <span class="badge badge-info" style="font-size: 0.72rem;">REST API</span>
                                         </div>
-                                        <div class="text-muted" style="font-size: 0.74rem; margin-top: 3px;" id="augStatusDesc">
-                                            <i class="far fa-clock"></i> Polling 12-15s Aktif (Rate safe: 5 req/min)
-                                        </div>
+                                        <div id="augStatusDesc" class="text-muted" style="font-size: 0.78rem;">Status semua akun terpantau</div>
                                     </div>
                                 </div>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span class="badge badge-success" id="augBadge" style="font-size: 0.72rem; padding: 4px 8px;"><i class="fas fa-check-circle"></i> Connected</span>
-                                    <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelConnection()">
-                                        <i class="fas fa-sync-alt"></i> Cek
-                                    </button>
-                                </div>
+                                <span class="badge badge-info" id="augAccCountBadge">7 Akun Terdaftar</span>
+                            </div>
+
+                            <!-- List status per akun Augestel -->
+                            <div id="augAccountsStatusList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat status akun Augestel...</div>
                             </div>
 
                             <!-- Overall IVASMS indicator -->
