@@ -605,12 +605,25 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
 
 
 async def main():
-    range_filter = sys.argv[1] if len(sys.argv) > 1 else RANGE_NAME
-    max_add = int(sys.argv[2]) if len(sys.argv) > 2 else MAX_ADD
-    delay = int(sys.argv[3]) if len(sys.argv) > 3 else DELAY_SECONDS
-    account_arg = sys.argv[4].strip().lower() if len(sys.argv) > 4 else "1"
-    workers = int(sys.argv[5]) if len(sys.argv) > 5 else 2
-    batch_count = int(sys.argv[6]) if len(sys.argv) > 6 else BATCH_COUNT
+    args = sys.argv[1:]
+    range_filter = args[0] if len(args) > 0 else RANGE_NAME
+    try:
+        max_add = int(args[1]) if len(args) > 1 else MAX_ADD
+    except Exception:
+        max_add = MAX_ADD
+    try:
+        delay = int(args[2]) if len(args) > 2 else DELAY_SECONDS
+    except Exception:
+        delay = DELAY_SECONDS
+    account_arg = str(args[3]).strip().lower() if len(args) > 3 else "1"
+    try:
+        workers = int(args[4]) if len(args) > 4 else 2
+    except Exception:
+        workers = 2
+    try:
+        batch_count = int(args[5]) if len(args) > 5 else BATCH_COUNT
+    except Exception:
+        batch_count = BATCH_COUNT
 
     # Load daftar akun
     acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
