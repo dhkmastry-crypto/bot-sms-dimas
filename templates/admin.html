@@ -430,6 +430,47 @@
             <!-- ═══════════════ AKUN AUGESTEL ═══════════════ -->
             <div class="page-content" id="augestelAccountsPage">
                 <div class="grid-2">
+                    <!-- Status & Monitor Webhook Augestel (Real-Time Push) -->
+                    <div class="card" style="grid-column: 1 / -1; background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(6, 78, 59, 0.15)); border: 1px solid rgba(16, 185, 129, 0.25);">
+                        <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                            <h2><i class="fas fa-satellite-dish" style="color: #10b981;"></i> Status Webhook Augestel (Bypass Limit 429)</h2>
+                            <span class="badge badge-success" id="webhookStatusBadge"><i class="fas fa-circle" style="font-size: 0.6rem;"></i> 200 OK - AKTIF &amp; LISTENING</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                                    <div style="flex: 1; min-width: 280px;">
+                                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">Public Webhook Endpoint URL (Ngrok Tunnel):</div>
+                                        <div class="input-group">
+                                            <input type="text" id="webhookUrlDisplay" class="form-input mono" value="https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook" readonly style="font-size: 0.85rem; background: rgba(0,0,0,0.2);">
+                                            <button class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()" title="Salin URL Webhook" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
+                                                <i class="fas fa-copy"></i> Salin
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                        <button class="btn btn-secondary btn-sm" onclick="checkWebhookStatusLive()" id="btnCheckWebhookLive"><i class="fas fa-sync-alt"></i> Cek Status</button>
+                                        <button class="btn btn-primary btn-sm" onclick="sendTestWebhookPing()" id="btnTestWebhookPing" style="background: #10b981;"><i class="fas fa-paper-plane"></i> Test Kirim Webhook</button>
+                                    </div>
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 6px;">
+                                    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Total OTP Masuk via Webhook</div>
+                                        <div style="font-size: 1.25rem; font-weight: 700; color: #10b981;" id="whTotalCount">0 OTP</div>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Event Terakhir Diterima</div>
+                                        <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);" id="whLastTime">Belum ada</div>
+                                    </div>
+                                    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Status Tunnel Publik</div>
+                                        <div style="font-size: 0.95rem; font-weight: 600; color: #38bdf8;" id="whTunnelStatus">🟢 Ngrok Online (24/7)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Form Tambah / Edit Akun Augestel -->
                     <div class="card">
                         <div class="card-header">
