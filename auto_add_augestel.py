@@ -25,6 +25,7 @@ RANGE_NAME = ""
 MAX_ADD = 0
 DELAY_SECONDS = 15
 BATCH_SIZE = 25
+BATCH_COUNT = 250  # Default 250 nomor per request sesuai form Augestel
 
 # ────────────────────────────────────────────
 
