@@ -88,30 +88,90 @@ async def wait_cloudflare(page, max_wait=30) -> bool:
     return False
 
 
-async def fetch_account_numbers(account_index: int = 1, force_refresh: bool = False, max_rows: int = 5000) -> dict:
-    """
-    Fetch semua nomor dari https://www.ivasms.com/portal/numbers untuk akun tertentu.
-    Mengembalikan:
-    {
-        "success": True/False,
-        "account_index": 1,
-        "email": "user@example.com",
-        "total": 300,
-        "numbers": [
-            {
-                "id": "15373416",
-                "number": "4915237289786",
-                "range": "GERMANY 8",
-                "rate": "0.012",
-                "limit_range": "40000",
-                "sid_limit": "4000",
-                "sid_did_limit": "2"
-            },
-            ...
-        ],
-        "cached_at": "2026-10-13 02:20:00"
+async def fetch_all_accounts_numbers(force_refresh: bool = False, max_rows: int = 5000) -> dict:
+    """Fetch semua nomor dari seluruh akun IVASMS yang terdaftar."""
+    accounts = get_accounts()
+    if not accounts:
+        return {"success": False, "message": "Belum ada akun IVASMS yang terdaftar!"}
+
+    cache_key = "all"
+    now_ts = datetime.now()
+    if not force_refresh and cache_key in _NUMBERS_CACHE:
+        cached = _NUMBERS_CACHE[cache_key]
+        cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
+        if (now_ts - cached_dt).total_seconds() < 90:
+            return cached
+
+    all_numbers = []
+    breakdown = []
+    total_records = 0
+
+    for idx, acc in enumerate(accounts, 1):
+        try:
+            res = await fetch_account_numbers(account_index=idx, force_refresh=force_refresh, max_rows=max_rows)
+            if res.get("success"):
+                acc_email = res.get("email", acc.get("email", f"Akun #{idx}"))
+                acc_total = res.get("total", 0)
+                acc_numbers = res.get("numbers", [])
+                total_records += acc_total
+
+                for num_item in acc_numbers:
+                    tagged_item = dict(num_item)
+                    tagged_item["account_index"] = idx
+                    tagged_item["account_email"] = acc_email
+                    all_numbers.append(tagged_item)
+
+                breakdown.append({
+                    "account_index": idx,
+                    "email": acc_email,
+                    "total": acc_total,
+                    "count": len(acc_numbers)
+                })
+            else:
+                breakdown.append({
+                    "account_index": idx,
+                    "email": acc.get("email", f"Akun #{idx}"),
+                    "total": 0,
+                    "count": 0,
+                    "error": res.get("message", "Gagal")
+                })
+        except Exception as e:
+            logger.error(f"Error fetching numbers for account {idx}: {e}")
+            breakdown.append({
+                "account_index": idx,
+                "email": acc.get("email", f"Akun #{idx}"),
+                "total": 0,
+                "count": 0,
+                "error": str(e)
+            })
+
+    result = {
+        "success": True,
+        "account_index": "all",
+        "email": f"Semua Akun ({len(accounts)} Akun)",
+        "total": total_records,
+        "count": len(all_numbers),
+        "numbers": all_numbers,
+        "accounts_breakdown": breakdown,
+        "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
     }
+
+    _NUMBERS_CACHE[cache_key] = result
+    return result
+
+
+async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, max_rows: int = 5000) -> dict:
     """
+    Fetch semua nomor dari https://www.ivasms.com/portal/numbers untuk akun tertentu atau 'all' untuk semua akun.
+    """
+    if str(account_index).strip().lower() == "all":
+        return await fetch_all_accounts_numbers(force_refresh=force_refresh, max_rows=max_rows)
+
+    try:
+        account_index = int(account_index)
+    except Exception:
+        account_index = 1
+
     accounts = get_accounts()
     if not accounts:
         return {"success": False, "message": "Belum ada akun IVASMS yang terdaftar!"}
