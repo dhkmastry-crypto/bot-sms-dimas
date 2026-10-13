@@ -304,12 +304,10 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
                 # Check if disk cache already has all items matching portal_total
                 if disk_data and len(disk_data.get("numbers", [])) == portal_total:
                     formatted_numbers = disk_data.get("numbers", [])
-                elif not force_refresh and disk_data and len(disk_data.get("numbers", [])) > 0:
+                elif disk_data and len(disk_data.get("numbers", [])) > 0:
                     formatted_numbers = disk_data.get("numbers", [])
                 else:
-                    # Need full fetch
-                    raw_list = client.get_all_numbers_list(max_records=max_rows, first_page_res=res_p1)
-                    for idx, item in enumerate(raw_list, 1):
+                    for idx, item in enumerate(raw_items, 1):
                         formatted_numbers.append(_format_augestel_number_item(item, idx, target_idx, email))
 
             result = {
