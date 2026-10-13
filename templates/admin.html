@@ -43,9 +43,17 @@
                 <i class="fas fa-users-cog"></i>
                 <span>Akun IVASMS</span>
             </a>
+            <a href="/augestel-accounts" class="nav-item {% if page == 'augestel-accounts' %}active{% endif %}" data-page="augestel-accounts">
+                <i class="fas fa-satellite-dish" style="color: #a78bfa;"></i>
+                <span>Akun Augestel</span>
+            </a>
             <a href="/auto-add" class="nav-item {% if page == 'auto-add' %}active{% endif %}" data-page="auto-add">
                 <i class="fas fa-robot"></i>
-                <span>Auto-Add Numbers</span>
+                <span>Auto-Add IVASMS</span>
+            </a>
+            <a href="/auto-add-augestel" class="nav-item {% if page == 'auto-add-augestel' %}active{% endif %}" data-page="auto-add-augestel">
+                <i class="fas fa-magic" style="color: #38bdf8;"></i>
+                <span>Auto-Add Augestel</span>
             </a>
             <a href="/numbers" class="nav-item {% if page == 'numbers' %}active{% endif %}" data-page="numbers">
                 <i class="fas fa-phone-alt"></i>
@@ -90,7 +98,9 @@
                     {% if page == 'dashboard' %}Dashboard
                     {% elif page == 'sms-log' %}SMS Log
                     {% elif page == 'accounts' %}Kelola Akun IVASMS
-                    {% elif page == 'auto-add' %}Auto-Add Numbers
+                    {% elif page == 'augestel-accounts' %}Kelola Akun Augestel
+                    {% elif page == 'auto-add' %}Auto-Add Numbers (IVASMS)
+                    {% elif page == 'auto-add-augestel' %}Auto-Add Numbers (Augestel)
                     {% elif page == 'numbers' %}My Numbers & Export
                     {% elif page == 'bot-control' %}Bot Control
                     {% elif page == 'settings' %}Settings
