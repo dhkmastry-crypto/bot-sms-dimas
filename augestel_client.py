@@ -336,7 +336,13 @@ class AugestelClient:
                             "message": "Login berhasil & API Key otomatis terdeteksi!"
                         }
 
-                return {"success": False, "message": "Login berhasil, namun API Key (sk_live_...) belum dibuat di portal Augestel."}
+                return {
+                    "success": True,
+                    "api_key": "",
+                    "email": email,
+                    "login_ok": True,
+                    "message": "Login berhasil! Namun API Key (sk_live_...) belum di-generate di portal https://augestel.com/Switchfy/api/documentation."
+                }
 
             except Exception as e:
                 logger.error(f"Error login & extract API key Augestel: {e}")
