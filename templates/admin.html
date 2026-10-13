@@ -534,17 +534,19 @@
                             <span class="stat-label">Terakhir Diperiksa</span>
                         </div>
                     </div>
+                </div>
+
                 <!-- Breakdown per account (jika pilih semua akun) -->
-                <div id="numAccountsBreakdown" style="display: none; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                <div id="numAccountsBreakdown" class="accounts-breakdown-grid" style="display: none; margin-bottom: 24px;"></div>
 
                 <!-- Main Numbers Card -->
                 <div class="card">
-                    <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
-                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <h2><i class="fas fa-list-ol" style="color: var(--primary);"></i> Daftar Nomor (My Numbers)</h2>
+                    <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
+                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                            <h2><i class="fas fa-list-ol" style="color: var(--accent-light);"></i> Daftar Nomor (My Numbers)</h2>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun:</label>
-                                <select id="numAccountSelect" class="form-input" style="padding: 4px 10px; font-size: 0.85rem; width: auto; min-width: 180px;" onchange="loadNumbersData(false)">
+                                <select id="numAccountSelect" class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: auto; min-width: 200px;" onchange="loadNumbersData(false)">
                                     <option value="1">Akun #1 (Loading...)</option>
                                 </select>
                             </div>
@@ -555,10 +557,10 @@
                             <button class="btn btn-secondary btn-sm" id="btnRefreshNumbers" onclick="loadNumbersData(true)" title="Periksa Ulang ke IVASMS Portal">
                                 <i class="fas fa-sync-alt"></i> Deteksi Ulang
                             </button>
-                            <button class="btn btn-primary btn-sm" id="btnExportExcel" onclick="downloadNumbersExport('excel')" style="background: #10b981; border-color: #10b981;">
+                            <button class="btn btn-sm" id="btnExportExcel" onclick="downloadNumbersExport('excel')" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
                                 <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
                             </button>
-                            <button class="btn btn-primary btn-sm" id="btnExportTxt" onclick="downloadNumbersExport('txt')" style="background: #6366f1; border-color: #6366f1;">
+                            <button class="btn btn-sm" id="btnExportTxt" onclick="downloadNumbersExport('txt')" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; border: none; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);">
                                 <i class="fas fa-file-alt"></i> Export TXT (Nomor Saja)
                             </button>
                         </div>
@@ -579,12 +581,12 @@
                         </div>
 
                         <!-- Table Wrapper -->
-                        <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
                             <table class="data-table">
-                                <thead>
+                                <thead style="position: sticky; top: 0; z-index: 5; background: var(--bg-card); backdrop-filter: blur(10px);">
                                     <tr>
-                                        <th style="width: 60px;">No</th>
-                                        <th id="thAccountCol" style="display: none;">Akun</th>
+                                        <th style="width: 60px; text-align: center;">No</th>
+                                        <th id="thAccountCol" style="display: none; text-align: center; width: 110px;">Akun</th>
                                         <th>Phone Number</th>
                                         <th>Range Name</th>
                                         <th>Rates (A2P)</th>
