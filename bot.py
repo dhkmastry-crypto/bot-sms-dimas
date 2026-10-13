@@ -600,55 +600,73 @@ async def poll_otp_elite(bot: Bot, client: EliteSMSClient, chat_id: str):
         await asyncio.sleep(POLL_INTERVAL)
 
 
-async def poll_otp_augestel(bot: Bot, client: AugestelClient, chat_id: str, account_idx: int = 1):
-    """Loop polling OTP dari Augestel API (https://augestel.com)."""
-    email_label = getattr(client, "email", f"Akun #{account_idx}")
-    logger.info(f"🚀 Augestel polling started (Akun #{account_idx}: {email_label})")
-    poll_gap = max(18, POLL_INTERVAL)  # 18s agar selalu di bawah limit 5 req/menit (maks ~3.3 req/menit)
+async def poll_otp_augestel_multi(bot: Bot, clients_with_idx: list, chat_id: str):
+    """
+    Loop polling OTP Augestel Multi-Account terkoordinasi (Round-Robin Sequential).
+    Menghindari tabrakan request paralel antar akun sehingga terbebas dari
+    Cloudflare 1015 IP Rate Limit dan Laravel 429 Too Many Requests.
+    """
+    total_accs = len(clients_with_idx)
+    logger.info(f"🚀 Augestel Multi-Account Poller aktif untuk {total_accs} akun (Sequential Safe Mode).")
+
     while True:
         try:
-            # Jika sedang dalam masa cooldown rate limit
-            now_t = time.time()
-            limit_until = getattr(client, "rate_limit_until", 0)
-            if limit_until > now_t:
-                wait_time = int(limit_until - now_t) + 1
-                logger.info(f"⏳ [Augestel #{account_idx}] Menunggu cooldown 429 ({wait_time}s)...")
-                await asyncio.sleep(wait_time)
+            # 1. Cek apakah ada cooldown global (misal setelah 429)
+            rem_cd = AugestelClient.get_remaining_cooldown()
+            if rem_cd > 0:
+                logger.info(f"⏳ [Augestel] Menunggu cooldown rate limit ({rem_cd}s tersisa)...")
+                await asyncio.sleep(rem_cd)
+                continue
 
-            new_sms_list = client.get_new_sms(per_page=100)
-            update_bot_status(augestel_ok=True)
-            for sms_data in new_sms_list:
+            # 2. Polling setiap akun secara bergiliran dengan jeda aman
+            for account_idx, client in clients_with_idx:
+                # Jika di tengah jalan terkena cooldown, segera istirahat
+                if AugestelClient.get_remaining_cooldown() > 0:
+                    break
+
                 try:
-                    message = format_otp_message(sms_data)
-                    keyboard = create_keyboard(sms_data, FILE_LINK, CHANNEL_LINK)
-
-                    store_full_message(
-                        sms_data.get("id", "unknown"),
-                        sms_data.get("message", "No message")
-                    )
-
-                    await bot.send_message(
-                        chat_id=chat_id,
-                        text=message,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=keyboard,
-                    )
-
-                    stats.record(sms_data)
+                    new_sms_list = client.get_new_sms(per_page=100)
                     update_bot_status(augestel_ok=True)
-                    logger.info(
-                        f"📤 [Augestel #{account_idx}] Sent OTP: {sms_data.get('country_code', '??')} | "
-                        f"{sms_data.get('platform', 'SMS')} | "
-                        f"{sms_data.get('otp', 'N/A')}"
-                    )
-                    await asyncio.sleep(0.5)
-                except Exception as e:
-                    logger.error(f"❌ [Augestel #{account_idx}] Failed to send message: {e}")
-        except Exception as e:
-            logger.error(f"❌ [Augestel #{account_idx}] Polling error: {e}")
-            update_bot_status(augestel_ok=False)
+                    for sms_data in new_sms_list:
+                        try:
+                            message = format_otp_message(sms_data)
+                            keyboard = create_keyboard(sms_data, FILE_LINK, CHANNEL_LINK)
 
-        await asyncio.sleep(poll_gap)
+                            store_full_message(
+                                sms_data.get("id", "unknown"),
+                                sms_data.get("message", "No message")
+                            )
+
+                            await bot.send_message(
+                                chat_id=chat_id,
+                                text=message,
+                                parse_mode=ParseMode.HTML,
+                                reply_markup=keyboard,
+                            )
+
+                            stats.record(sms_data)
+                            update_bot_status(augestel_ok=True)
+                            logger.info(
+                                f"📤 [Augestel #{account_idx}] Sent OTP: {sms_data.get('country_code', '??')} | "
+                                f"{sms_data.get('platform', 'SMS')} | "
+                                f"{sms_data.get('otp', 'N/A')}"
+                            )
+                            await asyncio.sleep(0.5)
+                        except Exception as e:
+                            logger.error(f"❌ [Augestel #{account_idx}] Failed to send message: {e}")
+                except Exception as e:
+                    logger.error(f"❌ [Augestel #{account_idx}] Polling error: {e}")
+                    update_bot_status(augestel_ok=False)
+
+                # Jeda aman antar akun (4.0 detik) agar tidak memicu Cloudflare 1015
+                await asyncio.sleep(4.0)
+
+            # Jeda antar putaran penuh seluruh akun (6.0 detik)
+            await asyncio.sleep(6.0)
+
+        except Exception as loop_err:
+            logger.error(f"❌ [Augestel Poller] Unexpected loop error: {loop_err}")
+            await asyncio.sleep(10)
 
 
 def load_augestel_accounts() -> list:
@@ -776,6 +794,7 @@ async def post_init(application: Application):
     if AUGESTEL_ENABLED:
         aug_accounts = load_augestel_accounts()
         logger.info(f"📋 Terdeteksi {len(aug_accounts)} akun Augestel terdaftar.")
+        aug_clients_list = []
         for a_idx, a_acc in enumerate(aug_accounts, 1):
             a_key = a_acc.get("api_key", "").strip()
             a_email = a_acc.get("email", "").strip()
@@ -788,12 +807,24 @@ async def post_init(application: Application):
                     if cl.check_connection():
                         logger.info(f"✅ Augestel (Akun #{a_idx}: {a_email}) connection verified!")
                         update_bot_status(augestel_ok=True)
-                existing_aug = cl.mark_initial_as_seen()
-                logger.info(f"📌 [Augestel Akun #{a_idx}: {a_email}] Skipping {existing_aug} existing SMS")
-                asyncio.create_task(poll_otp_augestel(application.bot, cl, GROUP_CHAT_ID, account_idx=a_idx))
-                await asyncio.sleep(1.5)
+                aug_clients_list.append((a_idx, cl))
             except Exception as aug_err:
                 logger.error(f"❌ Failed to init Augestel client Akun #{a_idx}: {aug_err}")
+
+        if aug_clients_list:
+            # Tandai initial SMS dengan jeda aman 2.5s per akun agar tidak memicu 429
+            for a_idx, cl in aug_clients_list:
+                if AugestelClient.get_remaining_cooldown() > 0:
+                    break
+                try:
+                    existing_aug = cl.mark_initial_as_seen()
+                    logger.info(f"📌 [Augestel Akun #{a_idx}: {cl.email}] Skipping {existing_aug} existing SMS")
+                except Exception as e:
+                    logger.warning(f"⚠️ [Augestel Akun #{a_idx}] Init skipped: {e}")
+                await asyncio.sleep(2.5)
+
+            # Luncurkan 1 task orchestrator tunggal terkoordinasi untuk seluruh akun
+            asyncio.create_task(poll_otp_augestel_multi(application.bot, aug_clients_list, GROUP_CHAT_ID))
 
     # Startup message to Telegram group disabled per user request
     logger.info("Bot startup complete (silent startup mode)")
