@@ -47,7 +47,7 @@ class AugestelClient:
         return 0
 
     @classmethod
-    def enforce_rate_gap(cls, min_gap: float = 2.5):
+    def enforce_rate_gap(cls, min_gap: float = 4.0):
         """Pastikan ada jeda minimal antar request ke Augestel untuk menghindari Cloudflare 1015."""
         now = time.time()
         elapsed = now - cls.last_req_timestamp
