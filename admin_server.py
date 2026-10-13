@@ -37,6 +37,7 @@ from flask import Flask, render_template, jsonify, request, redirect, url_for, s
 
 app = Flask(__name__)
 app.secret_key = "otp-iva-sms-admin-secret-2026"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 
 logger = logging.getLogger("admin")
 logging.basicConfig(
@@ -119,6 +120,13 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get("logged_in"):
+            if request.path.startswith("/api/"):
+                return jsonify({
+                    "success": False,
+                    "error": "Unauthorized",
+                    "message": "Sesi login Anda telah berakhir. Silakan login kembali.",
+                    "need_login": True
+                }), 401
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
