@@ -70,6 +70,9 @@ class AugestelClient:
         Ambil pesan dari endpoint /messages dan format agar kompatibel 100%
         dengan Telegram bot dan dashboard.
         """
+        if time.time() < getattr(self, "rate_limit_until", 0):
+            return []
+
         all_sms = []
         try:
             url = f"{self.base_url}/messages"
@@ -82,8 +85,13 @@ class AugestelClient:
             }
             r = self.session.get(url, params=params, timeout=15)
             if r.status_code == 429:
-                retry_after = r.json().get("error", {}).get("retry_after", 15)
-                logger.warning(f"Augestel rate limit (429), retry after {retry_after}s")
+                retry_after = 15
+                try:
+                    retry_after = int(r.json().get("error", {}).get("retry_after", 15))
+                except Exception:
+                    pass
+                self.rate_limit_until = time.time() + retry_after
+                logger.warning(f"Augestel ({self.email}) rate limit (429), retry after {retry_after}s")
                 return []
             if r.status_code != 200:
                 logger.error(f"Augestel /messages returned HTTP {r.status_code}: {r.text[:200]}")
