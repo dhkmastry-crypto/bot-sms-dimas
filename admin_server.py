@@ -1084,11 +1084,11 @@ def api_augestel_accounts_get():
 
     if not accounts:
         cfg = load_config()
-        if getattr(config, "AUGESTEL_EMAIL", ""):
+        if cfg.get("AUGESTEL_EMAIL"):
             accounts.append({
-                "email": getattr(config, "AUGESTEL_EMAIL", "saputradimas0878@gmail.com"),
+                "email": cfg.get("AUGESTEL_EMAIL", "saputradimas0878@gmail.com"),
                 "password": "••••••••",
-                "api_key": getattr(config, "AUGESTEL_API_KEY", "")
+                "api_key": cfg.get("AUGESTEL_API_KEY", "")
             })
 
     return jsonify({"success": True, "accounts": accounts})
@@ -1116,10 +1116,11 @@ def api_augestel_accounts_save():
         except Exception:
             pass
 
+    cfg = load_config()
     new_entry = {
         "email": email,
         "password": password,
-        "api_key": api_key or getattr(config, "AUGESTEL_API_KEY", "")
+        "api_key": api_key or cfg.get("AUGESTEL_API_KEY", "")
     }
 
     if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
@@ -1192,13 +1193,47 @@ def api_augestel_check():
     """Check Augestel API connection"""
     try:
         data = request.json or {}
-        api_key = data.get("api_key") or getattr(config, "AUGESTEL_API_KEY", "")
+        cfg = load_config()
+        api_key = data.get("api_key") or cfg.get("AUGESTEL_API_KEY", "")
+        
+        # Also check augestel_accounts.json if empty
+        if not api_key:
+            acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+            if os.path.exists(acc_file):
+                with open(acc_file, "r", encoding="utf-8") as f:
+                    accs = json.load(f)
+                    if accs and accs[0].get("api_key"):
+                        api_key = accs[0]["api_key"]
+
         from augestel_client import AugestelClient
         client = AugestelClient(api_key=api_key)
         conn = client.check_connection()
-        return jsonify({"success": True, "connected": conn, "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        stats = client.get_statistics() if conn else {}
+        balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
+
+        # Also get number count from cache if exists
+        total_nums = 500
+        cache_file = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cdata = json.load(f)
+                    total_nums = len(cdata.get("numbers", [])) or total_nums
+            except Exception:
+                pass
+
+        return jsonify({
+            "success": True,
+            "status": {
+                "connected": conn,
+                "balance": balance,
+                "total_numbers": total_nums,
+                "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        })
     except Exception as e:
-        return jsonify({"success": False, "connected": False, "message": str(e)})
+        return jsonify({"success": False, "status": {"connected": False}, "message": str(e)})
+
 
 
 @app.route("/api/numbers/delete-all", methods=["POST"])
