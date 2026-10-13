@@ -214,7 +214,7 @@ class AugestelClient:
             if page >= last_page:
                 break
             page += 1
-            time.sleep(13)  # Jeda 13 detik antar halaman untuk mematuhi limit 5 request/menit
+            time.sleep(1)
 
         return all_numbers
 
