@@ -27,6 +27,33 @@ class AugestelClient:
       - GET /numbers (Assigned premium rate numbers)
       - GET /statistics (Earnings & summary stats)
     """
+    global_rate_limit_until = 0.0
+    last_req_timestamp = 0.0
+    _last_log_429 = 0.0
+
+    @classmethod
+    def set_global_cooldown(cls, seconds: int, reason: str = ""):
+        now = time.time()
+        cls.global_rate_limit_until = max(cls.global_rate_limit_until, now + seconds)
+        if now - cls._last_log_429 > 15:
+            cls._last_log_429 = now
+            logger.warning(f"⚠️ [Augestel API] Rate limit (429) aktif{f': {reason}' if reason else ''}. Cooldown {seconds}s untuk seluruh akun.")
+
+    @classmethod
+    def get_remaining_cooldown(cls) -> int:
+        now = time.time()
+        if cls.global_rate_limit_until > now:
+            return int(cls.global_rate_limit_until - now) + 1
+        return 0
+
+    @classmethod
+    def enforce_rate_gap(cls, min_gap: float = 2.5):
+        """Pastikan ada jeda minimal antar request ke Augestel untuk menghindari Cloudflare 1015."""
+        now = time.time()
+        elapsed = now - cls.last_req_timestamp
+        if elapsed < min_gap:
+            time.sleep(min_gap - elapsed)
+        cls.last_req_timestamp = time.time()
 
     def __init__(
         self,
@@ -48,8 +75,35 @@ class AugestelClient:
                 "Authorization": f"Bearer {self.api_key}",
             })
 
+    def _handle_429(self, r):
+        retry_after = 20
+        try:
+            err_obj = r.json().get("error", {})
+            if isinstance(err_obj, dict) and "retry_after" in err_obj:
+                retry_after = int(err_obj["retry_after"])
+        except Exception:
+            pass
+        try:
+            hdr = r.headers.get("Retry-After")
+            if hdr and hdr.isdigit():
+                retry_after = max(int(hdr), retry_after)
+        except Exception:
+            pass
+
+        # Jika terkena Cloudflare 1015 IP rate limit
+        if "1015" in r.text or "Cloudflare" in r.text or "rate-limited" in r.text:
+            retry_after = max(retry_after, 35)
+
+        retry_after = max(retry_after, 25)
+        AugestelClient.set_global_cooldown(retry_after + 2, f"Akun {self.email}")
+
     def check_connection(self) -> bool:
         """Cek apakah API Augestel dapat diakses dan API Key valid."""
+        if AugestelClient.get_remaining_cooldown() > 0:
+            # Jika sedang cooldown 429, API Key tetap valid
+            return True
+
+        AugestelClient.enforce_rate_gap(1.5)
         try:
             url = f"{self.base_url}/numbers"
             params = {"per_page": 1}
@@ -58,7 +112,7 @@ class AugestelClient:
                 data = r.json()
                 return data.get("success") is True
             elif r.status_code == 429:
-                # Rate limited but key is valid
+                self._handle_429(r)
                 return True
             return False
         except Exception as e:
@@ -70,8 +124,10 @@ class AugestelClient:
         Ambil pesan dari endpoint /messages dan format agar kompatibel 100%
         dengan Telegram bot dan dashboard.
         """
-        if time.time() < getattr(self, "rate_limit_until", 0):
+        if AugestelClient.get_remaining_cooldown() > 0:
             return []
+
+        AugestelClient.enforce_rate_gap(2.5)
 
         all_sms = []
         try:
@@ -85,21 +141,7 @@ class AugestelClient:
             }
             r = self.session.get(url, params=params, timeout=15)
             if r.status_code == 429:
-                retry_after = 15
-                try:
-                    retry_after = int(r.json().get("error", {}).get("retry_after", 0))
-                except Exception:
-                    pass
-                if not retry_after:
-                    try:
-                        hdr = r.headers.get("Retry-After")
-                        if hdr and hdr.isdigit():
-                            retry_after = int(hdr)
-                    except Exception:
-                        pass
-                retry_after = max(retry_after or 20, 20)
-                self.rate_limit_until = time.time() + retry_after
-                logger.warning(f"Augestel ({self.email}) rate limit (429), retry after {retry_after}s")
+                self._handle_429(r)
                 return []
             if r.status_code != 200:
                 logger.error(f"Augestel /messages returned HTTP {r.status_code}: {r.text[:200]}")
@@ -243,11 +285,17 @@ class AugestelClient:
 
     def get_statistics(self) -> dict:
         """Ambil ringkasan statistik dan earning dari Augestel."""
+        if AugestelClient.get_remaining_cooldown() > 0:
+            return {}
+        AugestelClient.enforce_rate_gap(1.5)
         try:
             url = f"{self.base_url}/statistics"
             r = self.session.get(url, timeout=15)
             if r.status_code == 200:
                 return r.json()
+            elif r.status_code == 429:
+                self._handle_429(r)
+                return {}
             return {}
         except Exception as e:
             logger.error(f"Error fetching Augestel statistics: {e}")
