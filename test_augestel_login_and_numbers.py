@@ -31,18 +31,17 @@ async def main():
 
         page = context.pages[0] if context.pages else await context.new_page()
 
-        page.on("console", lambda msg: logger.info(f"[BROWSER CONSOLE] {msg.type}: {msg.text}"))
-        page.on("response", lambda resp: logger.info(f"[RESPONSE] {resp.status} {resp.url}") if "augestel.com" in resp.url and any(x in resp.url for x in ["login", "number", "test", "api"]) else None)
+        # Navigate to portal root
+        logger.info("Opening https://augestel.com/Switchfy...")
+        await page.goto("https://augestel.com/Switchfy", wait_until="networkidle", timeout=45000)
+        logger.info(f"Loaded: {page.url} - Title: {await page.title()}")
 
-        logger.info("Opening https://augestel.com/Switchfy/login...")
-        await page.goto("https://augestel.com/Switchfy/login", wait_until="networkidle", timeout=45000)
-        logger.info(f"Loaded: {page.url} - {await page.title()}")
-
-        email_inp = await page.query_selector("input[name='email']")
+        # Check if login form is present
+        email_inp = await page.query_selector("#loginEmail, input[name='email']")
         if email_inp:
-            logger.info("Filling credentials...")
-            await page.fill("input[name='email']", email)
-            await page.fill("input[name='password']", pwd)
+            logger.info("Filling credentials into #loginEmail...")
+            await page.fill("#loginEmail", email)
+            await page.fill("#loginPassword", pwd)
             rem = await page.query_selector("input[name='remember']")
             if rem:
                 try:
@@ -51,56 +50,77 @@ async def main():
                     pass
             await asyncio.sleep(1)
 
-            # Find submit button
-            submit_btn = await page.query_selector("form button[type='submit'], button#login-button, .btn-primary")
-            logger.info(f"Submit button found: {submit_btn}")
+            submit_btn = await page.query_selector("#loginSubmit, button[type='submit']")
             if submit_btn:
+                logger.info("Clicking #loginSubmit...")
                 await submit_btn.click()
             else:
+                logger.info("Pressing Enter...")
                 await page.keyboard.press("Enter")
 
-            logger.info("Clicked submit, waiting for navigation...")
-            try:
-                await page.wait_for_url(lambda u: "/login" not in u, timeout=15000)
-                logger.info(f"Navigated away from login! Current URL: {page.url}")
-            except Exception as e:
-                logger.warning(f"wait_for_url timed out or error: {e}. Current URL: {page.url}")
+            # Wait for navigation
+            for sec in range(20):
+                await asyncio.sleep(1)
+                curr_url = page.url
+                curr_title = await page.title()
+                logger.info(f"Sec {sec+1}: URL={curr_url}, Title={curr_title}")
+                if "login" not in curr_title.lower() and curr_url != "https://augestel.com/Switchfy":
+                    logger.info("Successfully navigated after login!")
+                    break
 
-        await asyncio.sleep(3)
-        logger.info(f"Current URL after login attempt: {page.url} - Title: {await page.title()}")
+        await asyncio.sleep(2)
+        logger.info(f"Status after login attempt: URL={page.url}, Title={await page.title()}")
 
-        # Now go to https://augestel.com/Switchfy/test/numbers
+        # Now navigate to test numbers page
         logger.info("Navigating to https://augestel.com/Switchfy/test/numbers...")
-        await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="networkidle", timeout=45000)
+        resp = await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="networkidle", timeout=45000)
         await asyncio.sleep(4)
 
-        logger.info(f"Target page URL: {page.url} - Title: {await page.title()}")
-        await page.screenshot(path="augestel_test_numbers_screen.png", full_page=True)
+        logger.info(f"Test numbers page URL: {page.url}, Title: {await page.title()}")
+        await page.screenshot(path="augestel_test_numbers_page.png", full_page=True)
 
         content = await page.content()
-        with open("augestel_test_numbers_screen.html", "w", encoding="utf-8") as f:
+        with open("augestel_test_numbers_page.html", "w", encoding="utf-8") as f:
             f.write(content)
+        logger.info(f"Saved augestel_test_numbers_page.html (len={len(content)})")
 
-        # Analyze page elements
-        res = await page.evaluate('''() => {
+        # Inspect tables, buttons, datatables, scripts on this page
+        analysis = await page.evaluate('''() => {
             return {
+                title: document.title,
+                url: window.location.href,
                 csrfMeta: document.querySelector('meta[name="csrf-token"]')?.content || '',
                 csrfInput: document.querySelector('input[name="_token"]')?.value || '',
                 tables: Array.from(document.querySelectorAll('table')).map(t => ({
                     id: t.id,
                     className: t.className,
                     headers: Array.from(t.querySelectorAll('th')).map(th => th.innerText.trim()),
-                    rowCount: t.querySelectorAll('tbody tr').length
+                    rowCount: t.querySelectorAll('tbody tr').length,
+                    firstRowText: t.querySelector('tbody tr')?.innerText?.trim()?.substring(0, 150) || ''
                 })),
-                scripts: Array.from(document.querySelectorAll('script')).map(s => s.src || s.innerText.substring(0, 200)),
+                buttons: Array.from(document.querySelectorAll('button, a.btn, .btn, a')).filter(b => {
+                    const txt = (b.innerText || '').toLowerCase();
+                    const href = (b.getAttribute('href') || '').toLowerCase();
+                    const onclick = (b.getAttribute('onclick') || '').toLowerCase();
+                    return txt.includes('add') || txt.includes('test') || txt.includes('number') || 
+                           href.includes('add') || onclick.includes('add');
+                }).map(b => ({
+                    tag: b.tagName,
+                    id: b.id,
+                    text: (b.innerText || '').trim(),
+                    href: b.getAttribute('href'),
+                    onclick: b.getAttribute('onclick'),
+                    className: b.className
+                })),
                 forms: Array.from(document.querySelectorAll('form')).map(f => ({
                     id: f.id,
                     action: f.action,
-                    method: f.method
+                    method: f.method,
+                    inputs: Array.from(f.querySelectorAll('input')).map(i => ({ name: i.name, type: i.type, value: i.value }))
                 }))
             };
         }''')
-        logger.info(f"Page analysis: {json.dumps(res, indent=2)}")
+        logger.info(f"Analysis result:\n{json.dumps(analysis, indent=2)}")
 
         await context.close()
 
