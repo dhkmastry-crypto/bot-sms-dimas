@@ -85,6 +85,9 @@ function initPage(page) {
         autoAddInterval = setInterval(checkAutoAddStatus, 3000);
     } else if (page === 'auto-add-augestel') {
         loadAugAddAccountSelect();
+        checkAugestelAutoAddStatus();
+        if (typeof augAutoAddInterval !== 'undefined' && augAutoAddInterval) clearInterval(augAutoAddInterval);
+        augAutoAddInterval = setInterval(checkAugestelAutoAddStatus, 3000);
     } else if (page === 'numbers') {
         initNumbersPage();
     } else if (page === 'numbers-augestel') {
@@ -1945,6 +1948,8 @@ async function deleteAugestelAccount(index) {
 //  AUTO-ADD AUGESTEL (SEPARATE NAVIGATION)
 // ────────────────────────────────────────────
 
+let augAutoAddInterval = null;
+
 async function loadAugAddAccountSelect() {
     const select = document.getElementById('augAddAccountSelect');
     if (!select) return;
@@ -1959,68 +1964,136 @@ async function loadAugAddAccountSelect() {
             return;
         }
 
-        select.innerHTML = accounts.map((acc, i) => {
+        const currentVal = select.value;
+        let html = '';
+        if (accounts.length > 1) {
+            html += `<option value="all">⚡ SEMUA AKUN SEKALIGUS (Parallel ${accounts.length} Akun)</option>`;
+        }
+        html += accounts.map((acc, i) => {
             return `<option value="${i + 1}">Akun #${i + 1} (${escapeHtml(acc.email)})</option>`;
         }).join('');
+
+        select.innerHTML = html;
+        if (currentVal) select.value = currentVal;
     } catch (e) {
         console.error('Failed to load Augestel accounts for auto-add:', e);
     }
 }
 
 async function startAugestelAutoAdd() {
-    const btn = document.getElementById('btnStartAugAdd');
-    const badge = document.getElementById('augAutoAddStatus');
-    const statAssigned = document.getElementById('augStatAssigned');
-    const statRange = document.getElementById('augStatRange');
-    const rangeFilter = (document.getElementById('augAddRangeName')?.value || '').trim();
+    const rangeName = (document.getElementById('augAddRangeName')?.value || '').trim();
+    const maxAdd = parseInt(document.getElementById('augAddMaxAdd')?.value || '0', 10);
+    const delay = parseInt(document.getElementById('augAddDelay')?.value || '15', 10);
+    const rawAccVal = document.getElementById('augAddAccountSelect')?.value || '1';
+    const workers = parseInt(document.getElementById('augAddWorkers')?.value || '2', 10);
 
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Syncing from Augestel API...';
-    }
-    if (badge) {
-        badge.className = 'status-badge active';
-        badge.textContent = 'Syncing...';
-    }
+    const btnStart = document.getElementById('btnStartAugAdd');
+    const btnStop = document.getElementById('btnStopAugAdd');
+    if (btnStart) btnStart.disabled = true;
 
     try {
-        // Panggil endpoint numbers dengan parameter augestel & refresh 1
-        const res = await fetch('/api/numbers?account_index=augestel&refresh=1');
+        const res = await fetch('/api/augestel/auto-add/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_index: rawAccVal,
+                workers: workers,
+                range_name: rangeName,
+                max_add: maxAdd,
+                delay: delay
+            })
+        });
         const data = await res.json();
 
         if (data.success) {
-            const list = data.numbers || [];
-            let filteredList = list;
-            if (rangeFilter) {
-                filteredList = list.filter(n => (n.range || '').toLowerCase().includes(rangeFilter.toLowerCase()));
-            }
-
-            if (statAssigned) statAssigned.textContent = filteredList.length.toLocaleString('id-ID');
-            if (statRange && filteredList.length > 0) statRange.textContent = filteredList[0].range || 'ECONET';
-            if (badge) {
-                badge.className = 'status-badge active';
-                badge.textContent = 'Synchronized';
-            }
-
-            showToast(`Berhasil sinkronisasi ${filteredList.length} nomor dari Augestel!`, 'success');
+            showToast(data.message, 'success');
+            if (btnStart) btnStart.style.display = 'none';
+            if (btnStop) btnStop.style.display = 'inline-flex';
+            checkAugestelAutoAddStatus();
         } else {
-            showToast(`Gagal sync Augestel: ${data.message || 'Error'}`, 'error');
-            if (badge) {
-                badge.className = 'status-badge';
-                badge.textContent = 'Error';
+            showToast(data.message, 'error');
+            if (btnStart) btnStart.disabled = false;
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+        if (btnStart) btnStart.disabled = false;
+    }
+}
+
+async function stopAugestelAutoAdd() {
+    const btnStop = document.getElementById('btnStopAugAdd');
+    if (btnStop) btnStop.disabled = true;
+
+    try {
+        const res = await fetch('/api/augestel/auto-add/stop', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message, 'info');
+        checkAugestelAutoAddStatus();
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+    } finally {
+        if (btnStop) btnStop.disabled = false;
+    }
+}
+
+async function checkAugestelAutoAddStatus() {
+    try {
+        const res = await fetch('/api/augestel/auto-add/status');
+        const state = await res.json();
+
+        const btnStart = document.getElementById('btnStartAugAdd');
+        const btnStop = document.getElementById('btnStopAugAdd');
+        const badge = document.getElementById('augAutoAddStatus');
+        const statAdded = document.getElementById('augStatAdded');
+        const statFailed = document.getElementById('augStatFailed');
+        const statSkipped = document.getElementById('augStatSkipped');
+        const statTotal = document.getElementById('augStatTotal');
+        const bar = document.getElementById('augProgressBar');
+        const msg = document.getElementById('augLastMessage');
+        const accSelect = document.getElementById('augAddAccountSelect');
+        const runningInfo = document.getElementById('augAddRunningAccountInfo');
+        const runningText = document.getElementById('augAddRunningAccountText');
+
+        if (state.running) {
+            if (btnStart) { btnStart.style.display = 'none'; btnStart.disabled = false; }
+            if (btnStop) { btnStop.style.display = 'inline-flex'; }
+            if (badge) { badge.textContent = 'Running'; badge.className = 'status-badge active'; }
+            if (accSelect) { accSelect.disabled = true; }
+            if (runningInfo && state.account_email) {
+                runningInfo.style.display = 'block';
+                if (runningText) {
+                    const workerBadge = state.workers ? ` <span class="badge badge-info" style="font-size:0.75rem;"><i class="fas fa-bolt"></i> ${state.workers} Workers</span>` : '';
+                    runningText.innerHTML = `Sedang berjalan menggunakan: <b>${escapeHtml(state.account_email)}</b>${workerBadge}`;
+                }
+            }
+        } else {
+            if (btnStart) { btnStart.style.display = 'inline-flex'; btnStart.disabled = false; }
+            if (btnStop) { btnStop.style.display = 'none'; }
+            if (badge) { badge.textContent = 'Idle'; badge.className = 'status-badge'; }
+            if (accSelect) { accSelect.disabled = false; }
+            if (runningInfo) { runningInfo.style.display = 'none'; }
+        }
+
+        if (statAdded) statAdded.textContent = state.added || 0;
+        if (statFailed) statFailed.textContent = state.failed || 0;
+        if (statSkipped) statSkipped.textContent = state.skipped || 0;
+        if (statTotal) statTotal.textContent = state.total_found || 0;
+
+        if (msg && state.last_message) {
+            msg.innerHTML = `<i class="fas fa-terminal"></i> ${escapeHtml(state.last_message)}`;
+        }
+
+        if (bar) {
+            const target = state.max_add > 0 ? state.max_add : state.total_found;
+            if (target > 0) {
+                const pct = Math.min(100, Math.round(((state.added + state.skipped) / target) * 100));
+                bar.style.width = `${pct}%`;
+            } else {
+                bar.style.width = state.running ? '50%' : '0%';
             }
         }
     } catch (e) {
-        showToast('Error sinkronisasi Augestel: ' + e.message, 'error');
-        if (badge) {
-            badge.className = 'status-badge';
-            badge.textContent = 'Error';
-        }
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-play"></i> Sync & Fetch Numbers';
-        }
+        console.error('Failed to get Augestel auto-add status:', e);
     }
 }
 
