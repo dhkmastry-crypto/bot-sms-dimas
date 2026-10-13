@@ -1411,6 +1411,323 @@ async function submitBulkAccounts() {
 }
 
 // ────────────────────────────────────────────
+//  AUGESTEL ACCOUNT & CONNECTION CONTROLLER
+// ────────────────────────────────────────────
+
+let currentAugestelAccounts = [];
+
+async function checkAugestelConnection() {
+    const card = document.getElementById('augConnectionCard');
+    const dot = document.getElementById('augStatusDot');
+    const badge = document.getElementById('augBadge');
+    const desc = document.getElementById('augStatusDesc');
+    const btn = document.getElementById('btnCheckAugestel');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Cek...';
+    }
+
+    try {
+        const res = await fetch('/api/augestel/check', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success && data.status && data.status.connected) {
+            if (dot) dot.className = 'status-dot online';
+            if (badge) {
+                badge.className = 'badge badge-success';
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
+            }
+            if (desc) {
+                desc.innerHTML = `<i class="fas fa-check"></i> API Aktif • Saldo: $${data.status.balance || 0} • ${data.status.total_numbers || 0} Nomor`;
+            }
+            showToast(`Augestel Connected! Saldo: $${data.status.balance || 0}, ${data.status.total_numbers || 0} Nomor terdeteksi.`, 'success');
+        } else {
+            if (dot) dot.className = 'status-dot offline';
+            if (badge) {
+                badge.className = 'badge badge-danger';
+                badge.innerHTML = '<i class="fas fa-times-circle"></i> Error';
+            }
+            if (desc) desc.textContent = data.message || 'Koneksi API Augestel gagal';
+            showToast(`Gagal koneksi Augestel: ${data.message || 'Unknown error'}`, 'error');
+        }
+    } catch (e) {
+        showToast('Error cek Augestel: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-satellite-dish"></i> Cek Augestel';
+        }
+    }
+}
+
+async function loadAugestelAccountsList() {
+    const container = document.getElementById('augAccountsListContainer');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/augestel/accounts');
+        const data = await res.json();
+        currentAugestelAccounts = data.accounts || [];
+
+        if (currentAugestelAccounts.length === 0) {
+            container.innerHTML = `
+                <div class="text-muted" style="text-align: center; padding: 25px; border: 1px dashed var(--border); border-radius: 12px;">
+                    <i class="fas fa-satellite-dish" style="font-size: 2rem; margin-bottom: 8px; opacity: 0.5;"></i>
+                    <p>Belum ada akun Augestel terdaftar. Silakan tambahkan akun pertama Anda.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = currentAugestelAccounts.map((acc, idx) => {
+            const email = escapeHtml(acc.email || '');
+            const apiKey = acc.api_key || '';
+            const maskedKey = apiKey.length > 12 
+                ? `${apiKey.substring(0, 8)}••••••••${apiKey.substring(apiKey.length - 4)}` 
+                : apiKey;
+            const isFirst = idx === 0;
+
+            return `
+                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 14px; padding: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #8b5cf6, #6d28d9); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: #fff;">
+                            <i class="fas fa-satellite-dish"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <b style="font-size: 1rem; color: var(--text);">Akun Augestel #${idx + 1}</b>
+                                <span class="badge ${isFirst ? 'badge-info' : 'badge-success'}" style="font-size: 0.72rem;">
+                                    ${isFirst ? 'Default / Utama' : `Akun #${idx + 1}`}
+                                </span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">
+                                <i class="fas fa-envelope"></i> ${email}
+                            </div>
+                            <div class="text-muted mono" style="font-size: 0.76rem; margin-top: 2px; color: var(--accent-light);">
+                                <i class="fas fa-key"></i> Key: ${escapeHtml(maskedKey)}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-secondary btn-sm" onclick="editAugestelAccount(${idx})" title="Edit Akun">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteAugestelAccount(${idx})" title="Hapus Akun">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        container.innerHTML = `<div class="text-danger" style="padding: 10px;">Gagal memuat akun: ${e.message}</div>`;
+    }
+}
+
+function editAugestelAccount(index) {
+    if (index >= 0 && index < currentAugestelAccounts.length) {
+        const acc = currentAugestelAccounts[index];
+        const editIdx = document.getElementById('augAccEditIndex');
+        const emailEl = document.getElementById('augAccInputEmail');
+        const keyEl = document.getElementById('augAccInputApiKey');
+        const passEl = document.getElementById('augAccInputPassword');
+        const title = document.getElementById('augAccFormModeTitle');
+        const btnSave = document.getElementById('btnSaveAugAcc');
+        const btnCancel = document.getElementById('btnCancelAugEdit');
+
+        if (editIdx) editIdx.value = String(index);
+        if (emailEl) emailEl.value = acc.email || '';
+        if (keyEl) keyEl.value = acc.api_key || '';
+        if (passEl) passEl.value = acc.password || '';
+
+        if (title) title.innerHTML = `<i class="fas fa-edit"></i> Edit Akun Augestel #${index + 1} (${escapeHtml(acc.email)})`;
+        if (btnSave) btnSave.innerHTML = `<i class="fas fa-save"></i> Perbarui Akun #${index + 1}`;
+        if (btnCancel) btnCancel.style.display = 'inline-block';
+
+        emailEl?.focus();
+    }
+}
+
+function resetAugAccForm() {
+    const editIdx = document.getElementById('augAccEditIndex');
+    const emailEl = document.getElementById('augAccInputEmail');
+    const keyEl = document.getElementById('augAccInputApiKey');
+    const passEl = document.getElementById('augAccInputPassword');
+    const title = document.getElementById('augAccFormModeTitle');
+    const btnSave = document.getElementById('btnSaveAugAcc');
+    const btnCancel = document.getElementById('btnCancelAugEdit');
+
+    if (editIdx) editIdx.value = '';
+    if (emailEl) emailEl.value = '';
+    if (keyEl) keyEl.value = '';
+    if (passEl) passEl.value = '';
+
+    if (title) title.innerHTML = `<i class="fas fa-satellite-dish" style="color: #a78bfa;"></i> Tambah Akun Augestel`;
+    if (btnSave) btnSave.innerHTML = `<i class="fas fa-save"></i> Simpan Akun Augestel`;
+    if (btnCancel) btnCancel.style.display = 'none';
+}
+
+function toggleAugPasswordVisibility() {
+    const input = document.getElementById('augAccInputPassword');
+    const icon = document.getElementById('augAccPwdIcon');
+    if (!input || !icon) return;
+
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+
+async function saveAugestelAccount() {
+    const editIdxVal = document.getElementById('augAccEditIndex')?.value;
+    const email = document.getElementById('augAccInputEmail')?.value.trim();
+    const apiKey = document.getElementById('augAccInputApiKey')?.value.trim();
+    const password = document.getElementById('augAccInputPassword')?.value.trim();
+
+    if (!email || !apiKey) {
+        showToast('Email dan API Key Augestel wajib diisi!', 'warning');
+        return;
+    }
+
+    const payload = {
+        email: email,
+        api_key: apiKey,
+        password: password
+    };
+    if (editIdxVal !== '' && !isNaN(parseInt(editIdxVal))) {
+        payload.index = parseInt(editIdxVal, 10);
+    }
+
+    try {
+        const res = await fetch('/api/augestel/accounts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Akun Augestel berhasil disimpan!', 'success');
+            resetAugAccForm();
+            await loadAugestelAccountsList();
+        } else {
+            showToast(data.message || 'Gagal menyimpan akun Augestel', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function deleteAugestelAccount(index) {
+    if (!confirm(`Apakah Anda yakin ingin menghapus Akun Augestel #${index + 1}?`)) return;
+
+    try {
+        const res = await fetch('/api/augestel/accounts/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ index: index })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Akun Augestel berhasil dihapus!', 'success');
+            resetAugAccForm();
+            await loadAugestelAccountsList();
+        } else {
+            showToast(data.message || 'Gagal menghapus akun', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+// ────────────────────────────────────────────
+//  AUTO-ADD AUGESTEL (SEPARATE NAVIGATION)
+// ────────────────────────────────────────────
+
+async function loadAugAddAccountSelect() {
+    const select = document.getElementById('augAddAccountSelect');
+    if (!select) return;
+
+    try {
+        const res = await fetch('/api/augestel/accounts');
+        const data = await res.json();
+        const accounts = data.accounts || [];
+
+        if (accounts.length === 0) {
+            select.innerHTML = '<option value="">Belum ada akun Augestel (Tambahkan di Akun Augestel)</option>';
+            return;
+        }
+
+        select.innerHTML = accounts.map((acc, i) => {
+            return `<option value="${i + 1}">Akun #${i + 1} (${escapeHtml(acc.email)})</option>`;
+        }).join('');
+    } catch (e) {
+        console.error('Failed to load Augestel accounts for auto-add:', e);
+    }
+}
+
+async function startAugestelAutoAdd() {
+    const btn = document.getElementById('btnStartAugAdd');
+    const badge = document.getElementById('augAutoAddStatus');
+    const statAssigned = document.getElementById('augStatAssigned');
+    const statRange = document.getElementById('augStatRange');
+    const rangeFilter = (document.getElementById('augAddRangeName')?.value || '').trim();
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Syncing from Augestel API...';
+    }
+    if (badge) {
+        badge.className = 'status-badge active';
+        badge.textContent = 'Syncing...';
+    }
+
+    try {
+        // Panggil endpoint numbers dengan parameter augestel & refresh 1
+        const res = await fetch('/api/numbers?account_index=augestel&refresh=1');
+        const data = await res.json();
+
+        if (data.success) {
+            const list = data.numbers || [];
+            let filteredList = list;
+            if (rangeFilter) {
+                filteredList = list.filter(n => (n.range || '').toLowerCase().includes(rangeFilter.toLowerCase()));
+            }
+
+            if (statAssigned) statAssigned.textContent = filteredList.length.toLocaleString('id-ID');
+            if (statRange && filteredList.length > 0) statRange.textContent = filteredList[0].range || 'ECONET';
+            if (badge) {
+                badge.className = 'status-badge active';
+                badge.textContent = 'Synchronized';
+            }
+
+            showToast(`Berhasil sinkronisasi ${filteredList.length} nomor dari Augestel!`, 'success');
+        } else {
+            showToast(`Gagal sync Augestel: ${data.message || 'Error'}`, 'error');
+            if (badge) {
+                badge.className = 'status-badge';
+                badge.textContent = 'Error';
+            }
+        }
+    } catch (e) {
+        showToast('Error sinkronisasi Augestel: ' + e.message, 'error');
+        if (badge) {
+            badge.className = 'status-badge';
+            badge.textContent = 'Error';
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-play"></i> Sync & Fetch Numbers';
+        }
+    }
+}
+
+
+// ────────────────────────────────────────────
 //  HELPERS
 // ────────────────────────────────────────────
 
