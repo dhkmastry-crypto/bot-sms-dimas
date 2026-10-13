@@ -2173,10 +2173,38 @@ async function setupAllAugestelWebhooks() {
     }
     showToast('Memasang Webhook ke seluruh akun Augestel (Bypass 429 Limit)...', 'info');
     try {
-        const res = await fetch('/api/augestel/webhooks/setup-all', { method: 'POST' });
-        const data = await res.json();
+        const res = await fetch('/api/augestel/webhooks/setup-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        if (res.status === 401 || res.redirected) {
+            showToast('Sesi login telah berakhir. Mengarahkan ke halaman login...', 'warning');
+            setTimeout(() => { window.location.href = '/login'; }, 1200);
+            return;
+        }
+
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseErr) {
+            if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                showToast('Sesi login telah kedaluwarsa. Silakan login kembali.', 'warning');
+                setTimeout(() => { window.location.href = '/login'; }, 1200);
+                return;
+            }
+            throw new Error('Respon server tidak valid');
+        }
+
         if (data.success) {
             showToast(data.message || 'Webhook berhasil dikonfigurasi ke seluruh akun Augestel!', 'success');
+        } else if (data.need_login) {
+            showToast(data.message || 'Sesi login telah berakhir', 'warning');
+            setTimeout(() => { window.location.href = '/login'; }, 1200);
         } else {
             showToast(data.message || 'Gagal memasang webhook', 'error');
         }

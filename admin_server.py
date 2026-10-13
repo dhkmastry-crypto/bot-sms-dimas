@@ -661,6 +661,7 @@ def login():
         username = request.form.get("username", "")
         password = request.form.get("password", "")
         if username == ADMIN_USER and password == ADMIN_PASS:
+            session.permanent = True
             session["logged_in"] = True
             session["username"] = username
             return redirect(url_for("dashboard"))
@@ -1137,7 +1138,8 @@ def api_augestel_webhooks_setup_all():
     Secara otomatis memasang webhook endpoint ke seluruh akun Augestel (1-7)
     menggunakan profil browser Playwright yang sudah login.
     """
-    webhook_url = request.json.get("webhook_url") if request.json else ""
+    body = request.get_json(silent=True) or {}
+    webhook_url = body.get("webhook_url") if isinstance(body, dict) else ""
     if not webhook_url:
         webhook_url = augestel_webhook_status["url"]
 
@@ -1166,7 +1168,7 @@ def api_augestel_webhooks_setup_all():
                     page = ctx.pages[0] if ctx.pages else ctx.new_page()
                     page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="networkidle", timeout=30000)
                     
-                    if "/login" in page.url.lower():
+                    if "/login" in page.url.lower() or "login" in (page.title() or "").lower():
                         logger.warning(f"Akun #{idx} belum login, melewati webhook setup")
                         ctx.close()
                         results.append({"account_idx": idx, "success": False, "error": "Not logged in"})
@@ -1183,10 +1185,10 @@ def api_augestel_webhooks_setup_all():
                     if msg_cb and not msg_cb.is_checked():
                         msg_cb.check()
                         
-                    submit_btn = page.query_selector('button[type="submit"]:has-text("Save endpoint"), form[action*="webhook"] button[type="submit"]')
+                    submit_btn = page.query_selector('form[action*="webhook"] button[type="submit"]')
                     if submit_btn:
                         submit_btn.click()
-                        page.wait_for_timeout(2500)
+                        page.wait_for_timeout(3000)
                         
                     saved_val = page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
                     ctx.close()
