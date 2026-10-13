@@ -302,12 +302,30 @@ async def submit_add_number(page, term_data: dict, cfg: dict, count: int = 250) 
     return res
 
 
-async def run_worker(worker_id: int, account_idx: int, account_email: str, page, queue: asyncio.Queue, shared_stats: dict, stats_lock: asyncio.Lock, delay: int, max_add: int, batch_count: int = 250):
+async def run_worker(worker_id: int, account_idx: int, account_email: str, page, queue: asyncio.Queue, shared_stats: dict, account_state: dict, stats_lock: asyncio.Lock, delay: int, max_add: int, batch_count: int = 250):
     """Worker task independen yang mengeksekusi penambahan nomor dari antrian."""
     while not queue.empty():
         async with stats_lock:
+            # 1. Cek apakah batas 2.500 nomor akun ini sudah tercapai
+            if account_state.get("limit_reached"):
+                break
+            curr_acc_total = account_state["current_total"] + account_state["added"]
+            if curr_acc_total >= MAX_ACCOUNT_NUMBERS:
+                account_state["limit_reached"] = True
+                logger.warning(f"🛑 [Akun #{account_idx}] Batas maksimal {MAX_ACCOUNT_NUMBERS} nomor telah tercapai (Total: {curr_acc_total})! Menghentikan penambahan untuk akun ini.")
+                break
+
+            # 2. Cek apakah target max_add global telah tercapai
             if max_add > 0 and shared_stats["added"] >= max_add:
                 break
+
+            # Hitung jumlah nomor yang boleh diminta (jangan sampai melebihi 2.500 nomor akun)
+            remaining_quota = MAX_ACCOUNT_NUMBERS - curr_acc_total
+            req_count = min(batch_count, remaining_quota)
+            if max_add > 0:
+                req_count = min(req_count, max_add - shared_stats["added"])
+            req_count = max(1, req_count)
+
             shared_stats["current_action"] += 1
             action_num = shared_stats["current_action"]
 
@@ -325,7 +343,7 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             continue
 
         logger.info(f"── [Worker #{worker_id} | Akun #{account_idx}] Action #{action_num} ──")
-        logger.info(f"  📋 Range: {term_name} | 📱 Number: {test_number} | 🆔 ID: {term_id} | 🔢 Request: {batch_count} nomor")
+        logger.info(f"  📋 Range: {term_name} | 📱 Number: {test_number} | 🆔 ID: {term_id} | 🔢 Request: {req_count} nomor (Sisa kuota akun: {remaining_quota})")
 
         # Step 1: Ambil detail termination & request token
         info_res = await get_termination_details(page, term_id)
@@ -370,20 +388,40 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             continue
 
         # Step 2: Request penambahan nomor
-        add_res = await submit_add_number(page, term, cfg, count=batch_count)
+        add_res = await submit_add_number(page, term, cfg, count=req_count)
         if add_res.get("ok"):
             added_nums = add_res.get("data", {}).get("numbers", [])
-            actual_added = len(added_nums) if added_nums else batch_count
+            actual_added = len(added_nums) if added_nums else req_count
             num_preview = ", ".join(added_nums[:3]) + (f" ... (+{actual_added - 3} lainnya)" if actual_added > 3 else "") if added_nums else f"{actual_added} nomor"
             logger.info(f"  ✅ BERHASIL: {actual_added} nomor berhasil ditambahkan ({num_preview})!")
             async with stats_lock:
+                account_state["added"] += actual_added
                 shared_stats["added"] += actual_added
+                tot_now = account_state["current_total"] + account_state["added"]
+                logger.info(f"  📈 [Akun #{account_idx}] Total nomor akun sekarang: {tot_now} / {MAX_ACCOUNT_NUMBERS}")
+                if tot_now >= MAX_ACCOUNT_NUMBERS:
+                    account_state["limit_reached"] = True
+                    logger.warning(f"🛑 [Akun #{account_idx}] Batas maksimal {MAX_ACCOUNT_NUMBERS} nomor telah tercapai! Menghentikan penambahan untuk akun ini dan lanjut ke akun berikutnya.")
+                    while not queue.empty():
+                        try:
+                            queue.get_nowait()
+                            queue.task_done()
+                        except Exception:
+                            break
         else:
             msg = add_res.get("message", "Gagal request")
-            if "limit" in msg.lower():
-                logger.warning(f"  ⚠️ Limit akun tercapai: {msg}")
+            msg_lower = msg.lower()
+            if "limit" in msg_lower or "maximum" in msg_lower or "reach" in msg_lower or "quota" in msg_lower or "not allowed" in msg_lower:
+                logger.warning(f"  🛑 [Akun #{account_idx}] Portal Augestel menyatakan limit nomor tercapai: '{msg}'! Menghentikan penambahan pada akun ini dan lanjut ke akun berikutnya.")
                 async with stats_lock:
                     shared_stats["skipped"] += 1
+                    account_state["limit_reached"] = True
+                    while not queue.empty():
+                        try:
+                            queue.get_nowait()
+                            queue.task_done()
+                        except Exception:
+                            break
             else:
                 logger.error(f"  ❌ GAGAL: {msg}")
                 async with stats_lock:
@@ -392,7 +430,7 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
         logger.info(f"  📊 Added={shared_stats['added']} | Failed={shared_stats['failed']} | Skipped={shared_stats['skipped']}")
         queue.task_done()
 
-        if delay > 0 and not queue.empty():
+        if delay > 0 and not queue.empty() and not account_state.get("limit_reached"):
             logger.info(f"  ⏳ [Worker #{worker_id}] Delay {delay}s sebelum action berikutnya...")
             await asyncio.sleep(delay)
 
@@ -402,6 +440,7 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
     acc_conf = get_account_config(account_idx)
     email = acc_conf["email"]
     password = acc_conf["password"]
+    api_key = acc_conf.get("api_key", "")
     user_data_dir = acc_conf["user_data_dir"]
 
     logger.info("═" * 60)
@@ -409,6 +448,13 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
     logger.info(f"📂 Profile Browser: {user_data_dir}")
     logger.info(f"⚡ Parallel Workers: {workers_count}")
     logger.info("═" * 60)
+
+    # ── Pengecekan Cepat: Apakah akun sudah mencapai batas 2.500 sebelum meluncurkan browser? ──
+    init_count = await get_account_current_numbers_count(None, account_idx, api_key, email)
+    if init_count >= MAX_ACCOUNT_NUMBERS:
+        logger.warning(f"⚠️ [Akun #{account_idx} | {email}] Sudah memiliki {init_count}/{MAX_ACCOUNT_NUMBERS} nomor (Batas Maksimal Tercapai).")
+        logger.warning(f"⏭️ Melewati Akun #{account_idx} dan otomatis lanjut ke akun berikutnya!")
+        return
 
     async with async_playwright() as p:
         try:
@@ -436,6 +482,18 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
             await context.close()
             return
 
+        # Double check jumlah nomor setelah login
+        if init_count <= 0:
+            init_count = await get_account_current_numbers_count(page, account_idx, api_key, email)
+            if init_count >= MAX_ACCOUNT_NUMBERS:
+                logger.warning(f"⚠️ [Akun #{account_idx} | {email}] Sudah memiliki {init_count}/{MAX_ACCOUNT_NUMBERS} nomor (Batas Maksimal Tercapai).")
+                logger.warning(f"⏭️ Melewati Akun #{account_idx} dan otomatis lanjut ke akun berikutnya!")
+                await context.close()
+                return
+
+        remaining_quota = MAX_ACCOUNT_NUMBERS - init_count
+        logger.info(f"📊 [Akun #{account_idx} | {email}] Jumlah nomor saat ini: {init_count}/{MAX_ACCOUNT_NUMBERS} (Sisa kuota: {remaining_quota} nomor).")
+
         # Fetch terminations matching range_filter
         logger.info(f"🔍 Mencari terminations dengan filter: '{range_filter}'...")
         raw_rows = []
@@ -457,7 +515,7 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
             start_idx += len(chunk)
             if start_idx >= total_found or len(chunk) < page_size:
                 break
-        
+
         logger.info(f"📋 Ditemukan {total_found} total records ({len(raw_rows)} diambil) untuk filter '{range_filter}'")
 
         if not raw_rows:
@@ -471,7 +529,7 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
             action_html = r.get("action", "")
             id_match = re.search(r'data-termination-id="(\d+)"', action_html)
             term_id = id_match.group(1) if id_match else None
-            
+
             num_html = r.get("test_number", "")
             num_match = re.search(r'data-copy-number="([^"]+)"', num_html)
             num = num_match.group(1) if num_match else ""
@@ -496,6 +554,12 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
             except Exception as e:
                 logger.warning(f"⚠️ Gagal membuat tab worker #{w_i + 1}: {e}")
 
+        account_state = {
+            "current_total": init_count,
+            "added": 0,
+            "limit_reached": False
+        }
+
         # Jalankan parallel workers
         tasks = []
         for i, w_page in enumerate(worker_pages):
@@ -508,6 +572,7 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
                         page=w_page,
                         queue=queue,
                         shared_stats=shared_stats,
+                        account_state=account_state,
                         stats_lock=stats_lock,
                         delay=delay,
                         max_add=max_add,
@@ -518,7 +583,25 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
 
         await asyncio.gather(*tasks)
         await context.close()
-        logger.info(f"🎉 Selesai memproses Akun #{account_idx} ({email}).")
+
+        # Update cache disk jika ada penambahan nomor
+        if account_state["added"] > 0:
+            final_acc_total = account_state["current_total"] + account_state["added"]
+            try:
+                cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
+                if os.path.exists(cache_file):
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        cd = json.load(f)
+                    cd["total"] = final_acc_total
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump(cd, f, indent=2)
+                agg_file = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+                if os.path.exists(agg_file):
+                    os.remove(agg_file)
+            except Exception as ex_cache:
+                logger.debug(f"Gagal update cache disk akun #{account_idx}: {ex_cache}")
+
+        logger.info(f"🎉 Selesai memproses Akun #{account_idx} ({email}). Total ditambahkan pada akun ini: {account_state['added']} nomor (Total sekarang: {account_state['current_total'] + account_state['added']}).")
 
 
 async def main():
@@ -542,14 +625,34 @@ async def main():
     if not all_accounts:
         all_accounts = [{"email": "default", "password": ""}]
 
+    # Dukung multi-akun (contoh: "1,3,4" atau "all" atau "2")
     target_indices = []
     if account_arg == "all":
         target_indices = list(range(1, len(all_accounts) + 1))
+    elif "," in account_arg:
+        for x in account_arg.split(","):
+            x = x.strip()
+            if x.isdigit():
+                val = int(x)
+                if 1 <= val <= len(all_accounts) and val not in target_indices:
+                    target_indices.append(val)
     else:
         try:
-            target_indices = [int(account_arg)]
+            val = int(account_arg)
+            if 1 <= val <= len(all_accounts):
+                target_indices = [val]
+            else:
+                target_indices = [1]
         except Exception:
             target_indices = [1]
+
+    if not target_indices:
+        target_indices = [1]
+
+    logger.info("═" * 60)
+    logger.info(f"🎯 Target akun terpilih: {', '.join([f'Akun #{i}' for i in target_indices])} ({len(target_indices)} akun)")
+    logger.info(f"🔢 Maksimal nomor per akun: {MAX_ACCOUNT_NUMBERS} nomor (Otomatis skip / lanjut jika penuh)")
+    logger.info("═" * 60)
 
     shared_stats = {
         "added": 0,
