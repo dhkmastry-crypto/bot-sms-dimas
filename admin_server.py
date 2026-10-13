@@ -1371,8 +1371,8 @@ def api_numbers_list():
     force_refresh = request.args.get("refresh", "0") in ["1", "true", "True"]
     if raw_idx == "all":
         acc_arg = "all"
-    elif raw_idx == "augestel":
-        acc_arg = "augestel"
+    elif raw_idx.startswith("aug"):
+        acc_arg = raw_idx
     else:
         acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
@@ -1392,8 +1392,8 @@ def api_numbers_export_excel():
     raw_idx = str(request.args.get("account_index", "1")).strip().lower()
     if raw_idx == "all":
         acc_arg = "all"
-    elif raw_idx == "augestel":
-        acc_arg = "augestel"
+    elif raw_idx.startswith("aug"):
+        acc_arg = raw_idx
     else:
         acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
@@ -1410,8 +1410,11 @@ def api_numbers_export_excel():
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         if acc_arg == "all":
             filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
-        elif acc_arg == "augestel":
-            filename = f"augestel_numbers_{date_str}.xlsx"
+        elif acc_arg in ["augestel", "augestel_all", "aug_all"]:
+            filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
+        elif str(acc_arg).startswith("aug"):
+            clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else str(acc_arg)
+            filename = f"augestel_numbers_{clean_email_tag}_{date_str}.xlsx"
         else:
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
             filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.xlsx"
@@ -1434,8 +1437,8 @@ def api_numbers_export_txt():
     raw_idx = str(request.args.get("account_index", "1")).strip().lower()
     if raw_idx == "all":
         acc_arg = "all"
-    elif raw_idx == "augestel":
-        acc_arg = "augestel"
+    elif raw_idx.startswith("aug"):
+        acc_arg = raw_idx
     else:
         acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
 
@@ -1452,8 +1455,11 @@ def api_numbers_export_txt():
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         if acc_arg == "all":
             filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.txt"
-        elif acc_arg == "augestel":
-            filename = f"augestel_numbers_{date_str}.txt"
+        elif acc_arg in ["augestel", "augestel_all", "aug_all"]:
+            filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.txt"
+        elif str(acc_arg).startswith("aug"):
+            clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else str(acc_arg)
+            filename = f"augestel_numbers_{clean_email_tag}_{date_str}.txt"
         else:
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
             filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.txt"
