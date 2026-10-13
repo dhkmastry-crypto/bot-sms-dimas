@@ -583,11 +583,16 @@ def check_augestel_multi_connection(target_index: int = None):
         # 1. Cek REST API Key
         if api_key:
             try:
-                client = AugestelClient(api_key=api_key, email=email)
-                api_connected = client.check_connection()
-                if api_connected:
-                    stats = client.get_statistics()
-                    balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
+                rem_cd = AugestelClient.get_remaining_cooldown()
+                if rem_cd > 0:
+                    api_connected = True
+                    balance = acc.get("balance", "0.00")
+                else:
+                    client = AugestelClient(api_key=api_key, email=email)
+                    api_connected = client.check_connection()
+                    if api_connected and AugestelClient.get_remaining_cooldown() == 0:
+                        stats = client.get_statistics()
+                        balance = stats.get("data", {}).get("balance", "0.00") if isinstance(stats, dict) else "0.00"
             except Exception as e:
                 logger.error(f"Error checking Augestel acc {idx}: {e}")
                 api_connected = False
