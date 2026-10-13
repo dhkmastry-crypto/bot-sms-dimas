@@ -87,6 +87,8 @@ function initPage(page) {
         loadAugAddAccountSelect();
     } else if (page === 'numbers') {
         initNumbersPage();
+    } else if (page === 'numbers-augestel') {
+        initAugestelNumbersPage();
     } else if (page === 'bot-control') {
         loadBotControl();
         refreshLogs();
@@ -615,11 +617,9 @@ async function loadNumbersAccountOptions() {
             const idx = i + 1;
             return `<option value="${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
         }).join('');
-        html += `<option value="augestel">🌐 Augestel Portal (500 Nomor - ECONET)</option>`;
-
         select.innerHTML = html;
 
-        if (currentVal && (currentVal === 'all' || currentVal === 'augestel' || accounts[parseInt(currentVal, 10) - 1])) {
+        if (currentVal && (currentVal === 'all' || accounts[parseInt(currentVal, 10) - 1])) {
             select.value = currentVal;
         }
     } catch (e) {
@@ -822,6 +822,246 @@ async function deleteAllNumbersCurrentAccount() {
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-trash-alt"></i> Delete All Numbers';
+        }
+    }
+}
+
+
+// ────────────────────────────────────────────
+//  MY NUMBERS & EXPORT (AUGESTEL PORTAL)
+// ────────────────────────────────────────────
+
+let allAugestelNumbersList = [];
+
+async function initAugestelNumbersPage() {
+    await loadAugestelNumbersAccountOptions();
+    await loadAugestelNumbersData(false);
+}
+
+async function loadAugestelNumbersAccountOptions() {
+    const select = document.getElementById('augNumAccountSelect');
+    if (!select) return;
+
+    try {
+        const res = await fetch('/api/augestel/accounts');
+        const data = await res.json();
+        const accounts = data.accounts || [];
+
+        if (accounts.length === 0) {
+            select.innerHTML = '<option value="augestel_1">Akun #1 (Default)</option>';
+            return;
+        }
+
+        const currentVal = select.value;
+        let html = '';
+        if (accounts.length > 1) {
+            html += `<option value="augestel_all">⚡ SEMUA AKUN AUGESTEL (Total Gabungan ${accounts.length} Akun)</option>`;
+        }
+        html += accounts.map((acc, i) => {
+            const idx = i + 1;
+            return `<option value="augestel_${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
+        }).join('');
+
+        select.innerHTML = html;
+
+        if (currentVal && (currentVal === 'augestel_all' || html.includes(`value="${currentVal}"`))) {
+            select.value = currentVal;
+        }
+    } catch (e) {
+        console.error('Failed to load Augestel accounts for numbers:', e);
+    }
+}
+
+async function loadAugestelNumbersData(forceRefresh = false) {
+    const select = document.getElementById('augNumAccountSelect');
+    const accIdx = select ? select.value : 'augestel_all';
+    const isAll = accIdx === 'augestel_all';
+    const tbody = document.getElementById('augNumbersTableBody');
+    const statTotal = document.getElementById('augNumStatTotal');
+    const statAcc = document.getElementById('augNumStatAccount');
+    const statLast = document.getElementById('augNumStatLastCheck');
+    const summary = document.getElementById('augNumCountSummary');
+    const btnRef = document.getElementById('btnRefreshAugNumbers');
+    const breakdownEl = document.getElementById('augNumAccountsBreakdown');
+
+    if (btnRef) {
+        btnRef.disabled = true;
+        btnRef.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mendeteksi...';
+    }
+
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${isAll ? 7 : 6}" class="text-center" style="padding: 30px;">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: #8b5cf6;"></i>
+                    <div style="margin-top: 10px; font-weight: 500;">
+                        ${isAll ? 'Memuat dan mendeteksi nomor dari seluruh akun Augestel terdaftar...' : (forceRefresh ? 'Menghubungkan ke API Augestel dan mendeteksi nomor realtime...' : 'Memuat data nomor akun Augestel...')}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        const res = await fetch(`/api/numbers?account_index=${accIdx}&refresh=${forceRefresh ? '1' : '0'}`);
+        const data = await res.json();
+
+        if (!data.success) {
+            showToast(data.message || 'Gagal mengambil nomor dari portal Augestel', 'error');
+            if (tbody) {
+                tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
+            }
+            if (statTotal) statTotal.textContent = '0';
+            if (breakdownEl) breakdownEl.style.display = 'none';
+            return;
+        }
+
+        allAugestelNumbersList = data.numbers || [];
+        const total = data.total || allAugestelNumbersList.length;
+
+        if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
+        if (statAcc) {
+            statAcc.textContent = isAll ? `Semua Akun Augestel (${(data.accounts_breakdown || []).length} Akun)` : (data.email || 'Augestel Portal');
+        }
+        if (statLast) statLast.textContent = data.cached_at || 'Baru saja';
+        if (summary) summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length}</b> dari total <b>${total}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+
+        // Render breakdown cards jika memilih semua akun
+        if (breakdownEl) {
+            if (isAll && data.accounts_breakdown && data.accounts_breakdown.length > 0) {
+                breakdownEl.style.display = 'grid';
+                breakdownEl.innerHTML = data.accounts_breakdown.map(b => `
+                    <div class="account-breakdown-card" style="border-left: 3px solid #8b5cf6;">
+                        <span class="account-breakdown-badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd;"><i class="fas fa-satellite-dish"></i> Akun #${b.account_index}</span>
+                        <span class="account-breakdown-email" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
+                        <span class="account-breakdown-count" style="color: #a78bfa;">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
+                    </div>
+                `).join('');
+            } else {
+                breakdownEl.style.display = 'none';
+                breakdownEl.innerHTML = '';
+            }
+        }
+
+        renderAugestelNumbersTable(allAugestelNumbersList, isAll);
+        if (forceRefresh) {
+            showToast(`Berhasil mendeteksi total ${total} nomor Augestel!`, 'success');
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    } finally {
+        if (btnRef) {
+            btnRef.disabled = false;
+            btnRef.innerHTML = '<i class="fas fa-sync-alt"></i> Deteksi Ulang';
+        }
+    }
+}
+
+function renderAugestelNumbersTable(list, isAll = false) {
+    const tbody = document.getElementById('augNumbersTableBody');
+    const thAcc = document.getElementById('thAugAccountCol');
+    if (thAcc) thAcc.style.display = isAll ? '' : 'none';
+
+    if (!tbody) return;
+
+    if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor Augestel yang ditemukan.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map((item, idx) => {
+        const accCol = isAll ? `<td style="text-align: center;"><span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> ${item.account_index ? item.account_index.replace('aug_', '#') : '#1'}</span></td>` : '';
+        return `
+            <tr>
+                <td class="text-muted mono" style="font-size: 0.82rem; text-align: center;">${idx + 1}</td>
+                ${accCol}
+                <td class="selectable mono" style="font-weight: 600; color: #a78bfa;" title="Klik untuk salin" onclick="copyText('${escapeHtml(item.number)}')">
+                    <i class="fas fa-phone-alt" style="font-size: 0.72rem; opacity: 0.65; margin-right: 6px;"></i>
+                    <span>${escapeHtml(item.number)}</span>
+                </td>
+                <td><span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 500;">${escapeHtml(item.range || 'Augestel')}</span></td>
+                <td class="mono" style="color: #10b981;">${escapeHtml(item.rate || '$0.00')}</td>
+                <td class="mono">${escapeHtml(item.limit_range || '10000')}</td>
+                <td><span class="badge badge-success" style="font-size: 0.75rem;">Active / Augestel</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterAugestelNumbersTable() {
+    const query = (document.getElementById('augNumSearchInput')?.value || '').toLowerCase().trim();
+    const summary = document.getElementById('augNumCountSummary');
+    const select = document.getElementById('augNumAccountSelect');
+    const isAll = select && select.value === 'augestel_all';
+
+    if (!query) {
+        renderAugestelNumbersTable(allAugestelNumbersList, isAll);
+        if (summary) summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length}</b> nomor`;
+        return;
+    }
+
+    const filtered = allAugestelNumbersList.filter(item => {
+        return (item.number && item.number.toLowerCase().includes(query)) ||
+               (item.range && item.range.toLowerCase().includes(query)) ||
+               (item.account_email && item.account_email.toLowerCase().includes(query)) ||
+               (item.id && item.id.includes(query));
+    });
+
+    renderAugestelNumbersTable(filtered, isAll);
+    if (summary) summary.innerHTML = `Ditemukan <b>${filtered.length}</b> hasil dari <b>${allAugestelNumbersList.length}</b> nomor`;
+}
+
+function downloadAugestelNumbersExport(format) {
+    const select = document.getElementById('augNumAccountSelect');
+    const accIdx = select ? select.value : 'augestel_all';
+    const isAll = accIdx === 'augestel_all';
+
+    if (allAugestelNumbersList.length === 0) {
+        showToast('Tidak ada data nomor Augestel untuk diexport. Lakukan deteksi terlebih dahulu!', 'warning');
+        return;
+    }
+
+    const label = isAll ? 'SEMUA AKUN AUGESTEL' : `Akun Augestel (${accIdx.replace('aug_', '#')})`;
+    showToast(`Menyiapkan export ${format.toUpperCase()} ${label}...`, 'info');
+    const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
+    window.location.href = downloadUrl;
+}
+
+async function deleteAllAugestelNumbers() {
+    const select = document.getElementById('augNumAccountSelect');
+    const accIdx = select ? select.value : 'augestel_all';
+
+    const confirmMsg = `Apakah Anda yakin ingin MEMBERSIHKAN & MERESET CACHE NOMOR AUGESTEL?\n\nData nomor akan di-refresh langsung dari API Augestel saat deteksi ulang.`;
+    if (!confirm(confirmMsg)) return;
+
+    const btn = document.getElementById('btnDeleteAllAugNumbers');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mereset...';
+    }
+
+    try {
+        const res = await fetch('/api/numbers/delete-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account_index: accIdx })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message || 'Cache nomor Augestel berhasil direset!', 'success');
+            await loadAugestelNumbersData(true);
+        } else {
+            showToast(data.message || 'Gagal reset cache nomor!', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Cache Nomor';
         }
     }
 }
