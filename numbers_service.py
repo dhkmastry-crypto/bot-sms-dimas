@@ -277,7 +277,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         cached = _NUMBERS_CACHE[cache_key]
         try:
             cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-            if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0) and cached.get("total", 0) > 100:
+            if (now_ts - cached_dt).total_seconds() < 600 and len(cached.get("numbers", [])) >= cached.get("total", 0):
                 return cached
         except Exception:
             pass
@@ -286,7 +286,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         try:
             with open(disk_cache_path, "r", encoding="utf-8") as f:
                 disk_data = json.load(f)
-                if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0) and disk_data.get("total", 0) > 100:
+                if disk_data.get("numbers") is not None and len(disk_data.get("numbers", [])) >= disk_data.get("total", 0):
                     _NUMBERS_CACHE[cache_key] = disk_data
                     return disk_data
         except Exception:

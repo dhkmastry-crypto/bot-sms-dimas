@@ -121,7 +121,7 @@ def login_required(f):
 def load_config():
     """Load current config from config.py"""
     config = {}
-    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    config_path = os.path.join(BASE_DIR, "config.py")
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -169,7 +169,7 @@ def load_config():
 
 def save_config(new_config):
     """Save config changes to config.py"""
-    config_path = os.path.join(os.path.dirname(__file__), "config.py")
+    config_path = os.path.join(BASE_DIR, "config.py")
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -221,7 +221,7 @@ def save_config(new_config):
 
 def parse_bot_log():
     """Parse bot.log to extract SMS entries"""
-    log_path = os.path.join(os.path.dirname(__file__), "bot.log")
+    log_path = os.path.join(BASE_DIR, "bot.log")
     entries = []
     
     if not os.path.exists(log_path):
@@ -266,7 +266,7 @@ def parse_bot_log():
 
 def get_log_tail(n=50):
     """Get last N lines from bot.log"""
-    log_path = os.path.join(os.path.dirname(__file__), "bot.log")
+    log_path = os.path.join(BASE_DIR, "bot.log")
     if not os.path.exists(log_path):
         return []
     
@@ -321,7 +321,7 @@ def check_bot_running():
 
 def get_shared_status():
     """Baca status real-time dari bot.py (status.json) agar sinkron dengan Telegram."""
-    status_file = os.path.join(os.path.dirname(__file__), "status.json")
+    status_file = os.path.join(BASE_DIR, "status.json")
     if os.path.exists(status_file):
         try:
             with open(status_file, "r", encoding="utf-8") as f:
@@ -340,7 +340,7 @@ def get_shared_status():
 async def check_ivasms_connection(target_index: int = None):
     """Check IVASMS connection for each registered account, or specific account if target_index given"""
     global ivasms_status
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -415,7 +415,7 @@ async def check_ivasms_connection(target_index: int = None):
 
     # Sync to status.json
     try:
-        status_file = os.path.join(os.path.dirname(__file__), "status.json")
+        status_file = os.path.join(BASE_DIR, "status.json")
         s_data = {}
         if os.path.exists(status_file):
             with open(status_file, "r", encoding="utf-8") as f:
@@ -631,7 +631,7 @@ def api_bot_start():
     try:
         bot_process = subprocess.Popen(
             [sys.executable, "bot.py"],
-            cwd=os.path.dirname(__file__),
+            cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -714,7 +714,7 @@ def api_test_otp():
 
         # Log ke bot.log agar live log dan dashboard langsung mendeteksi
         log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [TEST] Sent OTP: {country} | {platform} | {otp}\n"
-        log_path = os.path.join(os.path.dirname(__file__), "bot.log")
+        log_path = os.path.join(BASE_DIR, "bot.log")
         try:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(log_line)
@@ -749,7 +749,7 @@ def api_bot_status():
         acc_status = shared.get("accounts_status")
 
     # Pastikan email terisi dari ivasms_accounts.json
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts_db = []
     if os.path.exists(acc_file):
         try:
@@ -825,7 +825,7 @@ def api_auto_add_start():
     if not range_name:
         return jsonify({"success": False, "message": "Range name harus diisi!"})
 
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts_db = []
     if os.path.exists(acc_file):
         try:
@@ -850,7 +850,7 @@ def api_auto_add_start():
     try:
         proc = subprocess.Popen(
             [sys.executable, "auto_add_numbers.py", range_name, str(max_add), str(delay), account_arg, str(workers)],
-            cwd=os.path.dirname(__file__),
+            cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -964,7 +964,7 @@ def api_augestel_auto_add_start():
     workers = int(data.get("workers", 2) or 2)
     workers = max(1, min(workers, 12))
     
-    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts_db = []
     if os.path.exists(acc_file):
         try:
@@ -989,7 +989,7 @@ def api_augestel_auto_add_start():
     try:
         proc = subprocess.Popen(
             [sys.executable, "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers)],
-            cwd=os.path.dirname(__file__),
+            cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -1117,7 +1117,7 @@ def api_config_save():
 @login_required
 def api_accounts_get():
     """Get list of all IVASMS accounts"""
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1150,7 +1150,7 @@ def api_accounts_save():
     if not email or not password:
         return jsonify({"success": False, "message": "Email dan Password harus diisi!"})
 
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1200,7 +1200,7 @@ def api_accounts_delete():
     index = data.get("index")
     email = data.get("email", "").strip()
 
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1246,7 +1246,7 @@ def api_accounts_delete():
 @login_required
 def api_augestel_accounts_get():
     """Get list of all Augestel accounts"""
-    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1302,7 +1302,7 @@ def api_augestel_accounts_save():
                 "message": ext_res.get("message", "Gagal auto-login & mendeteksi API Key. Pastikan email & password benar!")
             })
 
-    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1365,7 +1365,7 @@ def api_augestel_accounts_delete():
     index = data.get("index")
     email = data.get("email", "").strip()
 
-    acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
@@ -1400,7 +1400,7 @@ def api_augestel_batch_login():
     try:
         subprocess.Popen(
             [sys.executable, "batch_login_augestel.py"],
-            cwd=os.path.dirname(__file__),
+            cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
@@ -1421,7 +1421,7 @@ def api_augestel_check():
         
         # Also check augestel_accounts.json if empty
         if not api_key:
-            acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
+            acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
             if os.path.exists(acc_file):
                 with open(acc_file, "r", encoding="utf-8") as f:
                     accs = json.load(f)
@@ -1436,7 +1436,7 @@ def api_augestel_check():
 
         # Also get number count from cache if exists
         total_nums = 500
-        cache_file = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+        cache_file = os.path.join(BASE_DIR, "augestel_numbers_cache.json")
         if os.path.exists(cache_file):
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
@@ -1484,7 +1484,7 @@ def api_accounts_bulk_import():
     if not raw_text:
         return jsonify({"success": False, "message": "Teks akun tidak boleh kosong!"})
 
-    acc_file = os.path.join(os.path.dirname(__file__), "ivasms_accounts.json")
+    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
     accounts = []
     if os.path.exists(acc_file):
         try:
