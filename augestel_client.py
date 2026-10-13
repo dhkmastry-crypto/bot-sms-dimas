@@ -170,15 +170,20 @@ class AugestelClient:
             logger.error(f"Error fetching Augestel numbers: {e}")
             return {"success": False, "message": str(e)}
 
-    def get_all_numbers_list(self, max_records: int = 1000) -> list:
-        """Ambil seluruh daftar nomor Augestel dengan auto-paging."""
+    def get_all_numbers_list(self, max_records: int = 50000) -> list:
+        """Ambil seluruh daftar nomor Augestel dengan auto-paging hingga tuntas (tanpa batas 200)."""
         all_numbers = []
         page = 1
         per_page = 100
         while len(all_numbers) < max_records:
             res = self.get_numbers(page=page, per_page=per_page)
             if not res.get("success"):
-                break
+                # Jika terkena rate limit, tunggu dan coba lagi
+                if "429" in str(res.get("message", "")):
+                    time.sleep(12)
+                    res = self.get_numbers(page=page, per_page=per_page)
+                if not res.get("success"):
+                    break
             items = res.get("data", [])
             if not items:
                 break
@@ -197,10 +202,11 @@ class AugestelClient:
                     "provider": "Augestel",
                 })
             pagination = res.get("pagination", {})
-            if page >= pagination.get("last_page", 1):
+            last_page = pagination.get("last_page", 1)
+            if page >= last_page:
                 break
             page += 1
-            time.sleep(0.5)  # Beri jeda kecil antar page
+            time.sleep(1.2)  # Delay aman agar tidak rate limited
 
         return all_numbers
 
