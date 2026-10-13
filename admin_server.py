@@ -1007,12 +1007,21 @@ def api_bot_status():
             })
     elif aug_accounts_db:
         for idx, a in enumerate(aug_accounts_db, start=1):
+            c_info = check_augestel_browser_cookie(idx)
+            api_ok = bool(a.get("api_key"))
+            c_ok = c_info.get("cookie_connected", False)
             merged_aug_status.append({
                 "index": idx,
                 "email": a.get("email", ""),
-                "connected": bool(a.get("api_key")),
+                "api_connected": api_ok,
+                "cookie_connected": c_ok,
+                "cookie_status": c_info.get("status_text", "-"),
+                "has_remember": c_info.get("has_remember", False),
+                "has_session": c_info.get("has_session", False),
+                "cookie_count": c_info.get("cookie_count", 0),
+                "connected": api_ok and c_ok,
                 "balance": a.get("balance", "0.00"),
-                "last_check": "Status Terpantau (Aktif)" if a.get("api_key") else "Belum ada API Key"
+                "last_check": "Status Terpantau (Aktif)" if api_ok else "Belum ada API Key"
             })
 
     res = dict(bot_status)
@@ -1650,6 +1659,27 @@ def api_augestel_batch_login():
         return jsonify({"success": True, "message": "Proses batch login & warmup untuk semua akun Augestel telah dimulai di background!"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Gagal memulai batch login: {e}"})
+
+
+@app.route("/api/augestel/login-single", methods=["POST"])
+@login_required
+def api_augestel_login_single():
+    """Trigger background browser login for a single Augestel account"""
+    data = request.json or {}
+    idx = data.get("index")
+    if not idx:
+        return jsonify({"success": False, "message": "Index akun tidak valid!"})
+    try:
+        subprocess.Popen(
+            [sys.executable, "batch_login_augestel.py", "--account", str(idx)],
+            cwd=BASE_DIR,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        return jsonify({"success": True, "message": f"Login browser profil Akun #{idx} sedang diproses di background!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Gagal memulai login browser: {e}"})
 
 
 @app.route("/api/augestel/check", methods=["POST"])
