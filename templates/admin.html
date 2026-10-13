@@ -534,7 +534,8 @@
                             <span class="stat-label">Terakhir Diperiksa</span>
                         </div>
                     </div>
-                </div>
+                <!-- Breakdown per account (jika pilih semua akun) -->
+                <div id="numAccountsBreakdown" style="display: none; margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;"></div>
 
                 <!-- Main Numbers Card -->
                 <div class="card">
@@ -568,7 +569,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
                             <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 260px; max-width: 450px;">
                                 <div class="input-group" style="width: 100%;">
-                                    <input type="text" id="numSearchInput" class="form-input" placeholder="Cari nomor atau range name..." oninput="filterNumbersTable()">
+                                    <input type="text" id="numSearchInput" class="form-input" placeholder="Cari nomor, range, atau akun..." oninput="filterNumbersTable()">
                                     <span class="input-addon"><i class="fas fa-search"></i></span>
                                 </div>
                             </div>
@@ -583,6 +584,7 @@
                                 <thead>
                                     <tr>
                                         <th style="width: 60px;">No</th>
+                                        <th id="thAccountCol" style="display: none;">Akun</th>
                                         <th>Phone Number</th>
                                         <th>Range Name</th>
                                         <th>Rates (A2P)</th>
@@ -593,7 +595,7 @@
                                 </thead>
                                 <tbody id="numbersTableBody">
                                     <tr>
-                                        <td colspan="7" class="text-center" style="padding: 30px;">
+                                        <td colspan="8" class="text-center" style="padding: 30px;">
                                             <i class="fas fa-circle-notch fa-spin"></i> Sedang mendeteksi nomor dari ivasms.com...
                                         </td>
                                     </tr>
