@@ -195,8 +195,15 @@ class AugestelClient:
         return all_sms
 
     def get_new_sms(self, per_page: int = 100) -> list:
-        """Ambil hanya SMS baru yang belum pernah dikirim."""
+        """Ambil hanya SMS baru yang belum pernah dikirim (lazy init pada first poll)."""
         all_sms = self.get_all_sms(per_page=per_page)
+        if not hasattr(self, "_initial_marked"):
+            self._initial_marked = True
+            for sms in all_sms:
+                self.seen_ids.add(sms["id"])
+            logger.info(f"Augestel ({self.email}): Marked {len(all_sms)} initial SMS as seen on first poll")
+            return []
+
         new_sms = []
         for sms in all_sms:
             if sms["id"] not in self.seen_ids:
@@ -204,15 +211,15 @@ class AugestelClient:
                 new_sms.append(sms)
 
         if new_sms:
-            logger.info(f"Augestel: Found {len(new_sms)} new SMS")
+            logger.info(f"Augestel ({self.email}): Found {len(new_sms)} new SMS")
         return new_sms
 
     def mark_initial_as_seen(self) -> int:
         """Tandai SMS yang ada saat startup agar tidak membanjiri notifikasi awal."""
+        self._initial_marked = True
         all_sms = self.get_all_sms(per_page=100)
         for sms in all_sms:
             self.seen_ids.add(sms["id"])
-        logger.info(f"Augestel: Marked {len(all_sms)} initial SMS as seen")
         return len(all_sms)
 
     def get_numbers(self, page: int = 1, per_page: int = 100) -> dict:

@@ -812,17 +812,6 @@ async def post_init(application: Application):
                 logger.error(f"❌ Failed to init Augestel client Akun #{a_idx}: {aug_err}")
 
         if aug_clients_list:
-            # Tandai initial SMS dengan jeda aman 2.5s per akun agar tidak memicu 429
-            for a_idx, cl in aug_clients_list:
-                if AugestelClient.get_remaining_cooldown() > 0:
-                    break
-                try:
-                    existing_aug = cl.mark_initial_as_seen()
-                    logger.info(f"📌 [Augestel Akun #{a_idx}: {cl.email}] Skipping {existing_aug} existing SMS")
-                except Exception as e:
-                    logger.warning(f"⚠️ [Augestel Akun #{a_idx}] Init skipped: {e}")
-                await asyncio.sleep(2.5)
-
             # Luncurkan 1 task orchestrator tunggal terkoordinasi untuk seluruh akun
             asyncio.create_task(poll_otp_augestel_multi(application.bot, aug_clients_list, GROUP_CHAT_ID))
 
