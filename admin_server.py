@@ -2516,6 +2516,36 @@ def api_augestel_login_single():
         return jsonify({"success": False, "message": f"Gagal memulai login browser: {e}"})
 
 
+@app.route("/api/augestel/pool/show/<int:idx>", methods=["GET", "POST"])
+@login_required
+def api_augestel_pool_show(idx):
+    """Bring the Edge browser window for account idx to the VPS screen so user can interact with captcha/login"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.show_window_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/api/augestel/pool/hide/<int:idx>", methods=["GET", "POST"])
+@login_required
+def api_augestel_pool_hide(idx):
+    """Move the Edge browser window for account idx back to offscreen / background"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.hide_window_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/augestel/check", methods=["POST"])
 @login_required
 def api_augestel_check():

@@ -547,6 +547,76 @@ class AugestelBrowserPool:
         """Panggilan sinkron dari thread Flask untuk sinkronisasi akun baru/update."""
         return self.run_coro(self._sync_accounts_async(), timeout=180)
 
+    async def show_window(self, idx: int):
+        page = self.pages.get(idx)
+        if not page:
+            return {"success": False, "message": f"Browser Akun #{idx} tidak ditemukan di pool"}
+        try:
+            cdp = await page.context.new_cdp_session(page)
+            win = await cdp.send("Browser.getWindowForTarget")
+            window_id = win["windowId"]
+            await cdp.send("Browser.setWindowBounds", {
+                "windowId": window_id,
+                "bounds": {
+                    "left": 100,
+                    "top": 80,
+                    "width": 1280,
+                    "height": 850,
+                    "windowState": "normal"
+                }
+            })
+            await page.bring_to_front()
+
+            self.accounts = self._load_accounts()
+            acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+            email = acc.get("email", "")
+            pwd = acc.get("password", "")
+
+            login_input = await page.query_selector("#loginEmail, input[name='email']")
+            if login_input:
+                await page.fill("#loginEmail, input[name='email']", email)
+                await page.fill("#loginPassword, input[name='password']", pwd)
+                try:
+                    cb = await page.query_selector("input[name='remember']")
+                    if cb:
+                        await cb.check()
+                except Exception:
+                    pass
+
+            return {"success": True, "message": f"Jendela browser Akun #{idx} ({email}) berhasil dimunculkan di layar VPS! Silakan klik puzzle dan Sign In."}
+        except Exception as e:
+            logger.error(f"Error show_window #{idx}: {e}")
+            return {"success": False, "message": str(e)}
+
+    def show_window_sync(self, idx: int):
+        return self.run_coro(self.show_window(idx), timeout=30)
+
+    async def hide_window(self, idx: int):
+        page = self.pages.get(idx)
+        if not page:
+            return {"success": False, "message": f"Browser Akun #{idx} tidak ditemukan di pool"}
+        try:
+            cdp = await page.context.new_cdp_session(page)
+            win = await cdp.send("Browser.getWindowForTarget")
+            window_id = win["windowId"]
+            await cdp.send("Browser.setWindowBounds", {
+                "windowId": window_id,
+                "bounds": {
+                    "left": -2000,
+                    "top": -2000,
+                    "width": 1280,
+                    "height": 850,
+                    "windowState": "normal"
+                }
+            })
+            return {"success": True, "message": f"Jendela browser Akun #{idx} disembunyikan kembali ke background."}
+        except Exception as e:
+            logger.error(f"Error hide_window #{idx}: {e}")
+            return {"success": False, "message": str(e)}
+
+    def hide_window_sync(self, idx: int):
+        return self.run_coro(self.hide_window(idx), timeout=30)
+
     def _update_account_key_on_disk(self, idx: int, api_key: str):
         """Menyimpan API Key baru ke memory pool dan file augestel_accounts.json secara permanen."""
         if 0 < idx <= len(self.accounts):
