@@ -1181,11 +1181,20 @@ def api_augestel_webhooks_setup_all():
         webhook_url = augestel_webhook_status["url"]
 
     def run_setup_worker():
-        from playwright.sync_api import sync_playwright
         logger.info(f"🚀 Memulai auto-setup Webhook untuk semua akun Augestel ({webhook_url})...")
-        
+        try:
+            from augestel_browser_pool import get_browser_pool
+            pool = get_browser_pool()
+            if pool and pool.is_running:
+                res = pool.setup_all_webhooks_sync(webhook_url)
+                logger.info(f"🎉 Selesai pasang webhook ke semua akun via Live Pool: {res}")
+                return
+        except Exception as e_pool:
+            logger.warning(f"Fallback setup webhook: {e_pool}")
+
+        from playwright.sync_api import sync_playwright
         profiles = []
-        for i in range(1, 10):
+        for i in range(1, 20):
             pdir = os.path.join(BASE_DIR, f"browser_profile_augestel_{i}")
             if os.path.exists(pdir):
                 profiles.append(i)
