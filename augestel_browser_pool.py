@@ -225,18 +225,22 @@ class AugestelBrowserPool:
                     acc = self.accounts[idx - 1]
                     email = acc.get("email", "")
                     try:
-                        # Evaluasi silent request di halaman yang sama tanpa reload
-                        status = await page.evaluate("""() => {
-                            return fetch('/Switchfy/client/dashboard', { method: 'HEAD' })
-                                .then(r => r.status)
-                                .catch(() => 0);
-                        }""")
-                        if status == 200 or status == 302:
+                        curr_url = page.url
+                        login_input = await page.query_selector("#loginEmail, input[name='email']")
+                        if "/client/" in curr_url and not login_input:
                             self.status[idx]["logged_in"] = True
+                            self.status[idx]["message"] = "Standby di RAM (24/7)"
                             self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        elif status == 401 or status == 403:
-                            logger.warning(f"⚠️ [Akun #{idx} | {email}] Sesi kedaluwarsa saat heartbeat, refresh halaman...")
-                            await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+                        else:
+                            # Cek form cooldown atau re-login
+                            wait_el = await page.query_selector(".wait")
+                            if wait_el:
+                                wait_sec = (await wait_el.inner_text()).strip()
+                                self.status[idx]["logged_in"] = False
+                                self.status[idx]["message"] = f"Cooldown ({wait_sec}s)"
+                            else:
+                                logger.warning(f"⚠️ [Akun #{idx} | {email}] Sesi kedaluwarsa saat heartbeat, login ulang...")
+                                await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
                     except Exception as ex_hb:
                         logger.debug(f"Heartbeat akun #{idx}: {ex_hb}")
             except Exception as e:
