@@ -226,15 +226,15 @@ class AugestelClient:
         """Ambil daftar nomor aktif dari Augestel dengan auto-retry jika 429."""
         url = f"{self.base_url}/numbers"
         params = {"page": page, "per_page": min(per_page, 100)}
-        for attempt in range(4):
+        for attempt in range(8):
             try:
-                r = self.session.get(url, params=params, timeout=15)
+                r = self.session.get(url, params=params, timeout=20)
                 if r.status_code == 200:
                     return r.json()
                 elif r.status_code == 429:
-                    retry_sec = 13
+                    retry_sec = 20
                     try:
-                        retry_sec = int(r.json().get("error", {}).get("retry_after", 0)) or 13
+                        retry_sec = int(r.json().get("error", {}).get("retry_after", 0)) or 20
                     except Exception:
                         pass
                     try:
@@ -243,15 +243,16 @@ class AugestelClient:
                             retry_sec = max(int(hdr), retry_sec)
                     except Exception:
                         pass
-                    retry_sec = max(retry_sec, 12)
+                    retry_sec = max(retry_sec, 20) + 1.5
                     self.rate_limit_until = time.time() + retry_sec
-                    logger.info(f"Augestel API rate limited (429). Menunggu {retry_sec} detik...")
+                    logger.info(f"Augestel API ({self.email}) rate limited (429). Menunggu {retry_sec:.1f} detik (attempt {attempt+1}/8)...")
                     time.sleep(retry_sec)
                     continue
                 return {"success": False, "message": f"HTTP {r.status_code}"}
             except Exception as e:
-                logger.error(f"Error fetching Augestel numbers: {e}")
-                return {"success": False, "message": str(e)}
+                logger.error(f"Error fetching Augestel numbers ({self.email}): {e}")
+                time.sleep(3)
+                continue
         return {"success": False, "message": "Rate limited after retries"}
 
     def get_all_numbers_list(self, max_records: int = 50000, first_page_res: dict = None) -> list:
