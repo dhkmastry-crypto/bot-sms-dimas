@@ -11,6 +11,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -51,6 +52,8 @@ class AugestelBrowserPool:
         self.webhook_guardian_status = {}  # {account_idx: {'email': str, 'is_delivering': bool, 'is_active': bool, 'is_paused': bool, 'auto_recovered_count': int, ...}}
         self.webhook_url = "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook"
         self.webhook_guardian_enabled = True
+        self.auto_add_running = False
+        self.auto_add_stop_flag = False
         self.is_running = False
         self.accounts = self._load_accounts()
         self.thread.start()
@@ -867,8 +870,265 @@ class AugestelBrowserPool:
     def get_status_dict(self) -> dict:
         return self.status
 
+    # ──────────────────────────────────────────
+    # AUTO-ADD NUMBERS VIA LIVE BROWSER POOL
+    # ──────────────────────────────────────────
+
+    async def run_auto_add_account(
+        self,
+        account_idx: int,
+        range_filter: str = "",
+        max_add: int = 0,
+        delay: int = 15,
+        workers_count: int = 2,
+        batch_count: int = 250,
+        number_prefix: str = "",
+        shared_stats: dict = None,
+        stats_lock: asyncio.Lock = None,
+        status_callback = None
+    ):
+        """Menjalankan Auto-Add Augestel menggunakan Live Browser Profile yang aktif di RAM."""
+        from auto_add_augestel import (
+            fetch_test_terminations,
+            get_termination_details,
+            submit_add_number,
+            run_worker,
+            MAX_ACCOUNT_NUMBERS
+        )
+
+        if account_idx not in self.pages or account_idx not in self.contexts:
+            msg = f"Browser Akun #{account_idx} belum aktif di RAM pool"
+            logger.error(f"❌ {msg}")
+            if status_callback:
+                status_callback({"last_message": msg})
+            return
+
+        acc = self.accounts[account_idx - 1] if 0 < account_idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+        password = acc.get("password", "")
+        context = self.contexts[account_idx]
+        main_page = self.pages[account_idx]
+
+        log_msg = f"🚀 [Live Pool] Memulai Auto-Add untuk Akun #{account_idx} ({email}) via Browser Profile RAM..."
+        logger.info(log_msg)
+        if status_callback:
+            status_callback({"account_email": f"Akun #{account_idx} ({email})", "last_message": log_msg})
+
+        # Pastikan sesi aktif dan buka halaman test numbers
+        try:
+            if "/test/numbers" not in main_page.url:
+                await main_page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="domcontentloaded", timeout=45000)
+                await asyncio.sleep(2)
+
+            login_input = await main_page.query_selector("#loginEmail, input[name='email']")
+            if login_input:
+                await self._ensure_login_for_page(account_idx, main_page, email, password)
+                await main_page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="domcontentloaded", timeout=45000)
+                await asyncio.sleep(2)
+        except Exception as ex_nav:
+            logger.warning(f"Nav test numbers error: {ex_nav}")
+
+        # Cek jumlah nomor akun saat ini
+        init_count = 0
+        try:
+            cnt = await main_page.evaluate('''async () => {
+                try {
+                    const resp = await fetch('/Switchfy/client/numbers?draw=1&start=0&length=1', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                    });
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        return data.recordsTotal !== undefined ? data.recordsTotal : (data.recordsFiltered || 0);
+                    }
+                } catch(e) {}
+                return -1;
+            }''')
+            if cnt >= 0:
+                init_count = int(cnt)
+        except Exception:
+            pass
+
+        if init_count >= MAX_ACCOUNT_NUMBERS:
+            warn_msg = f"⚠️ [Akun #{account_idx}] Sudah mencapai batas {init_count}/{MAX_ACCOUNT_NUMBERS} nomor! Melewati akun ini..."
+            logger.warning(warn_msg)
+            if status_callback:
+                status_callback({"last_message": warn_msg})
+            return
+
+        # Fetch terminations matching filter
+        needed_records = 50 if max_add <= 0 else min(max(max_add, 25), 100)
+        dt_res = await fetch_test_terminations(main_page, range_filter, number_search=number_prefix, start=0, length=needed_records)
+        raw_rows = []
+        total_found = 0
+        if dt_res and not dt_res.get("error"):
+            total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or 0
+            raw_rows = dt_res.get("data", [])
+
+        if status_callback:
+            status_callback({"total_found": total_found, "last_message": f"Ditemukan {total_found} terminations untuk Akun #{account_idx}."})
+
+        if not raw_rows:
+            warn_msg = f"⚠️ [Akun #{account_idx}] Tidak ada termination yang cocok dengan filter."
+            logger.warning(warn_msg)
+            if status_callback:
+                status_callback({"last_message": warn_msg})
+            return
+
+        # Antrian pekerjaan
+        clean_prefix = re.sub(r'[\s\+\-]', '', number_prefix) if number_prefix else ""
+        queue = asyncio.Queue()
+        for r in raw_rows:
+            action_html = r.get("action", "")
+            id_match = re.search(r'data-termination-id="(\d+)"', action_html)
+            term_id = id_match.group(1) if id_match else None
+            num_html = r.get("test_number", "")
+            num_match = re.search(r'data-copy-number="([^"]+)"', num_html)
+            num = num_match.group(1) if num_match else ""
+            clean_num = re.sub(r'[\s\+\-]', '', num)
+
+            if clean_prefix and not (clean_num.startswith(clean_prefix) or clean_prefix in clean_num):
+                continue
+            if term_id:
+                queue.put_nowait({
+                    "name": r.get("name", ""),
+                    "test_number": num,
+                    "term_id": term_id
+                })
+
+        q_size = queue.qsize()
+        if q_size == 0:
+            return
+
+        # Buat worker pages jika workers_count > 1
+        worker_pages = [main_page]
+        for w_i in range(1, workers_count):
+            try:
+                new_p = await context.new_page()
+                await new_p.goto("https://augestel.com/Switchfy/test/numbers", wait_until="domcontentloaded")
+                worker_pages.append(new_p)
+            except Exception as e:
+                logger.warning(f"Gagal buat tab worker #{w_i + 1}: {e}")
+
+        account_state = {
+            "current_total": init_count,
+            "added": 0,
+            "limit_reached": False
+        }
+
+        # Jalankan worker
+        tasks = []
+        for i, w_page in enumerate(worker_pages):
+            tasks.append(
+                asyncio.create_task(
+                    run_worker(
+                        worker_id=i + 1,
+                        account_idx=account_idx,
+                        account_email=email,
+                        page=w_page,
+                        queue=queue,
+                        shared_stats=shared_stats,
+                        account_state=account_state,
+                        stats_lock=stats_lock,
+                        delay=delay,
+                        max_add=max_add,
+                        batch_count=batch_count
+                    )
+                )
+            )
+
+        # Monitor progress dan check stop flag
+        async def monitor_task():
+            while any(not t.done() for t in tasks):
+                if self.auto_add_stop_flag:
+                    logger.info("🛑 Auto-add stop flag terdeteksi, membatalkan tasks...")
+                    for t in tasks:
+                        t.cancel()
+                    break
+                if status_callback:
+                    status_callback({
+                        "added": shared_stats["added"],
+                        "failed": shared_stats["failed"],
+                        "skipped": shared_stats["skipped"],
+                        "current_action": shared_stats["current_action"],
+                        "last_message": f"Menambahkan nomor Akun #{account_idx}: Added={shared_stats['added']} | Failed={shared_stats['failed']} | Skipped={shared_stats['skipped']}"
+                    })
+                await asyncio.sleep(1)
+
+        mon_t = asyncio.create_task(monitor_task())
+        await asyncio.gather(*tasks, return_exceptions=True)
+        mon_t.cancel()
+
+        # Bersihkan worker pages tambahan (hanya sisakan main_page)
+        for wp in worker_pages[1:]:
+            try:
+                await wp.close()
+            except Exception:
+                pass
+
+        # Kembalikan tab utama ke client/numbers
+        try:
+            await main_page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000)
+        except Exception:
+            pass
+
+    async def run_auto_add_multi(
+        self,
+        account_indices: list,
+        range_filter: str = "",
+        max_add: int = 0,
+        delay: int = 15,
+        workers_count: int = 2,
+        batch_count: int = 250,
+        number_prefix: str = "",
+        status_callback = None
+    ):
+        self.auto_add_running = True
+        self.auto_add_stop_flag = False
+        shared_stats = {
+            "added": 0,
+            "failed": 0,
+            "skipped": 0,
+            "current_action": 0
+        }
+        stats_lock = asyncio.Lock()
+
+        try:
+            for idx in account_indices:
+                if self.auto_add_stop_flag:
+                    break
+                if max_add > 0 and shared_stats["added"] >= max_add:
+                    break
+                await self.run_auto_add_account(
+                    account_idx=idx,
+                    range_filter=range_filter,
+                    max_add=max_add,
+                    delay=delay,
+                    workers_count=workers_count,
+                    batch_count=batch_count,
+                    number_prefix=number_prefix,
+                    shared_stats=shared_stats,
+                    stats_lock=stats_lock,
+                    status_callback=status_callback
+                )
+                await asyncio.sleep(2)
+        finally:
+            self.auto_add_running = False
+            if status_callback:
+                status_callback({
+                    "running": False,
+                    "added": shared_stats["added"],
+                    "failed": shared_stats["failed"],
+                    "skipped": shared_stats["skipped"],
+                    "last_message": f"Auto-Add Selesai! Total Added={shared_stats['added']} | Failed={shared_stats['failed']} | Skipped={shared_stats['skipped']}"
+                })
+
+    def stop_auto_add(self):
+        self.auto_add_stop_flag = True
+        self.auto_add_running = False
+
 
 # Global singleton helper
 def get_browser_pool():
     return AugestelBrowserPool.get_instance()
+
 
