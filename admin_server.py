@@ -2612,6 +2612,23 @@ def api_augestel_pool_debug(idx):
         return jsonify({"success": False, "message": str(e)})
 
 
+@app.route("/api/augestel/pool/eval/<int:idx>", methods=["POST"])
+@login_required
+def api_augestel_pool_eval(idx):
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if idx not in pool.pages:
+            return jsonify({"success": False, "message": f"No page for {idx}"})
+        data = request.json or {}
+        js_code = data.get("script", "")
+        page = pool.pages[idx]
+        res = pool.run_coro(page.evaluate(js_code), timeout=15)
+        return jsonify({"success": True, "result": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/augestel/pool/test-login/<int:idx>", methods=["POST"])
 @login_required
 def api_augestel_pool_test_login(idx):
