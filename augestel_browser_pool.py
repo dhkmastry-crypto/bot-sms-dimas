@@ -528,29 +528,31 @@ class AugestelBrowserPool:
 
             # Klik tombol submit ("Save endpoint" atau "Update endpoint")
             submit_btn = await page.query_selector('form[action*="webhook"] button[type="submit"]')
-            if submit_btn:
-                await submit_btn.click()
-            else:
-                await page.evaluate("""() => {
-                    const btn = document.querySelector('form[action*="webhook"] button[type="submit"]');
-                    if (btn) btn.click();
-                    else {
-                        const f = document.querySelector('form[action*="webhook"]');
-                        if (f) f.submit();
-                    }
-                }""")
+            try:
+                if submit_btn:
+                    await submit_btn.click()
+                else:
+                    await page.keyboard.press("Enter")
+                await page.wait_for_load_state("domcontentloaded", timeout=15000)
+            except Exception as ex_sub:
+                logger.debug(f"Wait submit: {ex_sub}")
 
-            await asyncio.sleep(3.5)
+            await asyncio.sleep(2)
 
-            is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? cb.checked : false; }')
+            # Verifikasi apakah tersimpan di halaman setelah reload/redirect
             saved_val = await page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
+            is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? cb.checked : false; }')
 
-            # Kembalikan ke halaman client numbers agar standby
-            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=30000)
+            # Simpan screenshot untuk verifikasi visual
+            ss_path = os.path.abspath(f"webhook_result_acc_{idx}.png")
+            try:
+                await page.screenshot(path=ss_path)
+            except Exception:
+                pass
 
             ok = bool(saved_val == webhook_url and is_active)
-            logger.info(f"🎉 [Akun #{idx} | {email}] Webhook status: is_active={is_active}, url={saved_val}")
-            return {"success": ok, "is_active": is_active, "url": saved_val, "email": email}
+            logger.info(f"🎉 [Akun #{idx} | {email}] Webhook status: is_active={is_active}, url={saved_val}, ok={ok}")
+            return {"success": ok, "is_active": is_active, "url": saved_val, "email": email, "screenshot": ss_path}
         except Exception as e:
             logger.error(f"❌ [Akun #{idx}] Error setup webhook: {e}")
             return {"success": False, "message": str(e), "email": email}
