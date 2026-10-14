@@ -221,8 +221,8 @@ class AugestelBrowserPool:
             try:
                 await asyncio.sleep(300) # 5 menit
                 logger.info("💓 [Heartbeat] Melakukan touch keep-alive pada seluruh tab Augestel...")
-                for idx, page in self.pages.items():
-                    acc = self.accounts[idx - 1]
+                for idx, page in list(self.pages.items()):
+                    acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
                     email = acc.get("email", "")
                     try:
                         curr_url = page.url
