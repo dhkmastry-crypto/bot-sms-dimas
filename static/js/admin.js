@@ -1034,7 +1034,8 @@ function downloadAugestelNumbersExport(format) {
     }
 
     const label = isAll ? 'SEMUA AKUN AUGESTEL' : `Akun Augestel (${accIdx.replace('aug_', '#')})`;
-    showToast(`Menyiapkan export ${format.toUpperCase()} ${label}...`, 'info');
+    const countLabel = allAugestelNumbersList.length ? `(${allAugestelNumbersList.length.toLocaleString('id-ID')} nomor)` : '';
+    showToast(`Menyiapkan export ${format.toUpperCase()} ${label} ${countLabel}...`, 'info');
     const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
     window.location.href = downloadUrl;
 }
