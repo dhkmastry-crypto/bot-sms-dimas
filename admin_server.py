@@ -633,6 +633,13 @@ def check_augestel_multi_connection(target_index: int = None):
             has_session = True
             cookie_status = "Standby di RAM (24/7)"
             is_pool_active = True
+        elif pool_inst and pool_inst.is_running:
+            # Pool is managing the browser, do NOT touch SQLite Cookies file directly
+            cookie_connected = False
+            has_remember = False
+            has_session = False
+            cookie_status = pool_message if pool_message else "Browser Standby / Belum Login"
+            is_pool_active = False
         else:
             cookie_info = check_augestel_browser_cookie(idx)
             cookie_connected = cookie_info.get("cookie_connected", False)
@@ -1320,6 +1327,14 @@ def api_bot_status():
             cookie_status = "Standby di RAM (24/7)"
             is_pool_active = True
             last_check = p_item.get("last_check") or "Standby 24/7"
+        elif pool_inst and pool_inst.is_running:
+            # Pool is managing the browser, do NOT touch SQLite Cookies file directly
+            cookie_connected = False
+            has_remember = False
+            has_session = False
+            cookie_status = pool_message if pool_message else "Browser Standby / Belum Login"
+            is_pool_active = False
+            last_check = p_item.get("last_check") or ("Status Terpantau (Aktif)" if api_ok else "Belum ada API Key")
         else:
             c_info = check_augestel_browser_cookie(idx)
             cookie_connected = c_info.get("cookie_connected", False)

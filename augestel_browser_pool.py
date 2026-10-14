@@ -384,15 +384,9 @@ class AugestelBrowserPool:
         try:
             curr_title = await page.title()
             curr_url = page.url
+            login_input = await page.query_selector("#loginEmail, input[name='email']")
 
-            # 1. Cek apakah sesi aktif
-            if "my numbers" in curr_title.lower() or "client panel" in curr_title.lower() or "/client/" in curr_url:
-                self.status[idx]["logged_in"] = True
-                self.status[idx]["message"] = "Standby di RAM (24/7)"
-                self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                return self.status[idx]
-
-            # 2. Cek form login atau cooldown
+            # 1. Cek form cooldown
             wait_el = await page.query_selector(".wait")
             if wait_el:
                 wait_sec = (await wait_el.inner_text()).strip()
@@ -400,19 +394,29 @@ class AugestelBrowserPool:
                 self.status[idx]["message"] = f"Cooldown ({wait_sec} detik)"
                 return self.status[idx]
 
-            # 3. Coba verifikasi dengan evaluate silent request
-            status_code = await page.evaluate("""() => {
-                return fetch('/Switchfy/client/numbers', { method: 'HEAD' })
-                    .then(r => r.status)
-                    .catch(() => 0);
+            # 2. Cek apakah sesi aktif di panel client
+            if ("/client/" in curr_url or "my numbers" in curr_title.lower() or "client panel" in curr_title.lower()) and not login_input:
+                self.status[idx]["logged_in"] = True
+                self.status[idx]["message"] = "Standby di RAM (24/7)"
+                self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                return self.status[idx]
+
+            # 3. Coba verifikasi dengan evaluate silent request yang mendeteksi redirect login
+            res_eval = await page.evaluate("""async () => {
+                try {
+                    const r = await fetch('/Switchfy/client/numbers', { method: 'GET', redirect: 'follow' });
+                    return { ok: r.ok, url: r.url };
+                } catch(e) {
+                    return { ok: false, error: e.toString() };
+                }
             }""")
-            if status_code in (200, 302):
+            if res_eval.get("ok") and "/client/" in res_eval.get("url", "") and "login" not in res_eval.get("url", ""):
                 self.status[idx]["logged_in"] = True
                 self.status[idx]["message"] = "Standby di RAM (24/7)"
                 self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             else:
                 self.status[idx]["logged_in"] = False
-                self.status[idx]["message"] = f"Perlu login (HTTP {status_code})"
+                self.status[idx]["message"] = "Perlu Login Portal"
 
             return self.status[idx]
         except Exception as e:
