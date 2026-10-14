@@ -2590,12 +2590,20 @@ def api_augestel_pool_debug(idx):
         async def get_debug():
             url = page.url
             title = await page.title()
-            alerts = await page.evaluate('''() => {
-                const els = Array.from(document.querySelectorAll('.alert, .error, .invalid-feedback, .text-danger, .swal2-html-container, .swal2-title, .wait, #loginError, .login-error'));
-                return els.map(e => ({ tag: e.tagName, class: e.className, text: e.innerText.trim() })).filter(e => e.text.length > 0);
+            form_info = await page.evaluate('''() => {
+                const iframes = Array.from(document.querySelectorAll('iframe')).map(f => ({
+                    src: f.src,
+                    name: f.name,
+                    id: f.id,
+                    visible: f.offsetParent !== null
+                }));
+                const turnstileEl = document.querySelector('.cf-turnstile, [data-sitekey], [name="cf-turnstile-response"]');
+                const sitekey = turnstileEl ? (turnstileEl.getAttribute('data-sitekey') || '') : '';
+                const turnstileResponse = document.querySelector('[name="cf-turnstile-response"]') ? document.querySelector('[name="cf-turnstile-response"]').value : '';
+                const formHtml = document.querySelector('#loginForm, form') ? document.querySelector('#loginForm, form').innerHTML.substring(0, 1500) : '';
+                return { iframes, sitekey, turnstileResponse, formHtml };
             }''')
-            body_snippet = await page.evaluate('() => document.body.innerText.substring(0, 1500)')
-            return {"url": url, "title": title, "alerts": alerts, "body_snippet": body_snippet}
+            return {"url": url, "title": title, "form_info": form_info}
 
         res = pool.run_coro(get_debug(), timeout=15)
         return jsonify({"success": True, "data": res})
