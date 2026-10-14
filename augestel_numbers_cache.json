@@ -1,7 +1,7 @@
 {
   "success": true,
   "account_index": "augestel_all",
-  "email": "Semua Akun Augestel (7 Akun Aktif)",
+  "email": "Semua Akun Augestel (8 Akun Aktif)",
   "total": 17500,
   "count": 17500,
   "numbers": [
@@ -192541,7 +192541,12 @@
       "account_index": 7,
       "email": "beras.capakor@gmail.com",
       "total": 2500
+    },
+    {
+      "account_index": 8,
+      "email": "azarinnur@gmail.com",
+      "total": 0
     }
   ],
-  "cached_at": "2026-10-14 20:51:50"
+  "cached_at": "2026-10-14 21:58:10"
 }
