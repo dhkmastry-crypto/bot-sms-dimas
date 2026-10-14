@@ -1355,11 +1355,11 @@ class AugestelBrowserPool:
         batch_count: int = 250,
         number_prefix: str = "",
         status_callback = None,
-        max_concurrent_accounts: int = 8
+        max_concurrent_accounts: int = 16
     ):
         """
         Mode High-Performance Multi-Account Auto-Add:
-        Menjalankan Auto-Add hingga 8 akun secara serentak (paralel) menggunakan 72 thread CPU.
+        Menjalankan Auto-Add hingga 16 akun secara serentak (paralel) menggunakan browser pool di RAM.
         Setiap akun membuka tab worker sesuai workers_count secara independen.
         """
         self.auto_add_running = True

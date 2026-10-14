@@ -1998,7 +1998,8 @@ def api_augestel_auto_add_start():
                         workers_count=workers,
                         batch_count=batch_count,
                         number_prefix=number_prefix,
-                        status_callback=on_pool_status_update
+                        status_callback=on_pool_status_update,
+                        max_concurrent_accounts=len(target_indices)
                     ),
                     timeout=86400
                 )
