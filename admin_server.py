@@ -1478,6 +1478,7 @@ def api_augestel_auto_add_start():
     
     data = request.json or {}
     range_name = data.get("range_name", "").strip()
+    number_prefix = data.get("number_prefix", "").strip()
     batch_count = int(data.get("batch_count", 250) or 250)
     batch_count = max(1, min(batch_count, 1000))
     max_add = int(data.get("max_add", 0) or 0)
@@ -1520,7 +1521,7 @@ def api_augestel_auto_add_start():
     
     try:
         proc = subprocess.Popen(
-            [sys.executable, "-u", "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count)],
+            [sys.executable, "-u", "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count), number_prefix],
             cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -1533,6 +1534,7 @@ def api_augestel_auto_add_start():
             "account_email": account_email,
             "workers": workers,
             "range_name": range_name,
+            "number_prefix": number_prefix,
             "batch_count": batch_count,
             "max_add": max_add,
             "delay": delay,
@@ -1594,8 +1596,13 @@ def api_augestel_auto_add_start():
         thread = threading.Thread(target=monitor_augestel_auto_add, daemon=True)
         thread.start()
         
-        target_name = range_name if range_name else "Semua Range"
-        return jsonify({"success": True, "message": f"Auto-add Augestel dimulai untuk '{target_name}'!"})
+        desc_parts = []
+        if range_name:
+            desc_parts.append(f"Range: '{range_name}'")
+        if number_prefix:
+            desc_parts.append(f"Prefix: '{number_prefix}'")
+        target_name = " & ".join(desc_parts) if desc_parts else "Semua Range & Nomor"
+        return jsonify({"success": True, "message": f"Auto-add Augestel dimulai untuk {target_name}!"})
     except Exception as e:
         return jsonify({"success": False, "message": f"Gagal: {e}"})
 
