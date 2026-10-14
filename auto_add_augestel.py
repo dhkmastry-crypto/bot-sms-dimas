@@ -82,6 +82,9 @@ async def get_account_current_numbers_count(page, account_idx: int, api_key: str
             c = AugestelClient(api_key=api_key, email=email)
             res = c.get_numbers(page=1, per_page=1)
             if res.get("success"):
+                nums = res.get("numbers", [])
+                if not nums:
+                    return 0
                 tot = res.get("pagination", {}).get("total")
                 if tot is not None:
                     return int(tot)
@@ -133,59 +136,116 @@ async def ensure_augestel_login(page, email: str, password: str) -> bool:
     """Login ke portal Augestel jika session belum aktif atau expired."""
     try:
         logger.info(f"🔍 Memeriksa status login untuk {email}...")
+
+        # 1. Buka langsung halaman test numbers untuk cek apakah sesi aktif
         await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="domcontentloaded", timeout=45000)
         await asyncio.sleep(2)
 
-        title = await page.title()
-        if "one moment" in title.lower() or "too quick" in title.lower():
-            logger.warning("⚠️ Terdeteksi rate-limit cooldown Augestel. Menunggu 10 detik...")
-            await asyncio.sleep(10)
-            await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="domcontentloaded", timeout=45000)
-
-        login_input = await page.query_selector("#loginEmail, input[name='email']")
-        curr_url = page.url
         curr_title = await page.title()
+        curr_url = page.url
 
-        if "login" in curr_title.lower() or login_input or "/login" in curr_url or curr_url == "https://augestel.com/Switchfy":
-            logger.info(f"🔑 Session belum aktif, melakukan login untuk {email}...")
-            if not login_input:
-                await page.goto("https://augestel.com/Switchfy", wait_until="domcontentloaded", timeout=45000)
-                await asyncio.sleep(2)
+        # Cek jika langsung berada di halaman test numbers
+        login_input = await page.query_selector("#loginEmail, input[name='email']")
+        if ("test numbers" in curr_title.lower() or "client panel" in curr_title.lower()) and not login_input:
+            logger.info("✅ Siap di halaman Test Numbers Augestel (Sesi aktif)!")
+            return True
 
-            await page.fill("#loginEmail, input[name='email']", email)
-            await page.fill("#loginPassword, input[name='password']", password)
-            rem = await page.query_selector("input[name='remember']")
-            if rem:
+        # Cek apakah terdeteksi cooldown di portal
+        wait_el = await page.query_selector(".wait")
+        if wait_el or "one moment" in curr_title.lower() or "too quick" in curr_title.lower() or "please wait" in curr_title.lower():
+            wait_sec = 0
+            if wait_el:
                 try:
-                    await rem.check()
+                    raw_txt = (await wait_el.inner_text()).strip()
+                    nums = re.findall(r'\d+', raw_txt)
+                    if nums:
+                        wait_sec = int(nums[0])
                 except Exception:
                     pass
-            await asyncio.sleep(1)
-
-            btn = await page.query_selector("#loginSubmit, button[type='submit']")
-            if btn:
-                await btn.click()
+            if 0 < wait_sec <= 25:
+                logger.warning(f"⏳ Cooldown portal anti-spam aktif: menunggu {wait_sec + 2} detik...")
+                await asyncio.sleep(wait_sec + 2)
+                await page.goto("https://augestel.com/Switchfy", wait_until="domcontentloaded", timeout=45000)
+                await asyncio.sleep(2)
             else:
-                await page.keyboard.press("Enter")
+                sec_info = f"{wait_sec} detik" if wait_sec > 0 else "beberapa saat"
+                logger.warning(f"⏳ [Akun {email}] Portal Augestel sedang cooldown anti-spam ({sec_info} tersisa). Harap tunggu.")
+                return False
 
-            for _ in range(15):
-                await asyncio.sleep(1)
-                t = await page.title()
-                u = page.url
-                if "login" not in t.lower() and u != "https://augestel.com/Switchfy":
-                    logger.info(f"🎉 Login berhasil! URL: {u}")
-                    break
-
-            await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="networkidle", timeout=45000)
+        # Jika URL redirect ke /Switchfy/login (yang menghasilkan 405 Method Not Allowed)
+        # atau belum ada form login, arahkan ke https://augestel.com/Switchfy
+        if not login_input or "/login" in curr_url or "405" in curr_title or "Method Not Allowed" in curr_title:
+            await page.goto("https://augestel.com/Switchfy", wait_until="domcontentloaded", timeout=45000)
             await asyncio.sleep(2)
+            login_input = await page.query_selector("#loginEmail, input[name='email']")
+
+        if not login_input:
+            # Periksa lagi apakah ada wait screen di /Switchfy
+            wait_el = await page.query_selector(".wait")
+            if wait_el:
+                wait_sec = (await wait_el.inner_text()).strip()
+                logger.warning(f"⏳ [Akun {email}] Portal Augestel sedang cooldown anti-spam ({wait_sec} detik tersisa).")
+                return False
+            curr_title = await page.title()
+            logger.error(f"❌ Form login tidak ditemukan pada halaman: {page.url} ({curr_title})")
+            return False
+
+        logger.info(f"🔑 Session belum aktif, melakukan login untuk {email}...")
+        await page.fill("#loginEmail, input[name='email']", email)
+        await page.fill("#loginPassword, input[name='password']", password)
+
+        # Centang Remember Me agar token remember_client tersimpan jangka panjang
+        try:
+            await page.evaluate("""() => {
+                const el = document.querySelector("input[name='remember']");
+                if (el) {
+                    el.checked = true;
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }""")
+        except Exception:
+            pass
+        await asyncio.sleep(1)
+
+        btn = await page.query_selector("#loginSubmit, button[type='submit']")
+        if btn:
+            await btn.click()
+        else:
+            await page.keyboard.press("Enter")
+
+        success_logged_in = False
+        for _ in range(20):
+            await asyncio.sleep(1)
+            wait_el = await page.query_selector(".wait")
+            if wait_el:
+                wait_sec = (await wait_el.inner_text()).strip()
+                logger.warning(f"⏳ [Akun {email}] Terdeteksi cooldown anti-spam saat login: {wait_sec} detik tersisa.")
+                return False
+
+            t = await page.title()
+            u = page.url
+            if "/client/" in u or "/test/" in u or "/dashboard" in u:
+                success_logged_in = True
+                logger.info(f"🎉 Login berhasil! URL: {u}")
+                break
+
+        if not success_logged_in:
+            final_title = await page.title()
+            logger.error(f"❌ Login belum terkonfirmasi untuk {email}. URL: {page.url} ({final_title})")
+            return False
+
+        await page.goto("https://augestel.com/Switchfy/test/numbers", wait_until="networkidle", timeout=45000)
+        await asyncio.sleep(2)
 
         final_title = await page.title()
         if "test numbers" in final_title.lower() or "client panel" in final_title.lower():
             logger.info("✅ Siap di halaman Test Numbers Augestel!")
             return True
         else:
-            logger.warning(f"⚠️ Halaman saat ini: {page.url} ({final_title})")
-            return True
+            if "/test/" in page.url or "/client/" in page.url:
+                return True
+            logger.error(f"❌ Gagal membuka halaman Test Numbers Augestel: {page.url} ({final_title})")
+            return False
     except Exception as e:
         logger.error(f"❌ Error saat memastikan login Augestel: {e}")
         return False
@@ -220,8 +280,8 @@ async def fetch_test_terminations(page, range_search: str = "", start: int = 0, 
                 if (col.orderable !== undefined) url.searchParams.set('columns[' + i + '][orderable]', col.orderable.toString());
             });
 
-            if (rangeSearch) {
-                url.searchParams.set('columns[0][search][value]', rangeSearch);
+            if (rangeSearch && rangeSearch.trim()) {
+                url.searchParams.set('columns[0][search][value]', rangeSearch.trim());
             }
             url.searchParams.set('order[0][column]', '8');
             url.searchParams.set('order[0][dir]', 'desc');
@@ -497,24 +557,15 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
         # Fetch terminations matching range_filter
         logger.info(f"🔍 Mencari terminations dengan filter: '{range_filter}'...")
         raw_rows = []
-        page_size = 100
-        start_idx = 0
+        # Ambil 50 terminations sekaligus untuk mencegah reload spam ke DataTable yang memicu cooldown
+        needed_records = 50 if max_add <= 0 else min(max(max_add, 25), 100)
+        dt_res = await fetch_test_terminations(page, range_filter, start=0, length=needed_records)
         total_found = 0
-        while True:
-            dt_res = await fetch_test_terminations(page, range_filter, start=start_idx, length=page_size)
-            if not dt_res or dt_res.get("error"):
-                break
-            total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or total_found
-            chunk = dt_res.get("data", [])
-            if not chunk:
-                break
-            raw_rows.extend(chunk)
-            if max_add > 0 and len(raw_rows) >= max_add:
-                raw_rows = raw_rows[:max_add]
-                break
-            start_idx += len(chunk)
-            if start_idx >= total_found or len(chunk) < page_size:
-                break
+        if dt_res and not dt_res.get("error"):
+            total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or 0
+            raw_rows = dt_res.get("data", [])
+        elif dt_res and dt_res.get("error"):
+            logger.warning(f"⚠️ Error saat fetch terminations: {dt_res.get('error')}")
 
         logger.info(f"📋 Ditemukan {total_found} total records ({len(raw_rows)} diambil) untuk filter '{range_filter}'")
 
