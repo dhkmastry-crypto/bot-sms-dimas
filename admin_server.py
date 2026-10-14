@@ -1230,11 +1230,13 @@ def api_debug_inspect_api_doc():
                 }));
             }''')
             import re
+            keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
             m = re.search(r'([\s\S]{0,800}Regenerate[\s\S]{0,800})', content)
             snippet = m.group(1) if m else "NOT_FOUND"
             m2 = re.search(r'([\s\S]{0,800}sk_live_[\s\S]{0,800})', content)
             snippet2 = m2.group(1) if m2 else "NOT_FOUND"
             return {"title": title, "url": page.url, "keys": keys, "snippet_regen": snippet, "snippet_key": snippet2}
+
 
 
         res = pool.run_coro(do_inspect(), timeout=35)
