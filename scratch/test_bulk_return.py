@@ -4,6 +4,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from playwright.async_api import async_playwright
 from numbers_service import get_augestel_accounts
+from auto_add_augestel import ensure_augestel_login
 
 async def main():
     accs = get_augestel_accounts()
@@ -21,19 +22,14 @@ async def main():
         )
         page = context.pages[0] if context.pages else await context.new_page()
 
-        await page.goto('https://augestel.com/Switchfy', wait_until='networkidle')
-        print('Initial URL:', page.url)
+        ok = await ensure_augestel_login(page, email, pwd)
+        print('ensure_augestel_login result:', ok)
+        print('Current URL:', page.url)
 
-        login_input = await page.query_selector('#loginEmail')
-        if login_input:
-            print('Submitting login form...')
-            await page.fill('#loginEmail', email)
-            await page.fill('#loginPassword', pwd)
-            btn = await page.query_selector('button[type="submit"]')
-            if btn:
-                await btn.click()
-            await asyncio.sleep(4)
-            print('Post login URL:', page.url)
+        if not ok:
+            print('Login failed!')
+            await context.close()
+            return
 
         await page.goto('https://augestel.com/Switchfy/client/numbers', wait_until='networkidle')
         await asyncio.sleep(2)
