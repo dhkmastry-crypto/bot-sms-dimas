@@ -2008,8 +2008,20 @@ def api_augestel_accounts_delete():
 @app.route("/api/augestel/batch-login", methods=["POST"])
 @login_required
 def api_augestel_batch_login():
-    """Trigger background batch login for all Augestel accounts"""
+    """Trigger background batch login for all Augestel accounts via live pool in RAM"""
     try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            def _relogin_all_worker():
+                for idx in range(1, len(pool.accounts) + 1):
+                    try:
+                        pool.relogin_account_sync(idx)
+                    except Exception as ex:
+                        logger.error(f"Error relogin account #{idx}: {ex}")
+            threading.Thread(target=_relogin_all_worker, daemon=True, name="PoolBatchReloginWorker").start()
+            return jsonify({"success": True, "message": "Proses refresh & login pool browser di RAM untuk semua akun telah dimulai!"})
+
         subprocess.Popen(
             [sys.executable, "batch_login_augestel.py"],
             cwd=BASE_DIR,
@@ -2025,12 +2037,23 @@ def api_augestel_batch_login():
 @app.route("/api/augestel/login-single", methods=["POST"])
 @login_required
 def api_augestel_login_single():
-    """Trigger background browser login for a single Augestel account"""
+    """Trigger background browser login for a single Augestel account via live pool in RAM"""
     data = request.json or {}
     idx = data.get("index")
     if not idx:
         return jsonify({"success": False, "message": "Index akun tidak valid!"})
     try:
+        idx_int = int(idx)
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.relogin_account_sync(idx_int)
+            if res.get("success"):
+                check_augestel_multi_connection(target_index=idx_int)
+                return jsonify({"success": True, "message": f"Login browser Akun #{idx} di RAM berhasil diperbarui!"})
+            else:
+                return jsonify({"success": False, "message": f"Gagal login Akun #{idx} di RAM: {res.get('message')}"})
+
         subprocess.Popen(
             [sys.executable, "batch_login_augestel.py", "--account", str(idx)],
             cwd=BASE_DIR,
