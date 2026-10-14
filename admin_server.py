@@ -1168,6 +1168,24 @@ def api_augestel_webhooks_status():
     })
 
 
+@app.route("/api/augestel/webhooks/setup-single", methods=["POST"])
+@login_required
+def api_augestel_webhooks_setup_single():
+    """Setup or refresh webhook for a single Augestel account synchronously"""
+    data = request.get_json(silent=True) or {}
+    idx = int(data.get("index", 1))
+    webhook_url = data.get("webhook_url") or augestel_webhook_status["url"]
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.setup_account_webhook_sync(idx, webhook_url)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/augestel/webhooks/setup-all", methods=["POST"])
 @login_required
 def api_augestel_webhooks_setup_all():
