@@ -335,6 +335,27 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     cache_key = "augestel_all"
     disk_cache_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
 
+    # In-memory / disk cache check (60s TTL untuk performa instan)
+    if not force_refresh and cache_key in _NUMBERS_CACHE:
+        cached = _NUMBERS_CACHE[cache_key]
+        try:
+            cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
+            if (now_ts - cached_dt).total_seconds() < 60:
+                return cached
+        except Exception:
+            pass
+
+    if not force_refresh and os.path.exists(disk_cache_path):
+        try:
+            with open(disk_cache_path, "r", encoding="utf-8") as f:
+                disk_data = json.load(f)
+            cached_dt = datetime.strptime(disk_data["cached_at"], "%Y-%m-%d %H:%M:%S")
+            if (now_ts - cached_dt).total_seconds() < 60:
+                _NUMBERS_CACHE[cache_key] = disk_data
+                return disk_data
+        except Exception:
+            pass
+
     # Ambil data seluruh akun secara paralel (<0.5 detik total)
     async def _fetch_single_aug(idx):
         return await fetch_augestel_account_numbers(account_param=f"augestel_{idx}", force_refresh=force_refresh, max_rows=max_rows)
