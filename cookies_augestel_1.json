@@ -1,0 +1,32 @@
+[
+  {
+    "name": "remember_client_59ba36addc2b2f9401580f014c7f58ea4e30989d",
+    "value": "eyJpdiI6Ik9xMmorWGI1ZXRZcTc0bWVTVHU3Y0E9PSIsInZhbHVlIjoiK3RNNDhEeHhxa2Zjb09VRXlhZllHc1YrL0pFSEROZjQ2aG1WQ29pdjdPcC9SRXlWb1ZFQnJPaCtwTGY3b0c1bFlYcno5aDF1Wm5tNHpmVXBnaTFtSGdUWFBtS0dhWFhZejlyZUs5bENwT0xHZVM5RENnaEN1MURwcTVzWEViVCtENW02REJlL0l3Smh6elliekFtTlUyajYwdzl4dkcrVmh5eDA5NjdlTWVDZ2IzQWUyM0RuVjc3QjNxaTZCaDJuRVJ5d3NncUNBR09udThKaGVwcjlrZ1JXN1Zzei9WYk1kQm04d20yUWVjbz0iLCJtYWMiOiJlZGU1YWFkZjkxY2E2NTU4MWY4NzQyMDRkNzFjYjc4ZjcxNDAxNjVlZmJhZDVmMzBkZTgxN2E2ZjM5Yzc4ZTE5IiwidGFnIjoiIn0%3D",
+    "domain": "augestel.com",
+    "path": "/",
+    "expires": 1826530916.209275,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "XSRF-TOKEN",
+    "value": "eyJpdiI6IitMSWR0SHNSWGQ2S1crM0RsaFZkcnc9PSIsInZhbHVlIjoiYVlkcGI1cjd4UE1qSzhnNVVrbWVmUlIvS1hGRmIvL01iSHFSM25XM2svR3h1WER4ZTZESXF0RnZ2VTBKcTZ2TCtNcEVQMzRnY1JRc0ZlM0hkZXAvVXROY3Y1MW5hY256blBQU1hKTWlmTnBsZ1VQZHlOUmJlMTBKWE1yU2d4dXciLCJtYWMiOiJjNGVkN2Q1ZmRhYzI0YTRlNDY5MGQzYWVlZmNhMGY3MzFiMGM1ODQ4ODk0Njc5Yjk3NDcxYjZmMjA4MmM4NmZmIiwidGFnIjoiIn0%3D",
+    "domain": "augestel.com",
+    "path": "/",
+    "expires": 1791978120.843321,
+    "httpOnly": false,
+    "secure": true,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "augestel-session",
+    "value": "eyJpdiI6IlZHcG1nTG8xWlk3R3dFRnh4UDRvcUE9PSIsInZhbHVlIjoidGdGbjVoRDMxclN3dzBYcEtSQmlDTytBSEhTQ1pNZ1hOd1VpMnF4aWhram81WDhQdDQvMkk1WW9ZRFQ0VnprMG0weVdKc3Z3NmxnU0RpWkNORDRZMHlYYVp0SFFoYmRvMXY5OVcwSGY3K0s5QXFIaDRsSnhyNE5sd2NVK3VSQWwiLCJtYWMiOiJjZGZiZDdiYzU3MTRlNTBmYzFmZTNiMWEzMmNkOTIwOWNlYzAzMmE1MmU3NmM5NmVhYTAyYmFhY2YxN2Q4ZGUyIiwidGFnIjoiIn0%3D",
+    "domain": "augestel.com",
+    "path": "/",
+    "expires": 1791978120.843486,
+    "httpOnly": true,
+    "secure": true,
+    "sameSite": "Lax"
+  }
+]
