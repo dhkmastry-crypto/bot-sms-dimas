@@ -1,12 +1,12 @@
 {
-  "total_revenue_usd": 0.045,
-  "total_revenue_idr": 731,
-  "total_sms": 3,
-  "today_date": "2026-10-14",
-  "today_revenue_usd": 0.045,
-  "today_sms": 3,
-  "yesterday_revenue_usd": 0.0,
-  "yesterday_sms": 0,
+  "total_revenue_usd": 0.06,
+  "total_revenue_idr": 975,
+  "total_sms": 4,
+  "today_date": "2026-10-15",
+  "today_revenue_usd": 0.015,
+  "today_sms": 1,
+  "yesterday_revenue_usd": 0.045,
+  "yesterday_sms": 3,
   "by_account": {
     "1": {
       "email": "saputradimas0878@gmail.com",
@@ -15,6 +15,11 @@
     },
     "9": {
       "email": "malinoo788@gmail.com",
+      "sms": 1,
+      "usd": 0.015
+    },
+    "7": {
+      "email": "beras.capakor@gmail.com",
       "sms": 1,
       "usd": 0.015
     }
@@ -27,8 +32,8 @@
     },
     "PK": {
       "flag": "🇵🇰",
-      "sms": 1,
-      "usd": 0.015
+      "sms": 2,
+      "usd": 0.03
     },
     "DE": {
       "flag": "🇩🇪",
@@ -38,11 +43,19 @@
   },
   "by_platform": {
     "WhatsApp": {
-      "sms": 3,
-      "usd": 0.045
+      "sms": 4,
+      "usd": 0.06
     }
   },
   "recent_transactions": [
+    {
+      "time": "2026-10-15 00:45:24",
+      "account": "Akun #7",
+      "phone": "+923412345678",
+      "platform": "WhatsApp",
+      "flag": "🇵🇰",
+      "rate_usd": 0.015
+    },
     {
       "time": "2026-10-14 23:28:01",
       "account": "Akun #9",
