@@ -222,18 +222,46 @@ class AugestelBrowserPool:
             return False
 
     async def _heartbeat_loop(self):
-        """Loop latar belakang setiap 5 menit untuk menjaga sesi tetap segar (keep-alive)."""
-        logger.info("💓 Heartbeat background service aktif (Interval 5 menit)...")
+        """
+        Browser & Cookie Guardian (Heartbeat & Keep-Alive Daemon):
+        Loop latar belakang setiap 3 menit untuk menjaga browser & sesi cookie tetap hidup 24/7.
+        - Memastikan proses browser tidak crash (auto-relaunch jika mati).
+        - Memastikan sesi cookie Laravel / Remember Me tetap valid (auto-relogin jika expired).
+        - Menjaga tab tetap standby di RAM agar return all & webhook berjalan instan.
+        """
+        logger.info("🛡️ [Browser/Cookie Guardian] Service aktif! Memantau liveness 7 browser & cookie (Interval 3 menit)...")
         while self.is_running:
             try:
-                await asyncio.sleep(300) # 5 menit
-                logger.info("💓 [Heartbeat] Melakukan touch keep-alive pada seluruh tab Augestel...")
-                for idx, page in list(self.pages.items()):
-                    acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+                await asyncio.sleep(180)  # 3 menit
+                logger.info("💓 [Browser/Cookie Guardian] Memeriksa kesehatan browser & touch session keep-alive...")
+                for idx in range(1, len(self.accounts) + 1):
+                    acc = self.accounts[idx - 1]
                     email = acc.get("email", "")
+                    pwd = acc.get("password", "")
+
                     try:
+                        page = self.pages.get(idx)
+                        ctx = self.contexts.get(idx)
+
+                        # 1. Proteksi Crash / Browser Mati: Cek apakah page atau konteks tertutup
+                        is_dead = (page is None) or (ctx is None)
+                        if not is_dead:
+                            try:
+                                is_dead = page.is_closed()
+                            except Exception:
+                                is_dead = True
+
+                        if is_dead:
+                            logger.warning(f"⚠️ [Browser Guardian] Browser Akun #{idx} ({email}) terdeteksi crash/tertutup! Meluncurkan ulang sekarang...")
+                            await self._init_single_account(idx, email, pwd)
+                            page = self.pages.get(idx)
+                            if not page:
+                                continue
+
+                        # 2. Proteksi Sesi & Cookie: Cek apakah sesi login masih aktif
                         curr_url = page.url
                         login_input = await page.query_selector("#loginEmail, input[name='email']")
+
                         if ("/client/" in curr_url or "/api/" in curr_url or "numbers" in curr_url) and not login_input:
                             self.status[idx]["logged_in"] = True
                             self.status[idx]["message"] = "Standby di RAM (24/7)"
@@ -246,8 +274,16 @@ class AugestelBrowserPool:
                                 self.status[idx]["logged_in"] = False
                                 self.status[idx]["message"] = f"Cooldown ({wait_sec}s)"
                             else:
-                                logger.warning(f"⚠️ [Akun #{idx} | {email}] Sesi kedaluwarsa saat heartbeat, login ulang...")
-                                await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+                                logger.warning(f"⚠️ [Cookie Guardian] Sesi login / cookie Akun #{idx} ({email}) kedaluwarsa! Login ulang otomatis dengan Remember Me...")
+                                relogin_ok = await self._ensure_login_for_page(idx, page, email, pwd)
+                                if relogin_ok:
+                                    logger.info(f"🎉 [Cookie Guardian] Akun #{idx} ({email}) Sesi & cookie BERHASIL dipulihkan!")
+                                    log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 🛡️ [Cookie Guardian] Sesi Akun #{idx} ({email}) kedaluwarsa dan telah otomatis di-login ulang (Remember Me)!\n"
+                                    try:
+                                        with open(os.path.join(BASE_DIR, "bot.log"), "a", encoding="utf-8") as f_log:
+                                            f_log.write(log_line)
+                                    except Exception:
+                                        pass
                     except Exception as ex_hb:
                         logger.debug(f"Heartbeat akun #{idx}: {ex_hb}")
             except Exception as e:
