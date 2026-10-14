@@ -1760,7 +1760,7 @@ async function renderBotControlAugestelStatus(customResults = null) {
         const text = document.getElementById('augStatusText');
         const desc = document.getElementById('augStatusDesc');
 
-        const anyConn = accounts.some(a => a.connected);
+        const anyConn = accounts.some(a => a.connected || a.cookie_connected || a.is_pool_active);
 
         if (icon) {
             icon.className = anyConn ? 'bot-icon online' : 'bot-icon offline';
@@ -1769,10 +1769,15 @@ async function renderBotControlAugestelStatus(customResults = null) {
             text.textContent = 'Augestel Multi-Account';
         }
         if (desc) {
-            const connCount = accounts.filter(a => a.connected).length;
-            desc.textContent = anyConn 
-                ? `Status semua akun terpantau (${connCount}/${accounts.length} Terhubung)` 
-                : 'Tidak ada akun yang terhubung';
+            const connCount = accounts.filter(a => a.connected || (a.api_connected && a.cookie_connected)).length;
+            const poolCount = accounts.filter(a => a.is_pool_active || (a.cookie_status && a.cookie_status.includes('RAM')) || a.cookie_connected).length;
+            if (poolCount > 0) {
+                desc.innerHTML = `<span style="color: #34d399; font-weight: 600;"><i class="fas fa-desktop"></i> Browser Keep-Alive: ${poolCount}/${accounts.length} Standby di RAM (24/7)</span> • ${connCount}/${accounts.length} Full Active`;
+            } else {
+                desc.textContent = anyConn 
+                    ? `Status semua akun terpantau (${connCount}/${accounts.length} Terhubung)` 
+                    : 'Tidak ada akun yang terhubung';
+            }
         }
 
         if (accounts.length === 0) {
@@ -1786,11 +1791,12 @@ async function renderBotControlAugestelStatus(customResults = null) {
 
         listContainer.innerHTML = accounts.map(acc => {
             const apiOk = !!acc.api_connected;
-            const cookieOk = !!acc.cookie_connected;
+            const isPoolActive = !!acc.is_pool_active || (acc.cookie_status && acc.cookie_status.includes('RAM'));
+            const cookieOk = !!acc.cookie_connected || isPoolActive;
             const fullyConnected = apiOk && cookieOk;
 
             const statusDot = fullyConnected 
-                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);" title="API & Browser Profile Aktif"></div>' 
+                ? '<div class="status-dot online" style="margin: 0; box-shadow: 0 0 8px rgba(16,185,129,0.6);" title="API & Browser Keep-Alive di RAM Aktif"></div>' 
                 : (apiOk || cookieOk)
                     ? '<div class="status-dot" style="margin: 0; background: #f59e0b; box-shadow: 0 0 8px rgba(245,158,11,0.6);" title="Parsial: Perlu perhatian"></div>'
                     : '<div class="status-dot offline" style="margin: 0; box-shadow: 0 0 8px rgba(239,68,68,0.6);" title="Terputus"></div>';
@@ -1800,7 +1806,9 @@ async function renderBotControlAugestelStatus(customResults = null) {
                 : '<span class="badge badge-danger" style="font-size: 0.7rem; padding: 3px 6px;" title="REST API Key Invalid"><i class="fas fa-times"></i> API Off</span>';
 
             let cookieBadge = '';
-            if (cookieOk) {
+            if (isPoolActive) {
+                cookieBadge = '<span class="badge" style="font-size: 0.7rem; padding: 3px 7px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.45); color: #34d399;" title="Live Browser Tab Standby di RAM 24/7 (Instan 0s)"><i class="fas fa-desktop"></i> RAM Standby</span>';
+            } else if (cookieOk) {
                 if (acc.has_remember) {
                     cookieBadge = '<span class="badge badge-success" style="font-size: 0.7rem; padding: 3px 6px;" title="Browser Profile & Sesi Remember Me Aktif (Jangka Panjang)"><i class="fas fa-cookie-bite"></i> Browser OK</span>';
                 } else {
@@ -1811,10 +1819,12 @@ async function renderBotControlAugestelStatus(customResults = null) {
             }
 
             const balInfo = acc.balance && acc.balance !== '0.00' ? ` • Saldo: $${acc.balance}` : '';
-            const cookieNote = acc.cookie_status ? ` • <span style="color: ${cookieOk ? 'var(--text-muted)' : '#f59e0b'}; font-size: 0.72rem;">${escapeHtml(acc.cookie_status)}</span>` : '';
+            const statusDetail = isPoolActive
+                ? ` • <span style="color: #34d399; font-weight: 500;"><i class="fas fa-bolt"></i> Live RAM Tab Active</span>`
+                : (acc.cookie_status ? ` • <span style="color: ${cookieOk ? 'var(--text-muted)' : '#f59e0b'}; font-size: 0.72rem;">${escapeHtml(acc.cookie_status)}</span>` : '');
 
             const loginBtn = !cookieOk
-                ? `<button class="btn-sm" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24;" onclick="loginAugestelSingle(${acc.index})" id="btnLoginAug_${acc.index}" title="Login Browser Profil Akun #${acc.index}"><i class="fas fa-sign-in-alt"></i> Login</button>`
+                ? `<button class="btn-sm" style="padding: 4px 8px; font-size: 0.75rem; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24;" onclick="loginAugestelSingle(${acc.index})" id="btnLoginAug_${acc.index}" title="Login Browser Profil Akun #${acc.index}"><i class="fas fa-sign-in-alt"></i> Login RAM</button>`
                 : '';
 
             return `
@@ -1827,7 +1837,7 @@ async function renderBotControlAugestelStatus(customResults = null) {
                                 <span class="text-muted" style="font-size: 0.8rem; font-family: monospace;">(${escapeHtml(acc.email)})</span>
                             </div>
                             <div class="text-muted" style="font-size: 0.74rem; margin-top: 3px;" id="augAccCheckTime_${acc.index}">
-                                <i class="far fa-clock"></i> ${acc.last_check ? 'Cek: ' + acc.last_check : 'Status terpantau'}${balInfo}${cookieNote}
+                                <i class="far fa-clock"></i> ${acc.last_check ? 'Cek: ' + acc.last_check : 'Status terpantau'}${balInfo}${statusDetail}
                             </div>
                         </div>
                     </div>
@@ -1835,7 +1845,7 @@ async function renderBotControlAugestelStatus(customResults = null) {
                         <span id="augAccApiBadge_${acc.index}">${apiBadge}</span>
                         <span id="augAccCookieBadge_${acc.index}">${cookieBadge}</span>
                         ${loginBtn}
-                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelSingle(${acc.index})" id="btnCheckAugAcc_${acc.index}" title="Cek status API & Browser Akun #${acc.index}">
+                        <button class="btn-sm" style="padding: 4px 10px; font-size: 0.75rem;" onclick="checkAugestelSingle(${acc.index})" id="btnCheckAugAcc_${acc.index}" title="Cek status API & Live Tab Browser Akun #${acc.index}">
                             <i class="fas fa-sync-alt"></i> Cek
                         </button>
                     </div>
@@ -1844,6 +1854,36 @@ async function renderBotControlAugestelStatus(customResults = null) {
         }).join('');
     } catch (e) {
         listContainer.innerHTML = `<div class="text-danger" style="font-size: 0.8rem;">Gagal memuat status: ${e.message}</div>`;
+    }
+}
+
+async function checkAllAugestelAccounts() {
+    const btn = document.getElementById('btnCheckAllAug');
+    const orig = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Cek...';
+    }
+    try {
+        const res = await fetch('/api/augestel/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success && data.status) {
+            await renderBotControlAugestelStatus(data.status.accounts || []);
+            showToast('Sinkronisasi status seluruh akun Augestel dengan Browser Pool selesai!', 'success');
+        } else {
+            showToast('Gagal sinkron akun: ' + (data.message || 'Error'), 'error');
+        }
+    } catch (e) {
+        showToast('Gagal sinkron akun Augestel: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
     }
 }
 
@@ -1867,12 +1907,13 @@ async function checkAugestelSingle(index) {
             await renderBotControlAugestelStatus(accList);
             const thisAcc = accList.find(a => a.index === index);
             if (thisAcc) {
-                if (thisAcc.api_connected && thisAcc.cookie_connected) {
-                    showToast(`Akun #${index}: API Key & Browser Profile aktif!`, 'success');
-                } else if (thisAcc.api_connected && !thisAcc.cookie_connected) {
-                    showToast(`Akun #${index}: API OK, Browser Cookie belum aktif (${thisAcc.cookie_status})`, 'warning');
-                } else if (!thisAcc.api_connected && thisAcc.cookie_connected) {
-                    showToast(`Akun #${index}: Browser aktif, namun API Key bermasalah!`, 'warning');
+                const isPool = thisAcc.is_pool_active || (thisAcc.cookie_status && thisAcc.cookie_status.includes('RAM'));
+                if (thisAcc.api_connected && (thisAcc.cookie_connected || isPool)) {
+                    showToast(`Akun #${index}: API Key OK & Browser Live Tab Standby di RAM (24/7)!`, 'success');
+                } else if (thisAcc.api_connected && !thisAcc.cookie_connected && !isPool) {
+                    showToast(`Akun #${index}: API OK, Browser Live Tab belum aktif (${thisAcc.cookie_status})`, 'warning');
+                } else if (!thisAcc.api_connected && (thisAcc.cookie_connected || isPool)) {
+                    showToast(`Akun #${index}: Browser aktif di RAM, namun API Key belum valid!`, 'warning');
                 } else {
                     showToast(`Akun #${index}: Terputus (API & Browser tidak aktif)`, 'error');
                 }
