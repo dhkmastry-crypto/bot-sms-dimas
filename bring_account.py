@@ -2,6 +2,12 @@ import urllib.request
 import json
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 def main():
     if len(sys.argv) < 2:
         print("Penggunaan: python bring_account.py <nomor_akun_1_sampai_16>")
