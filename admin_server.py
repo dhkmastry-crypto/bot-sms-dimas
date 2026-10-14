@@ -1215,14 +1215,24 @@ def api_debug_check(idx):
             return await page.evaluate("""async () => {
                 const res = await fetch('/Switchfy/api/webhooks', { cache: 'no-store' });
                 const text = await res.text();
+                const re = /paused/gi;
+                let match;
+                const matches = [];
+                while ((match = re.exec(text)) !== null) {
+                    const start = Math.max(0, match.index - 80);
+                    const end = Math.min(text.length, match.index + 80);
+                    matches.push(text.substring(start, end).replace(/\\s+/g, ' '));
+                }
+                const delivMatches = [];
+                const re2 = /delivering/gi;
+                while ((match = re2.exec(text)) !== null) {
+                    const start = Math.max(0, match.index - 80);
+                    const end = Math.min(text.length, match.index + 80);
+                    delivMatches.push(text.substring(start, end).replace(/\\s+/g, ' '));
+                }
                 return {
-                    status: res.status,
-                    url: res.url,
-                    length: text.length,
-                    snippet: text.substring(0, 1500),
-                    has_url_input: text.includes('id="webhookUrl"'),
-                    has_is_active: text.includes('name="is_active"'),
-                    has_paused: text.toLowerCase().includes('paused')
+                    paused_matches: matches,
+                    delivering_matches: delivMatches
                 };
             }""")
         return jsonify(pool.run_coro(run()))
