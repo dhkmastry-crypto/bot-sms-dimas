@@ -2411,6 +2411,7 @@ function setAugAddBatchCount(val) {
 
 async function startAugestelAutoAdd() {
     const rangeName = (document.getElementById('augAddRangeName')?.value || '').trim();
+    const numberPrefix = (document.getElementById('augAddNumberPrefix')?.value || '').trim();
     const batchCount = parseInt(document.getElementById('augAddBatchCount')?.value || '250', 10);
     const maxAdd = parseInt(document.getElementById('augAddMaxAdd')?.value || '0', 10);
     const delay = parseInt(document.getElementById('augAddDelay')?.value || '15', 10);
@@ -2438,6 +2439,7 @@ async function startAugestelAutoAdd() {
                 account_index: accountArg,
                 workers: workers,
                 range_name: rangeName,
+                number_prefix: numberPrefix,
                 batch_count: batchCount,
                 max_add: maxAdd,
                 delay: delay
