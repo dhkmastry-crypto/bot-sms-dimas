@@ -1633,25 +1633,105 @@ def api_augestel_auto_add_start():
         except Exception:
             pass
 
+    target_indices = []
     if raw_acc == "all":
         account_arg = "all"
-        account_email = f"Semua Akun ({len(accounts_db)} Akun Terdaftar)"
+        target_indices = list(range(1, len(accounts_db) + 1)) if accounts_db else [1]
+        account_email = f"Semua Akun ({len(target_indices)} Akun Terdaftar)"
     elif "," in raw_acc:
         parts = [p.strip() for p in raw_acc.split(",") if p.strip().isdigit()]
         if not parts:
             parts = ["1"]
-        account_arg = ",".join(parts)
-        account_email = f"{len(parts)} Akun Terpilih (" + ", ".join([f"#{p}" for p in parts]) + ")"
+        target_indices = [int(p) for p in parts if 1 <= int(p) <= (len(accounts_db) or 10)]
+        if not target_indices:
+            target_indices = [1]
+        account_arg = ",".join(str(x) for x in target_indices)
+        account_email = f"{len(target_indices)} Akun Terpilih (" + ", ".join([f"#{p}" for p in target_indices]) + ")"
     else:
         try:
             acc_num = int(raw_acc)
         except Exception:
             acc_num = 1
+        target_indices = [acc_num]
         account_arg = str(acc_num)
         account_email = f"Akun #{acc_num}"
         if 1 <= acc_num <= len(accounts_db):
             account_email = accounts_db[acc_num - 1].get("email", account_email)
     
+    # ── Prioritaskan Live Browser Pool yang aktif di RAM ──
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+    except Exception:
+        pool = None
+
+    if pool and pool.is_running:
+        auto_add_augestel_state = {
+            "running": True,
+            "account_index": account_arg,
+            "account_email": account_email,
+            "workers": workers,
+            "range_name": range_name,
+            "number_prefix": number_prefix,
+            "batch_count": batch_count,
+            "max_add": max_add,
+            "delay": delay,
+            "added": 0,
+            "failed": 0,
+            "skipped": 0,
+            "total_found": 0,
+            "current_action": 0,
+            "last_message": f"Memulai Auto-Add via Live Browser Profile ({workers} worker) untuk {account_email}...",
+            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "process": None,
+        }
+
+        def on_pool_status_update(data):
+            global auto_add_augestel_state
+            if isinstance(data, dict):
+                for k, v in data.items():
+                    auto_add_augestel_state[k] = v
+
+        def run_pool_auto_add_thread():
+            global auto_add_augestel_state
+            try:
+                pool.run_coro(
+                    pool.run_auto_add_multi(
+                        account_indices=target_indices,
+                        range_filter=range_name,
+                        max_add=max_add,
+                        delay=delay,
+                        workers_count=workers,
+                        batch_count=batch_count,
+                        number_prefix=number_prefix,
+                        status_callback=on_pool_status_update
+                    ),
+                    timeout=86400
+                )
+            except Exception as e:
+                logger.error(f"Error Auto-Add Live Pool: {e}")
+                auto_add_augestel_state["last_message"] = f"Error: {e}"
+            finally:
+                auto_add_augestel_state["running"] = False
+                if auto_add_augestel_state.get("added", 0) > 0:
+                    try:
+                        from numbers_service import get_all_numbers
+                        get_all_numbers(force_refresh=True, provider="augestel")
+                    except Exception:
+                        pass
+
+        th = threading.Thread(target=run_pool_auto_add_thread, daemon=True)
+        th.start()
+
+        desc_parts = []
+        if range_name:
+            desc_parts.append(f"Range: '{range_name}'")
+        if number_prefix:
+            desc_parts.append(f"Prefix: '{number_prefix}'")
+        target_name = " & ".join(desc_parts) if desc_parts else "Semua Range & Nomor"
+        return jsonify({"success": True, "message": f"Auto-add Augestel via Live Browser Pool dimulai untuk {target_name}!"})
+
+    # ── Fallback Subprocess (Hanya jika Pool tidak aktif) ──
     try:
         proc = subprocess.Popen(
             [sys.executable, "-u", "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count), number_prefix],
@@ -1746,6 +1826,16 @@ def api_augestel_auto_add_stop():
     """Stop auto-add Augestel"""
     global auto_add_augestel_state
     
+    # 1. Hentikan auto-add di live pool jika sedang berjalan
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool:
+            pool.stop_auto_add()
+    except Exception:
+        pass
+
+    # 2. Hentikan subprocess jika fallback yang berjalan
     proc = auto_add_augestel_state.get("process")
     if proc and proc.poll() is None:
         proc.terminate()

@@ -741,6 +741,79 @@ async def main():
     if not target_indices:
         target_indices = [1]
 
+    # ── Cek apakah admin_server & Live Browser Pool sedang aktif di RAM ──
+    try:
+        import urllib.request
+        check_req = urllib.request.Request(
+            "http://127.0.0.1:5000/api/bot/status",
+            headers={"X-Internal-Token": "bot-internal-secret"}
+        )
+        with urllib.request.urlopen(check_req, timeout=1.5) as resp:
+            admin_online = (resp.status == 200)
+    except Exception:
+        admin_online = False
+
+    if admin_online:
+        logger.info("⚡ Terdeteksi Admin Server & Live Browser Pool aktif di RAM.")
+        logger.info("🌐 Mendelegasikan Auto-Add ke Live Browser Pool agar tidak bentrok dengan browser profile lock...")
+        try:
+            start_payload = json.dumps({
+                "range_name": range_filter,
+                "max_add": max_add,
+                "delay": delay,
+                "account_index": account_arg,
+                "workers": workers,
+                "batch_count": batch_count,
+                "number_prefix": number_prefix
+            }).encode("utf-8")
+            start_req = urllib.request.Request(
+                "http://127.0.0.1:5000/api/augestel/auto-add/start",
+                data=start_payload,
+                headers={"Content-Type": "application/json", "X-Internal-Token": "bot-internal-secret"}
+            )
+            with urllib.request.urlopen(start_req, timeout=10) as s_resp:
+                s_data = json.loads(s_resp.read().decode())
+                if not s_data.get("success"):
+                    logger.warning(f"⚠️ Respon pool: {s_data.get('message')}")
+                else:
+                    logger.info(f"✅ {s_data.get('message')}")
+
+            # Stream status live ke console
+            last_msg = ""
+            while True:
+                await asyncio.sleep(2)
+                st_req = urllib.request.Request(
+                    "http://127.0.0.1:5000/api/augestel/auto-add/status",
+                    headers={"X-Internal-Token": "bot-internal-secret"}
+                )
+                with urllib.request.urlopen(st_req, timeout=5) as st_resp:
+                    st_data = json.loads(st_resp.read().decode())
+                    if not st_data.get("running"):
+                        logger.info("═" * 60)
+                        logger.info("🏁 AUTO ADD AUGESTEL VIA LIVE POOL SELESAI!")
+                        logger.info(f"📊 Ringkasan: Added={st_data.get('added', 0)} | Failed={st_data.get('failed', 0)} | Skipped={st_data.get('skipped', 0)}")
+                        logger.info("═" * 60)
+                        break
+                    c_msg = st_data.get("last_message", "")
+                    if c_msg and c_msg != last_msg:
+                        logger.info(f"[{st_data.get('account_email', '')}] {c_msg}")
+                        last_msg = c_msg
+            return
+        except KeyboardInterrupt:
+            logger.info("🛑 Menghentikan Auto-Add...")
+            try:
+                stop_req = urllib.request.Request(
+                    "http://127.0.0.1:5000/api/augestel/auto-add/stop",
+                    data=b"{}",
+                    headers={"Content-Type": "application/json", "X-Internal-Token": "bot-internal-secret"}
+                )
+                urllib.request.urlopen(stop_req, timeout=5)
+            except Exception:
+                pass
+            return
+        except Exception as ex_del:
+            logger.warning(f"⚠️ Gagal delegasi ke pool ({ex_del}), mencoba standalone Playwright...")
+
     logger.info("═" * 60)
     logger.info(f"🎯 Target akun terpilih: {', '.join([f'Akun #{i}' for i in target_indices])} ({len(target_indices)} akun)")
     logger.info(f"🔢 Maksimal nomor per akun: {MAX_ACCOUNT_NUMBERS} nomor (Otomatis skip / lanjut jika penuh)")
