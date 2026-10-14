@@ -2929,3 +2929,194 @@ function updateLivePreview(data) {
         document.getElementById('prevOtp').textContent = `🔑 ${dispOtp}`;
     }
 }
+
+// ────────────────────────────────────────────
+//  FITUR 1: SMART CAP BALANCER (AUTO-ADD ALL)
+// ────────────────────────────────────────────
+function enableSmartCapBalancerMode() {
+    selectAllAugAddAccounts(true);
+    const batchInput = document.getElementById('augAddBatchCount');
+    const maxInput = document.getElementById('augAddMaxAdd');
+    const delayInput = document.getElementById('augAddDelay');
+    const workersInput = document.getElementById('augAddWorkers');
+
+    if (batchInput) batchInput.value = '250';
+    if (maxInput) maxInput.value = '0'; // 0 = Auto-Fill sampai kuota 2.500 per akun
+    if (delayInput) delayInput.value = '15';
+    if (workersInput) workersInput.value = '2';
+
+    showToast('🚀 Mode Smart Balancer AKTIF! Seluruh 8 akun dipilih untuk diisi merata hingga batas 2.500 nomor per akun.', 'success');
+}
+
+// ────────────────────────────────────────────
+//  FITUR 2: EARNINGS & REVENUE ANALYTICS
+// ────────────────────────────────────────────
+async function loadEarningsAnalytics() {
+    try {
+        const res = await fetch('/api/augestel/earnings');
+        const json = await res.json();
+        if (!json.success || !json.data) return;
+        const d = json.data;
+
+        const elTotalUsd = document.getElementById('earnTotalUsd');
+        const elTotalIdr = document.getElementById('earnTotalIdr');
+        const elTodayUsd = document.getElementById('earnTodayUsd');
+        const elTodaySms = document.getElementById('earnTodaySms');
+        const elYestUsd = document.getElementById('earnYesterdayUsd');
+        const elYestSms = document.getElementById('earnYesterdaySms');
+        const elTotalSms = document.getElementById('earnTotalSms');
+        const elStatRev = document.getElementById('statRevenue');
+
+        if (elTotalUsd) elTotalUsd.textContent = `$${d.total_revenue_usd.toFixed(4)}`;
+        if (elTotalIdr) elTotalIdr.textContent = `≈ Rp ${d.total_revenue_idr.toLocaleString('id-ID')}`;
+        if (elTodayUsd) elTodayUsd.textContent = `$${d.today_revenue_usd.toFixed(4)}`;
+        if (elTodaySms) elTodaySms.textContent = d.today_sms;
+        if (elYestUsd) elYestUsd.textContent = `$${d.yesterday_revenue_usd.toFixed(4)}`;
+        if (elYestSms) elYestSms.textContent = d.yesterday_sms;
+        if (elTotalSms) elTotalSms.textContent = d.total_sms;
+        if (elStatRev) elStatRev.textContent = `$${d.total_revenue_usd.toFixed(2)}`;
+
+        // Render rincian akun
+        const accContainer = document.getElementById('earnAccountsList');
+        if (accContainer) {
+            const accs = d.by_account || {};
+            const keys = Object.keys(accs);
+            if (keys.length === 0) {
+                accContainer.innerHTML = '<div class="text-muted" style="font-size: 0.82rem; grid-column: 1 / -1; padding: 10px;">Belum ada traffic cuan tercatat. Kirim simulasi lewat <b>Live SMS Simulator</b> untuk menguji live-update!</div>';
+            } else {
+                accContainer.innerHTML = keys.sort((a,b) => parseInt(a) - parseInt(b)).map(k => {
+                    const item = accs[k];
+                    const idrEst = Math.round(item.usd * (json.exchange_rate || 16250));
+                    return `
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <div style="font-weight: 700; font-size: 0.88rem; color: #fff;">Akun #${k}</div>
+                                <div class="text-muted" style="font-size: 0.75rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.email)}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-weight: 800; font-size: 0.95rem; color: #10b981;">$${item.usd.toFixed(4)}</div>
+                                <div style="font-size: 0.75rem; color: #38bdf8;">${item.sms} SMS (Rp ${idrEst.toLocaleString('id-ID')})</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (e) {
+        console.error('Error loadEarningsAnalytics:', e);
+    }
+}
+
+// ────────────────────────────────────────────
+//  FITUR 6: LIVE SMS SIMULATOR & WEBHOOK TESTER
+// ────────────────────────────────────────────
+function openAugSimulateModal(targetAccountIdx, email) {
+    const modal = document.getElementById('augSimulateModal');
+    if (!modal) return;
+
+    const sel = document.getElementById('simAccountSelect');
+    if (sel && currentAugestelAccounts && currentAugestelAccounts.length > 0) {
+        sel.innerHTML = currentAugestelAccounts.map((acc, i) => `
+            <option value="${i + 1}" ${targetAccountIdx && targetAccountIdx === (i + 1) ? 'selected' : ''}>
+                Akun #${i + 1} (${escapeHtml(acc.email || '')})
+            </option>
+        `).join('');
+    } else if (sel) {
+        sel.innerHTML = `<option value="${targetAccountIdx || 1}">Akun #${targetAccountIdx || 1} (${escapeHtml(email || '')})</option>`;
+    }
+
+    const resBox = document.getElementById('simResultBox');
+    if (resBox) resBox.style.display = 'none';
+
+    randomizeSimOtp();
+    modal.style.display = 'flex';
+}
+
+function closeAugSimulateModal() {
+    const modal = document.getElementById('augSimulateModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function updateSimCountryFlag() {
+    const sel = document.getElementById('simCountry');
+    const phoneInput = document.getElementById('simPhone');
+    if (!sel || !phoneInput) return;
+    const parts = sel.value.split('|');
+    if (parts.length >= 3) {
+        phoneInput.value = parts[2];
+    }
+}
+
+function randomizeSimOtp() {
+    const input = document.getElementById('simOtp');
+    if (input) {
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        input.value = String(rand);
+    }
+}
+
+async function submitAugSimulateSms() {
+    const btn = document.getElementById('btnSubmitAugSimulate');
+    const resBox = document.getElementById('simResultBox');
+    const accIdx = document.getElementById('simAccountSelect')?.value || '1';
+    const countryParts = (document.getElementById('simCountry')?.value || 'ZW|🇿🇼|+263788124006').split('|');
+    const platform = document.getElementById('simPlatform')?.value || 'WhatsApp';
+    const phone = document.getElementById('simPhone')?.value.trim() || '+263788124006';
+    const otp = document.getElementById('simOtp')?.value.trim() || '884762';
+    const rate = parseFloat(document.getElementById('simRate')?.value || '0.0150');
+    const rangeName = document.getElementById('simRangeName')?.value.trim() || 'Augestel Test Range';
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Mengirim & Mencatat Cuan...';
+    }
+
+    try {
+        const payload = {
+            account_index: parseInt(accIdx),
+            phone: phone,
+            platform: platform,
+            otp: otp,
+            rate: rate,
+            range_name: rangeName,
+            country_code: countryParts[0] || 'ZW',
+            flag: countryParts[1] || '🇿🇼'
+        };
+
+        const res = await fetch('/api/augestel/webhook/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(`✅ ${data.message}`, 'success');
+            if (resBox) {
+                resBox.style.display = 'block';
+                resBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                resBox.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                resBox.style.color = '#10b981';
+                resBox.innerHTML = `
+                    <div style="font-weight: 700; margin-bottom: 4px;"><i class="fas fa-check-circle"></i> Simulasi Webhook Berhasil Terkirim!</div>
+                    <div style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6;">
+                        • Akun: <b>${data.account}</b><br>
+                        • Nomor & Platform: <b>${data.phone} (${platform})</b><br>
+                        • OTP: <b style="color: #fff;">${data.otp}</b> | Cuan: <b style="color: #10b981;">+$${data.rate.toFixed(4)}</b><br>
+                        • Telegram Status: <b>${data.telegram_sent ? 'Terkirim ke Grup (Message ID: ' + data.telegram_message_id + ')' : 'Pesan Tersimpan'}</b>
+                    </div>
+                `;
+            }
+            loadEarningsAnalytics();
+        } else {
+            showToast('Gagal simulasi: ' + (data.message || 'error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error simulasi: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Test Webhook & Cuan Sekarang 🚀';
+        }
+    }
+}
