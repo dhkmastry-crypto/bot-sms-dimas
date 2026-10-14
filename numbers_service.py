@@ -760,8 +760,8 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
             logger.info("Memulai Augestel Browser Pool di latar belakang...")
             pool.start_pool_sync()
 
-        # Eksekusi return all via live tab yang sedang terbuka di pool
-        res = await pool.return_all_account(account_idx)
+        # Eksekusi return all via live tab yang sedang terbuka di pool (thread-safe)
+        res = pool.return_all_sync(account_idx)
 
         # Bersihkan cache akun ini jika berhasil
         if res.get("success"):
