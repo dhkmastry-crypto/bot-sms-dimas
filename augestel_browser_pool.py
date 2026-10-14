@@ -96,7 +96,7 @@ class AugestelBrowserPool:
     async def _init_single_account(self, idx: int, email: str, password: str):
         user_data_dir = os.path.abspath(f"browser_profile_augestel_{idx}")
         # Bersihkan lock file usang jika ada
-        for lk in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
+        for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
             lk_path = os.path.join(user_data_dir, lk)
             if os.path.exists(lk_path):
                 try:
