@@ -2127,6 +2127,41 @@ def api_numbers_export_excel():
 
         numbers_list = res.get("numbers", [])
         email = res.get("email", "all" if acc_arg == "all" else f"acc{acc_arg}")
+
+        # Pastikan data nomor Augestel yang diambil adalah seluruh nomor lengkap
+        if acc_arg in ["augestel", "augestel_all", "aug_all"]:
+            combined_all = []
+            for i in range(1, 8):
+                c_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+                if os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as cf:
+                            cd = json.load(cf)
+                            em_i = cd.get("email", f"Augestel #{i}")
+                            for item in cd.get("numbers", []):
+                                item_c = dict(item)
+                                item_c["account_index"] = f"aug_{i}"
+                                item_c["account_email"] = em_i
+                                combined_all.append(item_c)
+                    except Exception:
+                        pass
+            if len(combined_all) > len(numbers_list):
+                numbers_list = combined_all
+                for idx_c, it in enumerate(numbers_list, 1):
+                    it["id"] = str(idx_c)
+        elif str(acc_arg).startswith("aug"):
+            acc_num = "".join(filter(str.isdigit, str(acc_arg)))
+            if acc_num:
+                c_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{acc_num}.json")
+                if os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as cf:
+                            cd = json.load(cf)
+                            if len(cd.get("numbers", [])) > len(numbers_list):
+                                numbers_list = cd.get("numbers", [])
+                    except Exception:
+                        pass
+
         excel_buf = generate_numbers_excel(numbers_list, email=email)
 
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2172,6 +2207,41 @@ def api_numbers_export_txt():
 
         numbers_list = res.get("numbers", [])
         email = res.get("email", "all" if acc_arg == "all" else f"acc{acc_arg}")
+
+        # Pastikan data nomor Augestel yang diambil adalah seluruh nomor lengkap
+        if acc_arg in ["augestel", "augestel_all", "aug_all"]:
+            combined_all = []
+            for i in range(1, 8):
+                c_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+                if os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as cf:
+                            cd = json.load(cf)
+                            em_i = cd.get("email", f"Augestel #{i}")
+                            for item in cd.get("numbers", []):
+                                item_c = dict(item)
+                                item_c["account_index"] = f"aug_{i}"
+                                item_c["account_email"] = em_i
+                                combined_all.append(item_c)
+                    except Exception:
+                        pass
+            if len(combined_all) > len(numbers_list):
+                numbers_list = combined_all
+                for idx_c, it in enumerate(numbers_list, 1):
+                    it["id"] = str(idx_c)
+        elif str(acc_arg).startswith("aug"):
+            acc_num = "".join(filter(str.isdigit, str(acc_arg)))
+            if acc_num:
+                c_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{acc_num}.json")
+                if os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as cf:
+                            cd = json.load(cf)
+                            if len(cd.get("numbers", [])) > len(numbers_list):
+                                numbers_list = cd.get("numbers", [])
+                    except Exception:
+                        pass
+
         txt_content = generate_numbers_txt(numbers_list)
 
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")

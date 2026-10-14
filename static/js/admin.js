@@ -927,7 +927,13 @@ async function loadAugestelNumbersData(forceRefresh = false) {
             statAcc.textContent = isAll ? `Semua Akun Augestel (${(data.accounts_breakdown || []).length} Akun)` : (data.email || 'Augestel Portal');
         }
         if (statLast) statLast.textContent = data.cached_at || 'Baru saja';
-        if (summary) summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length}</b> dari total <b>${total}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+        if (summary) {
+            if (allAugestelNumbersList.length >= total) {
+                summary.innerHTML = `Menampilkan total <b>${total.toLocaleString('id-ID')}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+            } else {
+                summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length.toLocaleString('id-ID')}</b> dari total <b>${total.toLocaleString('id-ID')}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+            }
+        }
 
         // Render breakdown cards jika memilih semua akun
         if (breakdownEl) {
