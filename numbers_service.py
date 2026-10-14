@@ -691,23 +691,8 @@ def generate_numbers_excel(numbers_data: list, email: str = "") -> BytesIO:
             ]
 
         ws.append(row)
-        curr_row = idx + 1
-        for c_idx in range(1, len(headers) + 1):
-            c = ws.cell(row=curr_row, column=c_idx)
-            c.font = data_font
-            c.border = thin_border
-            if is_all_accounts:
-                if c_idx in [1, 5, 6, 7, 8, 9]:
-                    c.alignment = center_align
-                else:
-                    c.alignment = left_align
-            else:
-                if c_idx in [1, 4, 5, 6, 7, 8]:
-                    c.alignment = center_align
-                else:
-                    c.alignment = left_align
 
-    # Explicit column widths for speed (avoids iterating 150k cells)
+    # Explicit column widths for speed
     if is_all_accounts:
         col_widths = {'A': 8, 'B': 36, 'C': 22, 'D': 22, 'E': 14, 'F': 16, 'G': 16, 'H': 16, 'I': 14}
     else:
