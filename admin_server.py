@@ -38,6 +38,7 @@ from flask import Flask, render_template, jsonify, request, redirect, url_for, s
 app = Flask(__name__)
 app.secret_key = "otp-iva-sms-admin-secret-2026"
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 logger = logging.getLogger("admin")
 logging.basicConfig(
