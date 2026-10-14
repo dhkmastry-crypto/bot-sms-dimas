@@ -1200,44 +1200,7 @@ def api_augestel_webhooks_guardian_check_now():
         return jsonify({"success": False, "message": str(e)})
 
 
-@app.route("/api/augestel/webhooks/debug-check/<int:idx>")
-@login_required
-def api_debug_check(idx):
-    try:
-        from augestel_browser_pool import get_browser_pool
-        pool = get_browser_pool()
-        if not pool or not pool.is_running:
-            return jsonify({"error": "pool not running"})
-        page = pool.pages.get(idx)
-        if not page:
-            return jsonify({"error": f"page {idx} not found"})
-        async def run():
-            return await page.evaluate("""async () => {
-                const res = await fetch('/Switchfy/api/webhooks', { cache: 'no-store' });
-                const text = await res.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(text, 'text/html');
 
-                const forms = Array.from(doc.querySelectorAll('form')).map(f => ({
-                    action: f.getAttribute('action') || '',
-                    method: f.getAttribute('method') || '',
-                    buttons: Array.from(f.querySelectorAll('button')).map(b => ({
-                        type: b.type,
-                        text: b.textContent.trim()
-                    })),
-                    inputs: Array.from(f.querySelectorAll('input')).map(i => ({
-                        name: i.name,
-                        type: i.type,
-                        value: i.value,
-                        checked: i.hasAttribute('checked')
-                    }))
-                }));
-
-                return { forms: forms };
-            }""")
-        return jsonify(pool.run_coro(run()))
-    except Exception as e:
-        return jsonify({"error": str(e)})
 
 
 @app.route("/api/augestel/webhooks/setup-single", methods=["POST"])
