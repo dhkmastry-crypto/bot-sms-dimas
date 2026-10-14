@@ -2347,14 +2347,89 @@ async function checkWebhookStatusLive() {
             const countEl = document.getElementById('whTotalCount');
             const timeEl = document.getElementById('whLastTime');
             const badgeEl = document.getElementById('webhookStatusBadge');
+            const guardEl = document.getElementById('whGuardianStatus');
+            const listEl = document.getElementById('whGuardianAccountsList');
+
             if (countEl) countEl.innerText = `${data.total_received} OTP`;
             if (timeEl) timeEl.innerText = data.last_received ? `${data.last_received} (${data.last_event || 'event'})` : 'Belum ada';
             if (badgeEl) badgeEl.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6rem;"></i> 200 OK - AKTIF &amp; LISTENING';
+
+            if (guardEl) {
+                if (data.guardian_enabled) {
+                    guardEl.innerHTML = '<span style="color: #10b981;">🟢 Auto-Heal Aktif (24/7)</span>';
+                } else {
+                    guardEl.innerHTML = '<span style="color: #ef4444;">🔴 Guardian Nonaktif</span>';
+                }
+            }
+
+            if (listEl && data.guardian_accounts) {
+                const entries = Object.entries(data.guardian_accounts);
+                if (entries.length > 0) {
+                    listEl.innerHTML = entries.map(([idx, st]) => {
+                        const isDeliv = st.is_delivering;
+                        const isPaused = st.is_paused;
+                        const recovers = st.auto_recovered_count || 0;
+                        let bg = isDeliv ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+                        let border = isDeliv ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+                        let color = isDeliv ? '#10b981' : '#ef4444';
+                        let label = isDeliv ? 'Delivering' : (isPaused ? 'Paused' : 'OFF');
+                        let recoverBadge = recovers > 0 ? `<span style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; padding: 1px 5px; border-radius: 4px; font-size: 0.7rem; margin-left: 4px;" title="Jumlah otomatis dinyalakan kembali saat mati">🛡️ Healed: ${recovers}x</span>` : '';
+
+                        return `
+                            <div style="background: ${bg}; border: 1px solid ${border}; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+                                <b style="color: var(--text-main);">Akun #${idx}</b>
+                                <span style="color: ${color}; font-weight: 600;">● ${label}</span>
+                                ${recoverBadge}
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
         }
     } catch (e) {
         console.error('Error checking webhook status:', e);
     } finally {
         if (btn) btn.innerHTML = '<i class="fas fa-sync-alt"></i> Cek Status';
+    }
+}
+
+async function triggerGuardianCheckNow() {
+    const btn = document.getElementById('btnGuardianCheckNow');
+    const orig = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Checking...';
+    }
+    showToast('Memeriksa status webhook & menjalankan auto-heal jika ada yang mati...', 'info');
+    try {
+        const res = await fetch('/api/augestel/webhooks/guardian/check-now', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            let healedCount = 0;
+            if (data.results) {
+                Object.values(data.results).forEach(r => {
+                    if (r && r.auto_healed) healedCount++;
+                });
+            }
+            if (healedCount > 0) {
+                showToast(`🛡️ Webhook Guardian: ${healedCount} akun terdeteksi mati dan BERHASIL dinyalakan kembali otomatis!`, 'success');
+            } else {
+                showToast('🛡️ Webhook Guardian: Semua akun sehat & aktif Delivering (tidak ada yang mati).', 'success');
+            }
+            await checkWebhookStatusLive();
+        } else {
+            showToast('Gagal check guardian: ' + (data.message || 'error'), 'error');
+        }
+    } catch (e) {
+        showToast('Error guardian check: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = orig || '<i class="fas fa-shield-alt"></i> Auto-Heal Check';
+        }
     }
 }
 
