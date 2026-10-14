@@ -80,6 +80,7 @@ auto_add_augestel_state = {
     "account_email": "",
     "workers": 2,
     "range_name": "",
+    "number_prefix": "",
     "max_add": 0,
     "delay": 15,
     "added": 0,
