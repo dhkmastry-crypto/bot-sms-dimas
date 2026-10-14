@@ -2093,7 +2093,10 @@ async function loadAugestelAccountsList() {
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 600;" onclick="openAugSimulateModal(${idx + 1}, '${email}')" title="Test Live Webhook & Kirim SMS Dummy ke Telegram">
+                            <i class="fas fa-vial"></i> Test SMS
+                        </button>
                         <button class="btn btn-secondary btn-sm" onclick="editAugestelAccount(${idx})" title="Edit Akun">
                             <i class="fas fa-edit"></i> Edit
                         </button>
