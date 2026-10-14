@@ -253,7 +253,7 @@ async def ensure_augestel_login(page, email: str, password: str) -> bool:
 
 async def fetch_test_terminations(page, range_search: str = "", number_search: str = "", start: int = 0, length: int = 25) -> dict:
     """Fetch terminations dari DataTable Augestel."""
-    res = await page.evaluate('''async ([rangeSearch, numberSearch, start, length]) => {
+    res = await page.evaluate(r'''async ([rangeSearch, numberSearch, start, length]) => {
         try {
             const url = new URL('/Switchfy/test/numbers', window.location.origin);
             url.searchParams.set('draw', '1');
