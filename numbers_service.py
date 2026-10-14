@@ -892,37 +892,39 @@ async def delete_all_account_numbers(account_index=1) -> dict:
             return {"success": False, "message": "Tidak ada akun Augestel terdaftar!"}
 
         if "all" in acc_str:
-            # Hapus semua akun Augestel secara sekuensial (satu per satu dengan jeda aman)
-            succ = 0
-            details = []
+            from augestel_browser_pool import get_browser_pool
+            pool = get_browser_pool()
+            if not pool.is_running:
+                pool.start_pool_sync()
+
+            res = pool.return_all_all_sync()
+
+            # Bersihkan seluruh cache nomor Augestel
+            _NUMBERS_CACHE.clear()
             for i in range(1, len(aug_accounts) + 1):
-                r = await return_all_augestel_portal(i)
-                if isinstance(r, dict) and r.get("success"):
-                    succ += 1
-                    details.append(f"Akun #{i}: Sukses")
-                elif isinstance(r, dict):
-                    details.append(f"Akun #{i}: {r.get('message', 'Gagal')}")
-                else:
-                    details.append(f"Akun #{i}: Error")
+                cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+                try:
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "success": True,
+                            "account_index": f"aug_{i}",
+                            "email": f"Augestel #{i} ({aug_accounts[i-1].get('email', '')})",
+                            "total": 0,
+                            "count": 0,
+                            "numbers": [],
+                            "cached_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }, f, indent=2)
+                except Exception:
+                    pass
 
-                # Beri jeda 3 detik antar akun agar tidak memicu limit IP Cloudflare
-                if i < len(aug_accounts):
-                    await asyncio.sleep(3)
+            all_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+            if os.path.exists(all_path):
+                try:
+                    os.remove(all_path)
+                except Exception:
+                    pass
 
-            # Rebuild cache gabungan jika ada akun yang berubah
-            if succ > 0:
-                _NUMBERS_CACHE.pop("augestel_all", None)
-                all_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
-                if os.path.exists(all_path):
-                    try:
-                        os.remove(all_path)
-                    except Exception:
-                        pass
-
-            return {
-                "success": succ > 0,
-                "message": f"Selesai return all nomor untuk {succ}/{len(aug_accounts)} akun Augestel! ({', '.join(details)})"
-            }
+            return res
         else:
             # Single account
             clean_idx = re.sub(r"[^\d]", "", acc_str)
