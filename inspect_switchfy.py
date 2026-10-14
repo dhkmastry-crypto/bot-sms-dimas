@@ -1,30 +1,25 @@
-import cloudscraper
+import asyncio
 import re
-import json
+from playwright.async_api import async_playwright
+from auto_add_augestel import get_account_config
 
-with open('augestel_accounts.json', 'r', encoding='utf-8') as f:
-    accs = json.load(f)
+async def inspect_login():
+    cfg = get_account_config(1)
+    async with async_playwright() as p:
+        ctx = await p.chromium.launch_persistent_context(user_data_dir=cfg['user_data_dir'], channel='msedge', headless=True)
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+        await page.goto('https://augestel.com/Switchfy')
+        print('URL:', page.url, 'Title:', await page.title())
+        content = await page.content()
+        forms = re.findall(r'<form[^>]*>', content)
+        print('Forms:', forms)
+        inputs = re.findall(r'<input[^>]*>', content)
+        for inp in inputs:
+            print('Input:', inp)
+        wait_span = await page.query_selector('.wait')
+        if wait_span:
+            print('Wait span:', await wait_span.inner_text())
+        await ctx.close()
 
-acc = accs[0]
-email = acc['email']
-pwd = acc['password']
-print(f"Testing login for {email}...")
-
-scraper = cloudscraper.create_scraper()
-login_page = scraper.get('https://augestel.com/Switchfy', timeout=15)
-match = re.search(r'name="_token" value="([^"]+)"', login_page.text)
-csrf_token = match.group(1) if match else ''
-
-post_data = {'_token': csrf_token, 'email': email, 'password': pwd}
-headers = {'Referer': 'https://augestel.com/Switchfy', 'Origin': 'https://augestel.com'}
-login_resp = scraper.post('https://augestel.com/Switchfy/login', data=post_data, headers=headers, timeout=15)
-print('Login URL:', login_resp.url, 'Status:', login_resp.status_code)
-
-test_resp = scraper.get('https://augestel.com/Switchfy/test/numbers', timeout=20)
-print('Numbers page status:', test_resp.status_code, 'Final URL:', test_resp.url)
-print('Title:', re.findall(r'<title>(.*?)</title>', test_resp.text, re.IGNORECASE))
-print('Length of HTML:', len(test_resp.text))
-
-with open('debug_switchfy_numbers.html', 'w', encoding='utf-8') as f:
-    f.write(test_resp.text)
-print('Saved to debug_switchfy_numbers.html')
+if __name__ == '__main__':
+    asyncio.run(inspect_login())
