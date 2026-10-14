@@ -2611,6 +2611,69 @@ def api_augestel_pool_debug(idx):
         return jsonify({"success": False, "message": str(e)})
 
 
+@app.route("/api/augestel/pool/test-login/<int:idx>", methods=["POST"])
+@login_required
+def api_augestel_pool_test_login(idx):
+    try:
+        import asyncio
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if idx not in pool.pages:
+            return jsonify({"success": False, "message": f"No page for account #{idx}"})
+        page = pool.pages[idx]
+        acc = pool.accounts[idx - 1] if 0 < idx <= len(pool.accounts) else {}
+        email = acc.get("email", "")
+        password = acc.get("password", "")
+
+        async def do_test():
+            await page.goto("https://augestel.com/Switchfy", wait_until="domcontentloaded", timeout=30000)
+            await asyncio.sleep(2)
+            
+            email_el = await page.query_selector("#loginEmail, input[name='email']")
+            pass_el = await page.query_selector("#loginPassword, input[name='password']")
+            if not email_el or not pass_el:
+                return {"error": "Input fields not found", "url": page.url}
+                
+            await email_el.fill(email)
+            await pass_el.fill(password)
+            
+            cb = await page.query_selector("input[name='remember']")
+            if cb:
+                try: await cb.check()
+                except Exception: pass
+                
+            btn = await page.query_selector("#loginSubmit, button[type='submit']")
+            if btn:
+                await btn.click()
+            else:
+                await page.keyboard.press("Enter")
+                
+            await asyncio.sleep(4)
+            
+            final_url = page.url
+            final_title = await page.title()
+            
+            error_info = await page.evaluate('''() => {
+                const alerts = Array.from(document.querySelectorAll('.alert, .error, .invalid-feedback, .text-danger, .swal2-html-container, .swal2-title, .wait, #loginError, .login-error, span[role="alert"]')).map(e => e.innerText.trim()).filter(t => t.length > 0);
+                const bodyText = document.body.innerText;
+                const matchErr = bodyText.match(/(?:invalid|incorrect|credentials|match|blocked|suspended|verify|too many|cooldown|password)[^\\n\\.]*/gi);
+                return { alerts, matchErr, url: window.location.href };
+            }''')
+            
+            return {
+                "email": email,
+                "password_used": password,
+                "final_url": final_url,
+                "final_title": final_title,
+                "error_info": error_info
+            }
+
+        res = pool.run_coro(do_test(), timeout=40)
+        return jsonify({"success": True, "data": res})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/augestel/pool/start", methods=["POST"])
 @login_required
 def api_augestel_pool_start():
