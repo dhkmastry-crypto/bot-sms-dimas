@@ -1,0 +1,40 @@
+{
+  "total_revenue_usd": 0.015,
+  "total_revenue_idr": 243,
+  "total_sms": 1,
+  "today_date": "2026-10-14",
+  "today_revenue_usd": 0.015,
+  "today_sms": 1,
+  "yesterday_revenue_usd": 0.0,
+  "yesterday_sms": 0,
+  "by_account": {
+    "1": {
+      "email": "saputradimas0878@gmail.com",
+      "sms": 1,
+      "usd": 0.015
+    }
+  },
+  "by_country": {
+    "ZW": {
+      "flag": "🇿🇼",
+      "sms": 1,
+      "usd": 0.015
+    }
+  },
+  "by_platform": {
+    "WhatsApp": {
+      "sms": 1,
+      "usd": 0.015
+    }
+  },
+  "recent_transactions": [
+    {
+      "time": "2026-10-14 23:24:38",
+      "account": "Akun #1",
+      "phone": "+263788124006",
+      "platform": "WhatsApp",
+      "flag": "🇿🇼",
+      "rate_usd": 0.015
+    }
+  ]
+}
