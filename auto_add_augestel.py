@@ -499,7 +499,7 @@ async def run_worker(worker_id: int, account_idx: int, account_email: str, page,
             await asyncio.sleep(delay)
 
 
-async def process_account(account_idx: int, range_filter: str, max_add: int, delay: int, workers_count: int, batch_count: int, shared_stats: dict, stats_lock: asyncio.Lock):
+async def process_account(account_idx: int, range_filter: str, max_add: int, delay: int, workers_count: int, batch_count: int, shared_stats: dict, stats_lock: asyncio.Lock, number_prefix: str = ""):
     """Menjalankan proses auto-add pada satu akun Augestel."""
     acc_conf = get_account_config(account_idx)
     email = acc_conf["email"]
@@ -558,12 +558,19 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
         remaining_quota = MAX_ACCOUNT_NUMBERS - init_count
         logger.info(f"📊 [Akun #{account_idx} | {email}] Jumlah nomor saat ini: {init_count}/{MAX_ACCOUNT_NUMBERS} (Sisa kuota: {remaining_quota} nomor).")
 
-        # Fetch terminations matching range_filter
-        logger.info(f"🔍 Mencari terminations dengan filter: '{range_filter}'...")
+        # Fetch terminations matching range_filter & number_prefix
+        filter_descs = []
+        if range_filter:
+            filter_descs.append(f"Range: '{range_filter}'")
+        if number_prefix:
+            filter_descs.append(f"Prefix: '{number_prefix}'")
+        desc_str = " & ".join(filter_descs) if filter_descs else "Semua Range & Nomor"
+        logger.info(f"🔍 Mencari terminations dengan filter: {desc_str}...")
+
         raw_rows = []
         # Ambil 50 terminations sekaligus untuk mencegah reload spam ke DataTable yang memicu cooldown
         needed_records = 50 if max_add <= 0 else min(max(max_add, 25), 100)
-        dt_res = await fetch_test_terminations(page, range_filter, start=0, length=needed_records)
+        dt_res = await fetch_test_terminations(page, range_filter, number_search=number_prefix, start=0, length=needed_records)
         total_found = 0
         if dt_res and not dt_res.get("error"):
             total_found = dt_res.get("recordsFiltered", 0) or dt_res.get("recordsTotal", 0) or 0
@@ -571,14 +578,15 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
         elif dt_res and dt_res.get("error"):
             logger.warning(f"⚠️ Error saat fetch terminations: {dt_res.get('error')}")
 
-        logger.info(f"📋 Ditemukan {total_found} total records ({len(raw_rows)} diambil) untuk filter '{range_filter}'")
+        logger.info(f"📋 Ditemukan {total_found} total records ({len(raw_rows)} diambil) untuk filter {desc_str}")
 
         if not raw_rows:
-            logger.warning(f"⚠️ Tidak ada termination yang cocok dengan '{range_filter}'.")
+            logger.warning(f"⚠️ Tidak ada termination yang cocok dengan {desc_str}.")
             await context.close()
             return
 
-        # Parse rows into actionable items
+        # Parse rows into actionable items with Python-level number/prefix verification
+        clean_prefix = re.sub(r'[\s\+\-]', '', number_prefix) if number_prefix else ""
         queue = asyncio.Queue()
         for r in raw_rows:
             action_html = r.get("action", "")
@@ -588,6 +596,12 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
             num_html = r.get("test_number", "")
             num_match = re.search(r'data-copy-number="([^"]+)"', num_html)
             num = num_match.group(1) if num_match else ""
+            clean_num = re.sub(r'[\s\+\-]', '', num)
+
+            # Saring jika ada filter number / prefix
+            if clean_prefix:
+                if not (clean_num.startswith(clean_prefix) or clean_prefix in clean_num):
+                    continue
 
             if term_id:
                 queue.put_nowait({
@@ -597,6 +611,11 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
                 })
 
         q_size = queue.qsize()
+        if q_size == 0 and clean_prefix:
+            logger.warning(f"⚠️ Tidak ada nomor termination yang cocok dengan prefix '{number_prefix}'.")
+            await context.close()
+            return
+
         logger.info(f"📥 {q_size} terminations dimasukkan ke dalam antrian kerja.")
 
         # Persiapkan worker pages
