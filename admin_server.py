@@ -1231,11 +1231,16 @@ def api_debug_inspect_api_doc():
             }''')
             import re
             keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
-            m = re.search(r'([\s\S]{0,800}Regenerate[\s\S]{0,800})', content)
-            snippet = m.group(1) if m else "NOT_FOUND"
-            m2 = re.search(r'([\s\S]{0,800}sk_live_[\s\S]{0,800})', content)
-            snippet2 = m2.group(1) if m2 else "NOT_FOUND"
-            return {"title": title, "url": page.url, "keys": keys, "snippet_regen": snippet, "snippet_key": snippet2}
+            fn_code = await page.evaluate('''() => {
+                let res = {};
+                if (typeof generateApiKey === 'function') res.generateApiKey = generateApiKey.toString();
+                if (typeof regenerateApiKey === 'function') res.regenerateApiKey = regenerateApiKey.toString();
+                if (window.__cfg_clients_api_documentation) res.cfg = window.__cfg_clients_api_documentation;
+                return res;
+            }''')
+            return {"title": title, "url": page.url, "keys": keys, "fn_code": fn_code}
+
+
 
 
 
