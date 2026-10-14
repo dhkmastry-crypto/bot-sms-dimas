@@ -730,46 +730,53 @@ class AugestelBrowserPool:
                 await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
                 await asyncio.sleep(2)
 
-            url_input = await page.wait_for_selector("#webhookUrl", timeout=15000)
-            if url_input:
-                await url_input.fill(webhook_url)
+            # Isi formulir dan submit langsung via form spesifik #webhookUrl
+            js_submit_form = """
+            (whUrl) => {
+                const input = document.querySelector('#webhookUrl');
+                if (!input || !input.form) return { ok: false, error: 'input or form not found' };
+                const form = input.form;
+                
+                input.value = whUrl;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
 
-            # Pastikan is_active (Deliver events to this endpoint) dan event tercentang
-            await page.evaluate("""() => {
-                const cb = document.querySelector('input[type="checkbox"][name="is_active"]');
-                if (cb && !cb.checked) {
+                const cb = form.querySelector('input[type="checkbox"][name="is_active"]');
+                if (cb) {
                     cb.checked = true;
                     cb.dispatchEvent(new Event('input', { bubbles: true }));
                     cb.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-                const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-                if (msg && !msg.checked) {
+
+                const msg = form.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
+                if (msg) {
                     msg.checked = true;
                     msg.dispatchEvent(new Event('input', { bubbles: true }));
                     msg.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-            }""")
 
-            await asyncio.sleep(0.5)
+                const btns = Array.from(form.querySelectorAll('button[type="submit"], button'));
+                const saveBtn = btns.find(b => {
+                    const t = b.innerText.toLowerCase();
+                    return (t.includes('save') || t.includes('update')) && !t.includes('remove');
+                }) || form.querySelector('button[type="submit"]');
 
-            # Cari tombol submit spesifik: "Save endpoint" atau "Update endpoint" (JANGAN klik "Remove"!)
-            submit_btn = await page.query_selector('form[action*="webhook"] button:has-text("Save"), form[action*="webhook"] button:has-text("Update")')
-            if not submit_btn:
-                all_btns = await page.query_selector_all('form[action*="webhook"] button[type="submit"]')
-                for b in all_btns:
-                    b_txt = (await b.inner_text()).lower()
-                    if "remove" not in b_txt and ("save" in b_txt or "update" in b_txt):
-                        submit_btn = b
-                        break
-
+                if (saveBtn) {
+                    saveBtn.click();
+                    return { ok: true, clicked: saveBtn.innerText.trim() };
+                } else {
+                    form.submit();
+                    return { ok: true, submitted: true };
+                }
+            }
+            """
+            submit_res = await page.evaluate(js_submit_form, webhook_url)
+            logger.info(f"Submit webhook eval: {submit_res}")
             try:
-                if submit_btn:
-                    await submit_btn.click()
-                else:
-                    await page.keyboard.press("Enter")
                 await page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception as ex_sub:
-                logger.debug(f"Wait submit: {ex_sub}")
+            except Exception:
+                pass
+
 
             await asyncio.sleep(2)
 
