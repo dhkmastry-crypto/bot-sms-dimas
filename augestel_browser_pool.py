@@ -485,6 +485,72 @@ class AugestelBrowserPool:
         """Panggilan sinkron dari thread Flask untuk sinkronisasi akun baru/update."""
         return self.run_coro(self._sync_accounts_async(), timeout=180)
 
+    async def setup_account_webhook(self, idx: int, webhook_url: str) -> dict:
+        """Pasang / aktifkan webhook secara instan via tab yang sedang terbuka di RAM."""
+        if idx not in self.pages:
+            return {"success": False, "message": f"Browser Akun #{idx} belum aktif di pool"}
+        page = self.pages[idx]
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+
+        try:
+            logger.info(f"🌐 [Akun #{idx} | {email}] Mengakses halaman webhook portal...")
+            await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
+            await asyncio.sleep(2)
+
+            # Jika diarahkan ke form login, lakukan re-login
+            if "/login" in page.url or await page.query_selector("#loginEmail, input[name='email']"):
+                await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+                await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
+                await asyncio.sleep(2)
+
+            url_input = await page.wait_for_selector("#webhookUrl", timeout=15000)
+            if url_input:
+                await url_input.fill(webhook_url)
+
+            # Centang Deliver events to this endpoint (is_active)
+            active_cb = await page.query_selector('input[type="checkbox"][name="is_active"]')
+            if active_cb and not await active_cb.is_checked():
+                await active_cb.check()
+
+            # Centang event message.received
+            msg_cb = await page.query_selector('input[type="checkbox"][name="events[]"][value="message.received"]')
+            if msg_cb and not await msg_cb.is_checked():
+                await msg_cb.check()
+
+            # Klik tombol submit ("Save endpoint" atau "Update endpoint")
+            submit_btn = await page.query_selector('form[action*="webhook"] button[type="submit"]')
+            if submit_btn:
+                await submit_btn.click()
+                await asyncio.sleep(3)
+
+            is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? cb.checked : false; }')
+            saved_val = await page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
+
+            # Kembalikan ke halaman client numbers agar standby
+            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=30000)
+
+            ok = bool(saved_val == webhook_url and is_active)
+            logger.info(f"🎉 [Akun #{idx} | {email}] Webhook status: is_active={is_active}, url={saved_val}")
+            return {"success": ok, "is_active": is_active, "url": saved_val, "email": email}
+        except Exception as e:
+            logger.error(f"❌ [Akun #{idx}] Error setup webhook: {e}")
+            return {"success": False, "message": str(e), "email": email}
+
+    def setup_account_webhook_sync(self, idx: int, webhook_url: str) -> dict:
+        return self.run_coro(self.setup_account_webhook(idx, webhook_url), timeout=60)
+
+    async def setup_all_webhooks(self, webhook_url: str) -> dict:
+        results = {}
+        for idx in range(1, len(self.accounts) + 1):
+            res = await self.setup_account_webhook(idx, webhook_url)
+            results[idx] = res
+            await asyncio.sleep(1)
+        return {"success": any(r.get("success") for r in results.values()), "results": results}
+
+    def setup_all_webhooks_sync(self, webhook_url: str) -> dict:
+        return self.run_coro(self.setup_all_webhooks(webhook_url), timeout=300)
+
     def get_status_dict(self) -> dict:
         return self.status
 
