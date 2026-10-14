@@ -1284,7 +1284,16 @@ def api_bot_status():
                 "last_check": "Status Terpantau (Aktif)"
             })
 
-    # Pastikan status akun Augestel juga disertakan
+    # Pastikan status akun Augestel tersinkron dengan Augestel Browser Pool (Keep-Alive RAM)
+    pool_dict = {}
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool_inst = get_browser_pool()
+        if pool_inst and pool_inst.is_running:
+            pool_dict = pool_inst.get_status_dict()
+    except Exception:
+        pass
+
     aug_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     aug_accounts_db = []
     if os.path.exists(aug_file):
@@ -1295,35 +1304,49 @@ def api_bot_status():
             pass
 
     merged_aug_status = []
-    existing_aug = augestel_status.get("accounts", [])
-    if existing_aug:
-        for item in existing_aug:
-            idx = item.get("index", 1)
-            email = item.get("email")
-            if not email and 1 <= idx <= len(aug_accounts_db):
-                email = aug_accounts_db[idx - 1].get("email", "")
-            merged_aug_status.append({
-                **item,
-                "email": email or f"Akun #{idx}"
-            })
-    elif aug_accounts_db:
-        for idx, a in enumerate(aug_accounts_db, start=1):
+    for idx, a in enumerate(aug_accounts_db, start=1):
+        email = a.get("email", "")
+        api_ok = bool(a.get("api_key"))
+
+        # Cek status browser keep-alive (RAM daemon)
+        p_item = pool_dict.get(idx) or pool_dict.get(str(idx)) or {}
+        pool_logged_in = p_item.get("logged_in", False)
+        pool_message = p_item.get("message", "")
+
+        if pool_logged_in:
+            cookie_connected = True
+            has_remember = True
+            has_session = True
+            cookie_status = "Standby di RAM (24/7)"
+            is_pool_active = True
+            last_check = p_item.get("last_check") or "Standby 24/7"
+        else:
             c_info = check_augestel_browser_cookie(idx)
-            api_ok = bool(a.get("api_key"))
-            c_ok = c_info.get("cookie_connected", False)
-            merged_aug_status.append({
-                "index": idx,
-                "email": a.get("email", ""),
-                "api_connected": api_ok,
-                "cookie_connected": c_ok,
-                "cookie_status": c_info.get("status_text", "-"),
-                "has_remember": c_info.get("has_remember", False),
-                "has_session": c_info.get("has_session", False),
-                "cookie_count": c_info.get("cookie_count", 0),
-                "connected": api_ok and c_ok,
-                "balance": a.get("balance", "0.00"),
-                "last_check": "Status Terpantau (Aktif)" if api_ok else "Belum ada API Key"
-            })
+            cookie_connected = c_info.get("cookie_connected", False)
+            has_remember = c_info.get("has_remember", False)
+            has_session = c_info.get("has_session", False)
+            cookie_status = pool_message if pool_message else c_info.get("status_text", "-")
+            is_pool_active = False
+            last_check = p_item.get("last_check") or ("Status Terpantau (Aktif)" if api_ok else "Belum ada API Key")
+
+        merged_aug_status.append({
+            "index": idx,
+            "email": email or f"Akun #{idx}",
+            "api_connected": api_ok,
+            "cookie_connected": cookie_connected,
+            "cookie_status": cookie_status,
+            "has_remember": has_remember,
+            "has_session": has_session,
+            "cookie_count": 3 if pool_logged_in else 0,
+            "is_pool_active": is_pool_active,
+            "connected": api_ok and cookie_connected,
+            "balance": a.get("balance", "0.00"),
+            "last_check": last_check
+        })
+
+    augestel_status["accounts"] = merged_aug_status
+    augestel_status["connected"] = any(acc["connected"] for acc in merged_aug_status) if merged_aug_status else False
+
 
     res = dict(bot_status)
     res["ivasms_status"] = ivasms_status
