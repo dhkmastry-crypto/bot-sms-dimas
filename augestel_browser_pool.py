@@ -364,6 +364,10 @@ class AugestelBrowserPool:
         """Panggilan sinkron (dari Flask) untuk return akun tertentu."""
         return self.run_coro(self.return_all_account(account_idx), timeout=60)
 
+    def return_all_all_sync(self) -> dict:
+        """Panggilan sinkron (dari Flask) untuk return semua akun."""
+        return self.run_coro(self.return_all_all_accounts(), timeout=300)
+
     async def check_account_status(self, idx: int) -> dict:
         """Memeriksa status sesi live tab untuk 1 akun tertentu secara real-time."""
         if idx not in self.pages:
