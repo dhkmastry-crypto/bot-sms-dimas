@@ -1218,27 +1218,22 @@ def api_debug_check(idx):
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(text, 'text/html');
 
-                const cb = doc.querySelector('input[type="checkbox"][name="is_active"]');
-                const cb_checked_attr = cb ? cb.hasAttribute('checked') : null;
-                const cb_checked_prop = cb ? cb.checked : null;
+                const forms = Array.from(doc.querySelectorAll('form')).map(f => ({
+                    action: f.getAttribute('action') || '',
+                    method: f.getAttribute('method') || '',
+                    buttons: Array.from(f.querySelectorAll('button')).map(b => ({
+                        type: b.type,
+                        text: b.textContent.trim()
+                    })),
+                    inputs: Array.from(f.querySelectorAll('input')).map(i => ({
+                        name: i.name,
+                        type: i.type,
+                        value: i.value,
+                        checked: i.hasAttribute('checked')
+                    }))
+                }));
 
-                const urlInput = doc.querySelector('#webhookUrl');
-                const url_val = urlInput ? urlInput.value : '';
-
-                // Find all badges or status pills
-                const badges = Array.from(doc.querySelectorAll('.badge, span[class*="rounded"], div[class*="rounded"]'))
-                    .map(el => el.textContent.trim())
-                    .filter(t => t.length > 0 && t.length < 30 && (t.includes('Deliv') || t.includes('Paus') || t.includes('Active') || t.includes('Off')));
-
-                const has_auto_off_warning = text.includes('Delivery was switched off automatically') || text.includes('consecutive failure(s)');
-
-                return {
-                    cb_checked_attr: cb_checked_attr,
-                    cb_checked_prop: cb_checked_prop,
-                    url_val: url_val,
-                    status_badges: badges,
-                    has_auto_off_warning: has_auto_off_warning
-                };
+                return { forms: forms };
             }""")
         return jsonify(pool.run_coro(run()))
     except Exception as e:
