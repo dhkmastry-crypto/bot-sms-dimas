@@ -2021,6 +2021,36 @@ def api_numbers_delete_all():
         return jsonify({"success": False, "message": f"Gagal menghapus semua nomor: {e}"})
 
 
+@app.route("/api/augestel/pool/status", methods=["GET"])
+@login_required
+def api_augestel_pool_status():
+    """Get live status of Augestel 24/7 browser pool"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        return jsonify({
+            "success": True,
+            "is_running": pool.is_running,
+            "status": pool.get_status_dict()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/api/augestel/pool/start", methods=["POST"])
+@login_required
+def api_augestel_pool_start():
+    """Start or re-initialize the 24/7 browser pool"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        import threading
+        threading.Thread(target=pool.start_pool_sync, daemon=True).start()
+        return jsonify({"success": True, "message": "Augestel Browser Pool sedang diinisialisasi di latar belakang!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/accounts/bulk-import", methods=["POST"])
 @login_required
 def api_accounts_bulk_import():
@@ -2216,4 +2246,14 @@ if __name__ == "__main__":
     print("  📍 http://localhost:5000")
     print(f"  👤 Login: {ADMIN_USER} / {ADMIN_PASS}")
     print("=" * 55)
+
+    # Inisialisasi Augestel Browser Pool (7 Akun Standby 24/7 di RAM)
+    try:
+        from augestel_browser_pool import get_browser_pool
+        import threading
+        pool = get_browser_pool()
+        threading.Thread(target=pool.start_pool_sync, daemon=True, name="AugestelPoolStarter").start()
+    except Exception as e_pool:
+        logger.warning(f"Gagal auto-start browser pool: {e_pool}")
+
     app.run(host="0.0.0.0", port=5000, debug=True)
