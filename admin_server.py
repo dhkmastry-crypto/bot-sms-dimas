@@ -1200,6 +1200,36 @@ def api_augestel_webhooks_guardian_check_now():
         return jsonify({"success": False, "message": str(e)})
 
 
+@app.route("/api/augestel/webhooks/debug-check/<int:idx>")
+@login_required
+def api_debug_check(idx):
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if not pool or not pool.is_running:
+            return jsonify({"error": "pool not running"})
+        page = pool.pages.get(idx)
+        if not page:
+            return jsonify({"error": f"page {idx} not found"})
+        async def run():
+            return await page.evaluate("""async () => {
+                const res = await fetch('/Switchfy/api/webhooks', { cache: 'no-store' });
+                const text = await res.text();
+                return {
+                    status: res.status,
+                    url: res.url,
+                    length: text.length,
+                    snippet: text.substring(0, 1500),
+                    has_url_input: text.includes('id="webhookUrl"'),
+                    has_is_active: text.includes('name="is_active"'),
+                    has_paused: text.toLowerCase().includes('paused')
+                };
+            }""")
+        return jsonify(pool.run_coro(run()))
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 @app.route("/api/augestel/webhooks/setup-single", methods=["POST"])
 @login_required
 def api_augestel_webhooks_setup_single():
