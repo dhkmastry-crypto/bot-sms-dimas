@@ -408,51 +408,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     except Exception:
         pass
     return result
-                indiv_cache = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
-                if os.path.exists(indiv_cache):
-                    try:
-                        with open(indiv_cache, "r", encoding="utf-8") as f:
-                            d = json.load(f)
-                            sub_nums = d.get("numbers", [])
-                            sub_tot = d.get("total", len(sub_nums))
-                    except Exception:
-                        pass
 
-            total_portal_sum += sub_tot
-            for item in sub_nums:
-                item_copy = dict(item)
-                item_copy["account_index"] = f"aug_{i}"
-                item_copy["account_email"] = em
-                all_combined.append(item_copy)
-
-            breakdown.append({
-                "account_index": i,
-                "email": em,
-                "total": sub_tot
-            })
-        except Exception as e:
-            logger.error(f"Error fetching Augestel #{i}: {e}")
-
-    for idx, item in enumerate(all_combined, 1):
-        item["id"] = str(idx)
-
-    result = {
-        "success": True,
-        "account_index": "augestel_all",
-        "email": f"Semua Akun Augestel ({len(breakdown)} Akun Aktif)",
-        "total": total_portal_sum or len(all_combined),
-        "count": len(all_combined),
-        "numbers": all_combined,
-        "accounts_breakdown": breakdown,
-        "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
-    }
-    _NUMBERS_CACHE[cache_key] = result
-    try:
-        with open(disk_cache_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2)
-    except Exception:
-        pass
-    return result
 
 
 async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, max_rows: int = 5000) -> dict:
