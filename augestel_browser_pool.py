@@ -364,12 +364,75 @@ class AugestelBrowserPool:
         """Panggilan sinkron (dari Flask) untuk return akun tertentu."""
         return self.run_coro(self.return_all_account(account_idx), timeout=60)
 
-    def return_all_all_sync(self) -> dict:
-        """Panggilan sinkron (dari Flask) untuk return semua akun."""
-        return self.run_coro(self.return_all_all_accounts(), timeout=300)
+    async def check_account_status(self, idx: int) -> dict:
+        """Memeriksa status sesi live tab untuk 1 akun tertentu secara real-time."""
+        if idx not in self.pages:
+            return {"logged_in": False, "message": "Browser belum aktif di pool"}
+
+        page = self.pages[idx]
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+
+        try:
+            curr_title = await page.title()
+            curr_url = page.url
+
+            # 1. Cek apakah sesi aktif
+            if "my numbers" in curr_title.lower() or "client panel" in curr_title.lower() or "/client/" in curr_url:
+                self.status[idx]["logged_in"] = True
+                self.status[idx]["message"] = "Standby di RAM (24/7)"
+                self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                return self.status[idx]
+
+            # 2. Cek form login atau cooldown
+            wait_el = await page.query_selector(".wait")
+            if wait_el:
+                wait_sec = (await wait_el.inner_text()).strip()
+                self.status[idx]["logged_in"] = False
+                self.status[idx]["message"] = f"Cooldown ({wait_sec} detik)"
+                return self.status[idx]
+
+            # 3. Coba verifikasi dengan evaluate silent request
+            status_code = await page.evaluate("""() => {
+                return fetch('/Switchfy/client/numbers', { method: 'HEAD' })
+                    .then(r => r.status)
+                    .catch(() => 0);
+            }""")
+            if status_code in (200, 302):
+                self.status[idx]["logged_in"] = True
+                self.status[idx]["message"] = "Standby di RAM (24/7)"
+                self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                self.status[idx]["logged_in"] = False
+                self.status[idx]["message"] = f"Perlu login (HTTP {status_code})"
+
+            return self.status[idx]
+        except Exception as e:
+            return {"logged_in": False, "message": str(e)}
+
+    async def relogin_account(self, idx: int) -> dict:
+        """Memaksa re-login pada tab yang sedang terbuka di pool."""
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        if idx not in self.pages:
+            await self._init_single_account(idx, acc.get("email", ""), acc.get("password", ""))
+
+        if idx in self.pages:
+            page = self.pages[idx]
+            ok = await self._ensure_login_for_page(idx, page, acc.get("email", ""), acc.get("password", ""))
+            return {"success": ok, "message": self.status[idx]["message"]}
+        return {"success": False, "message": "Gagal membuka tab browser"}
+
+    def check_account_sync(self, idx: int) -> dict:
+        """Pengecekan live tab sinkron dari Flask."""
+        return self.run_coro(self.check_account_status(idx), timeout=15)
+
+    def relogin_account_sync(self, idx: int) -> dict:
+        """Pemicu login ulang sinkron dari Flask."""
+        return self.run_coro(self.relogin_account(idx), timeout=60)
 
     def get_status_dict(self) -> dict:
         return self.status
+
 
 
 # Global singleton helper
