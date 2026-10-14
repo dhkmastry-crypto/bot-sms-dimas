@@ -533,8 +533,16 @@ class AugestelBrowserPool:
 
             await asyncio.sleep(0.5)
 
-            # Klik tombol submit ("Save endpoint" atau "Update endpoint")
-            submit_btn = await page.query_selector('form[action*="webhook"] button[type="submit"]')
+            # Cari tombol submit spesifik: "Save endpoint" atau "Update endpoint" (JANGAN klik "Remove"!)
+            submit_btn = await page.query_selector('form[action*="webhook"] button:has-text("Save"), form[action*="webhook"] button:has-text("Update")')
+            if not submit_btn:
+                all_btns = await page.query_selector_all('form[action*="webhook"] button[type="submit"]')
+                for b in all_btns:
+                    b_txt = (await b.inner_text()).lower()
+                    if "remove" not in b_txt and ("save" in b_txt or "update" in b_txt):
+                        submit_btn = b
+                        break
+
             try:
                 if submit_btn:
                     await submit_btn.click()
@@ -548,7 +556,7 @@ class AugestelBrowserPool:
 
             # Verifikasi apakah tersimpan di halaman setelah reload/redirect
             saved_val = await page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
-            is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? cb.checked : false; }')
+            is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? (cb.checked || cb.hasAttribute("checked")) : false; }')
 
             # Simpan screenshot untuk verifikasi visual
             ss_path = os.path.abspath(f"webhook_result_acc_{idx}.png")
@@ -618,24 +626,32 @@ class AugestelBrowserPool:
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(text, 'text/html');
 
+                    const whForm = doc.querySelector('form[action*="webhook"]');
+                    if (!whForm) {
+                        return { ok: false, error: 'Webhook form not found' };
+                    }
+
                     // Checkbox is_active
-                    const cb = doc.querySelector('input[type="checkbox"][name="is_active"]');
-                    const is_active = cb ? Boolean(cb.checked) : false;
+                    const cb = whForm.querySelector('input[type="checkbox"][name="is_active"]');
+                    const is_active = cb ? Boolean(cb.hasAttribute('checked') || cb.checked) : false;
 
                     // Endpoint URL input
-                    const urlInput = doc.querySelector('#webhookUrl');
-                    const current_url = urlInput ? (urlInput.value || '').trim() : '';
+                    const urlInput = whForm.querySelector('input[name="url"], #webhookUrl');
+                    const current_url = urlInput ? (urlInput.getAttribute('value') || urlInput.value || '').trim() : '';
 
                     // Checkbox message.received
-                    const msgCb = doc.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-                    const msg_received = msgCb ? Boolean(msgCb.checked) : false;
+                    const msgCb = whForm.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
+                    const msg_received = msgCb ? Boolean(msgCb.hasAttribute('checked') || msgCb.checked) : false;
 
+                    // Cek peringatan otomatis gagal 20 kali (Delivery was switched off automatically)
                     const textLower = text.toLowerCase();
-                    // Portal Switchfy menandai "paused" atau "delivery was switched off automatically" jika 20x error
-                    const is_paused = textLower.includes('paused') || textLower.includes('switched off automatically');
-                    
-                    // Webhook dianggap sehat dan aktif jika is_active=true dan tidak paused
-                    const is_delivering = is_active && !is_paused;
+                    const has_auto_failure = text.includes('Delivery was switched off automatically') || 
+                                             text.includes('consecutive failure(s)') ||
+                                             textLower.includes('tick the box above to resume');
+
+                    // Webhook dianggap sehat dan aktif jika is_active=true, URL terpasang, dan tidak ada failure otomatis
+                    const is_delivering = is_active && !has_auto_failure && (current_url.length > 0);
+                    const is_paused = has_auto_failure || (!is_active && current_url.length > 0);
 
                     return {
                         ok: true,
