@@ -112,8 +112,10 @@ function initPage(page) {
 
     if (page === 'dashboard') {
         loadDashboard();
+        loadEarningsAnalytics();
         refreshLogs();
         setInterval(loadDashboard, 8000);
+        setInterval(loadEarningsAnalytics, 8000);
         setInterval(refreshLogs, 6000);
     } else if (page === 'sms-log') {
         loadSmsLog(1);
