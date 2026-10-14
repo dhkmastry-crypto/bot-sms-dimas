@@ -730,52 +730,42 @@ class AugestelBrowserPool:
                 await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
                 await asyncio.sleep(2)
 
-            # Isi formulir dan submit langsung via form spesifik #webhookUrl
-            js_submit_form = """
-            (whUrl) => {
-                const input = document.querySelector('#webhookUrl');
-                if (!input || !input.form) return { ok: false, error: 'input or form not found' };
-                const form = input.form;
-                
-                input.value = whUrl;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
+            # 1. Isi URL webhook
+            url_input = await page.wait_for_selector("#webhookUrl", timeout=15000)
+            if url_input:
+                await url_input.fill(webhook_url)
 
-                const cb = form.querySelector('input[type="checkbox"][name="is_active"]');
-                if (cb) {
+            # 2. Centang checkbox is_active dan message.received
+            await page.evaluate("""() => {
+                const cb = document.querySelector('input[type="checkbox"][name="is_active"]');
+                if (cb && !cb.checked) {
                     cb.checked = true;
                     cb.dispatchEvent(new Event('input', { bubbles: true }));
                     cb.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-
-                const msg = form.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-                if (msg) {
+                const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
+                if (msg && !msg.checked) {
                     msg.checked = true;
                     msg.dispatchEvent(new Event('input', { bubbles: true }));
                     msg.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+            }""")
 
-                const btns = Array.from(form.querySelectorAll('button[type="submit"], button'));
-                const saveBtn = btns.find(b => {
-                    const t = b.innerText.toLowerCase();
-                    return (t.includes('save') || t.includes('update')) && !t.includes('remove');
-                }) || form.querySelector('button[type="submit"]');
+            await asyncio.sleep(0.5)
 
-                if (saveBtn) {
-                    saveBtn.click();
-                    return { ok: true, clicked: saveBtn.innerText.trim() };
-                } else {
-                    form.submit();
-                    return { ok: true, submitted: true };
-                }
-            }
-            """
-            submit_res = await page.evaluate(js_submit_form, webhook_url)
-            logger.info(f"Submit webhook eval: {submit_res}")
-            try:
-                await page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception:
-                pass
+            # 3. Cari dan klik tombol submit spesifik: "Save endpoint" atau "Update endpoint" (JANGAN sentuh "Remove"!)
+            save_btn = await page.query_selector('button:has-text("Save endpoint"), button:has-text("Update endpoint")')
+            if save_btn:
+                btn_name = (await save_btn.inner_text()).strip()
+                logger.info(f"Mengklik tombol webhook: '{btn_name}'...")
+                await save_btn.click()
+                try:
+                    await page.wait_for_load_state("domcontentloaded", timeout=15000)
+                except Exception:
+                    pass
+            else:
+                logger.warning(f"Tombol Save/Update endpoint tidak ditemukan untuk Akun #{idx}")
+
 
 
             await asyncio.sleep(2)
