@@ -95,6 +95,15 @@ class AugestelBrowserPool:
 
     async def _init_single_account(self, idx: int, email: str, password: str):
         user_data_dir = os.path.abspath(f"browser_profile_augestel_{idx}")
+        # Bersihkan lock file usang jika ada
+        for lk in ["SingletonLock", "SingletonSocket", "SingletonCookie"]:
+            lk_path = os.path.join(user_data_dir, lk)
+            if os.path.exists(lk_path):
+                try:
+                    os.remove(lk_path)
+                except Exception:
+                    pass
+
         logger.info(f"🌐 [Akun #{idx} | {email}] Meluncurkan persistent context browser...")
 
         context = await self.playwright.chromium.launch_persistent_context(
