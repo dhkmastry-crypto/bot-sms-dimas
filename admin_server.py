@@ -1953,6 +1953,15 @@ def api_augestel_accounts_save():
                 "AUGESTEL_API_KEY": accounts[0].get("api_key", "")
             })
 
+        # Sinkronkan pool browser di RAM secara real-time
+        try:
+            from augestel_browser_pool import get_browser_pool
+            pool = get_browser_pool()
+            if pool and pool.is_running:
+                threading.Thread(target=pool.sync_accounts_sync, daemon=True, name="PoolSyncOnSave").start()
+        except Exception as e_sync:
+            logger.warning(f"Gagal memicu sinkronisasi browser pool: {e_sync}")
+
         msg = f"Akun Augestel {email} berhasil disimpan!"
         if detected_auto:
             msg = f"✅ Berhasil Login ke portal Augestel! API Key otomatis terdeteksi ({api_key[:12]}...)."
@@ -1998,6 +2007,16 @@ def api_augestel_accounts_delete():
         try:
             with open(acc_file, "w", encoding="utf-8") as f:
                 json.dump(accounts, f, indent=2)
+
+            # Sinkronkan pool browser di RAM setelah akun dihapus
+            try:
+                from augestel_browser_pool import get_browser_pool
+                pool = get_browser_pool()
+                if pool and pool.is_running:
+                    threading.Thread(target=pool.sync_accounts_sync, daemon=True, name="PoolSyncOnDelete").start()
+            except Exception as e_sync:
+                logger.warning(f"Gagal memicu sinkronisasi browser pool: {e_sync}")
+
             return jsonify({"success": True, "message": "Akun Augestel berhasil dihapus!", "accounts": accounts})
         except Exception as e:
             return jsonify({"success": False, "message": f"Gagal menyimpan: {e}"})

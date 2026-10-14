@@ -442,6 +442,49 @@ class AugestelBrowserPool:
         """Pemicu login ulang sinkron dari Flask."""
         return self.run_coro(self.relogin_account(idx), timeout=60)
 
+    async def _sync_accounts_async(self):
+        """Menyinkronkan daftar akun aktif dengan augestel_accounts.json secara dinamis di background."""
+        new_accounts = self._load_accounts()
+        self.accounts = new_accounts
+        total_accs = len(new_accounts)
+        logger.info(f"🔄 Sinkronisasi pool dinamis: terdeteksi {total_accs} akun Augestel di disk.")
+
+        if not self.is_running or not self.playwright:
+            return
+
+        # 1. Tambahkan / inisialisasi akun baru (misal akun 8, 9, 10) yang belum ada di pool
+        for idx, acc in enumerate(new_accounts, 1):
+            email = acc.get("email", "")
+            pwd = acc.get("password", "")
+            if idx not in self.contexts or idx not in self.pages or self.pages[idx].is_closed():
+                logger.info(f"✨ [Pool Auto-Add] Menginisialisasi browser baru untuk Akun #{idx} ({email})...")
+                try:
+                    await self._init_single_account(idx, email, pwd)
+                    await asyncio.sleep(2)
+                except Exception as e:
+                    logger.error(f"❌ Gagal auto-init browser Akun #{idx}: {e}")
+            else:
+                if idx in self.status:
+                    self.status[idx]["email"] = email
+
+        # 2. Tutup dan bersihkan akun yang sudah dihapus dari file
+        existing_indices = list(self.contexts.keys())
+        for old_idx in existing_indices:
+            if old_idx > total_accs:
+                logger.info(f"🗑️ [Pool Cleanup] Menutup browser profil Akun #{old_idx} karena telah dihapus...")
+                try:
+                    ctx = self.contexts.pop(old_idx, None)
+                    if ctx:
+                        await ctx.close()
+                except Exception:
+                    pass
+                self.pages.pop(old_idx, None)
+                self.status.pop(old_idx, None)
+
+    def sync_accounts_sync(self):
+        """Panggilan sinkron dari thread Flask untuk sinkronisasi akun baru/update."""
+        return self.run_coro(self._sync_accounts_async(), timeout=180)
+
     def get_status_dict(self) -> dict:
         return self.status
 
