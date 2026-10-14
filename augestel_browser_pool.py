@@ -508,21 +508,39 @@ class AugestelBrowserPool:
             if url_input:
                 await url_input.fill(webhook_url)
 
-            # Centang Deliver events to this endpoint (is_active)
-            active_cb = await page.query_selector('input[type="checkbox"][name="is_active"]')
-            if active_cb and not await active_cb.is_checked():
-                await active_cb.check()
+            # Pastikan is_active (Deliver events to this endpoint) dan event tercentang
+            await page.evaluate("""() => {
+                const cb = document.querySelector('input[type="checkbox"][name="is_active"]');
+                if (cb && !cb.checked) {
+                    cb.checked = true;
+                    cb.dispatchEvent(new Event('input', { bubbles: true }));
+                    cb.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
+                if (msg && !msg.checked) {
+                    msg.checked = true;
+                    msg.dispatchEvent(new Event('input', { bubbles: true }));
+                    msg.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }""")
 
-            # Centang event message.received
-            msg_cb = await page.query_selector('input[type="checkbox"][name="events[]"][value="message.received"]')
-            if msg_cb and not await msg_cb.is_checked():
-                await msg_cb.check()
+            await asyncio.sleep(0.5)
 
             # Klik tombol submit ("Save endpoint" atau "Update endpoint")
             submit_btn = await page.query_selector('form[action*="webhook"] button[type="submit"]')
             if submit_btn:
                 await submit_btn.click()
-                await asyncio.sleep(3)
+            else:
+                await page.evaluate("""() => {
+                    const btn = document.querySelector('form[action*="webhook"] button[type="submit"]');
+                    if (btn) btn.click();
+                    else {
+                        const f = document.querySelector('form[action*="webhook"]');
+                        if (f) f.submit();
+                    }
+                }""")
+
+            await asyncio.sleep(3.5)
 
             is_active = await page.evaluate('() => { const cb = document.querySelector("input[name=\'is_active\'][type=\'checkbox\']"); return cb ? cb.checked : false; }')
             saved_val = await page.evaluate('() => document.querySelector("#webhookUrl") ? document.querySelector("#webhookUrl").value : ""')
