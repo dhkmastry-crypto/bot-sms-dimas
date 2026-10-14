@@ -1254,11 +1254,17 @@ class AugestelBrowserPool:
         range_filter: str = "",
         max_add: int = 0,
         delay: int = 15,
-        workers_count: int = 2,
+        workers_count: int = 4,
         batch_count: int = 250,
         number_prefix: str = "",
-        status_callback = None
+        status_callback = None,
+        max_concurrent_accounts: int = 8
     ):
+        """
+        Mode High-Performance Multi-Account Auto-Add:
+        Menjalankan Auto-Add hingga 8 akun secara serentak (paralel) menggunakan 72 thread CPU.
+        Setiap akun membuka tab worker sesuai workers_count secara independen.
+        """
         self.auto_add_running = True
         self.auto_add_stop_flag = False
         shared_stats = {
@@ -1268,16 +1274,19 @@ class AugestelBrowserPool:
             "current_action": 0
         }
         stats_lock = asyncio.Lock()
+        sem = asyncio.Semaphore(max(1, min(max_concurrent_accounts, 16)))
 
-        try:
-            for idx in account_indices:
+        async def worker_for_account(idx):
+            async with sem:
                 if self.auto_add_stop_flag:
-                    break
-                if max_add > 0 and shared_stats["added"] >= max_add:
-                    break
+                    return
+                if max_add > 0:
+                    async with stats_lock:
+                        if shared_stats["added"] >= max_add:
+                            return
 
-                # Dynamic Smart Balancer: hitung sisa yang dibutuhkan untuk target max_add
-                remaining_needed = (max_add - shared_stats["added"]) if max_add > 0 else 0
+                async with stats_lock:
+                    remaining_needed = (max_add - shared_stats["added"]) if max_add > 0 else 0
 
                 await self.run_auto_add_account(
                     account_idx=idx,
@@ -1291,7 +1300,11 @@ class AugestelBrowserPool:
                     stats_lock=stats_lock,
                     status_callback=status_callback
                 )
-                await asyncio.sleep(2)
+
+        try:
+            logger.info(f"⚡ [Auto-Add Multi] Meluncurkan {len(account_indices)} akun secara paralel (Max concurrent: {max_concurrent_accounts}, Workers/acc: {workers_count})...")
+            tasks = [asyncio.create_task(worker_for_account(idx)) for idx in account_indices]
+            await asyncio.gather(*tasks, return_exceptions=True)
         finally:
             self.auto_add_running = False
             if status_callback:
