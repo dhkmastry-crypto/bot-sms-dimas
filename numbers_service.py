@@ -337,27 +337,77 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     cache_key = "augestel_all"
     disk_cache_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
 
-    # In-memory check (5 minutes TTL, verify total is not stale 500)
+    # In-memory check: valid if already holds full numbers or recent enough
     if not force_refresh and cache_key in _NUMBERS_CACHE:
         cached = _NUMBERS_CACHE[cache_key]
         try:
             cached_dt = datetime.strptime(cached["cached_at"], "%Y-%m-%d %H:%M:%S")
-            if (now_ts - cached_dt).total_seconds() < 300 and cached.get("total", 0) > 500:
+            if len(cached.get("numbers", [])) >= cached.get("total", 0) and cached.get("total", 0) > 0:
+                return cached
+            if (now_ts - cached_dt).total_seconds() < 120 and len(cached.get("numbers", [])) > 0:
                 return cached
         except Exception:
             pass
 
-    # Disk cache check (5 minutes TTL, verify total is not stale 500)
+    # Disk cache check: valid if already holds full numbers
+    disk_data = None
     if not force_refresh and os.path.exists(disk_cache_path):
         try:
             with open(disk_cache_path, "r", encoding="utf-8") as f:
                 disk_data = json.load(f)
-                cached_dt = datetime.strptime(disk_data["cached_at"], "%Y-%m-%d %H:%M:%S")
-                if (now_ts - cached_dt).total_seconds() < 300 and disk_data.get("total", 0) > 500:
-                    _NUMBERS_CACHE[cache_key] = disk_data
-                    return disk_data
+            if len(disk_data.get("numbers", [])) >= disk_data.get("total", 0) and disk_data.get("total", 0) > 0:
+                _NUMBERS_CACHE[cache_key] = disk_data
+                return disk_data
         except Exception:
             pass
+
+    # Cek apakah cache individual di disk memiliki nomor yang lebih lengkap dari disk_data
+    indiv_combined = []
+    indiv_breakdown = []
+    indiv_total_sum = 0
+    for i, acc in enumerate(accounts, 1):
+        indiv_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
+        if os.path.exists(indiv_path):
+            try:
+                with open(indiv_path, "r", encoding="utf-8") as f:
+                    indiv_d = json.load(f)
+                    indiv_nums = indiv_d.get("numbers", [])
+                    indiv_tot = indiv_d.get("total", len(indiv_nums))
+                    indiv_total_sum += indiv_tot
+                    indiv_breakdown.append({
+                        "account_index": i,
+                        "email": acc.get("email", ""),
+                        "total": indiv_tot
+                    })
+                    for it in indiv_nums:
+                        it_c = dict(it)
+                        it_c["account_index"] = f"aug_{i}"
+                        it_c["account_email"] = acc.get("email", "")
+                        indiv_combined.append(it_c)
+            except Exception:
+                pass
+
+    if indiv_combined and (not disk_data or len(indiv_combined) > len(disk_data.get("numbers", []))):
+        for idx, item in enumerate(indiv_combined, 1):
+            item["id"] = str(idx)
+        agg_res = {
+            "success": True,
+            "account_index": "augestel_all",
+            "email": f"Semua Akun Augestel ({len(indiv_breakdown)} Akun Aktif)",
+            "total": indiv_total_sum or len(indiv_combined),
+            "count": len(indiv_combined),
+            "numbers": indiv_combined,
+            "accounts_breakdown": indiv_breakdown,
+            "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        _NUMBERS_CACHE[cache_key] = agg_res
+        try:
+            with open(disk_cache_path, "w", encoding="utf-8") as f:
+                json.dump(agg_res, f, indent=2)
+        except Exception:
+            pass
+        if not force_refresh or len(indiv_combined) >= indiv_total_sum:
+            return agg_res
 
     # Fetch aggregate across all registered accounts with API key
     all_combined = []
