@@ -757,6 +757,8 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
 
     logger.info(f"🗑️ Menjalankan Return All Numbers Augestel untuk Akun #{account_idx} ({email})...")
 
+    from auto_add_augestel import ensure_augestel_login
+
     async with async_playwright() as p:
         try:
             context = await p.chromium.launch_persistent_context(
@@ -776,86 +778,29 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
         page = context.pages[0] if context.pages else await context.new_page()
 
         try:
-            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
-            await asyncio.sleep(1.5)
-
-            # 1. Cek apakah portal sedang dalam cooldown rate-limit
-            wait_el = await page.query_selector(".wait")
-            page_title = await page.title()
-            if wait_el or "too quick" in page_title.lower() or "one moment" in page_title.lower():
-                wait_sec = (await wait_el.inner_text()).strip() if wait_el else "beberapa"
+            # 1. Pastikan status login aktif menggunakan ensure_augestel_login
+            logged_in = await ensure_augestel_login(page, email, pwd)
+            if not logged_in:
+                wait_el = await page.query_selector(".wait")
+                sec_txt = (await wait_el.inner_text()).strip() if wait_el else ""
                 await context.close()
-                return {
-                    "success": False,
-                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
-                }
+                msg = f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({sec_txt} detik lagi). Harap tunggu hingga countdown selesai." if sec_txt else f"Gagal login ke Akun #{account_idx} ({email}). Kredensial tidak valid atau Cloudflare challenge aktif."
+                return {"success": False, "message": msg}
 
-            # 2. Auto-login jika sesi expired atau terlempar ke halaman login
-            login_input = await page.query_selector("#loginEmail, input[name='email']")
-            if login_input or "/client/numbers" not in page.url:
-                if "/Switchfy" in page.url or login_input:
-                    logger.info(f"🔑 Session belum aktif untuk Akun #{account_idx} ({email}), melakukan auto-login...")
-                    if not login_input:
-                        await page.goto("https://augestel.com/Switchfy", wait_until="networkidle", timeout=45000)
-                        await asyncio.sleep(1)
-                        login_input = await page.query_selector("#loginEmail, input[name='email']")
+            # 2. Navigasi ke halaman client numbers
+            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
+            await asyncio.sleep(2)
 
-                    if login_input:
-                        await page.fill("#loginEmail, input[name='email']", email)
-                        await page.fill("#loginPassword, input[name='password']", pwd)
-                        try:
-                            await page.evaluate("() => { const el = document.querySelector(\"input[name='remember']\"); if (el) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); } }")
-                        except Exception:
-                            pass
-                        await asyncio.sleep(0.5)
-
-                        btn = await page.query_selector("#loginSubmit, button[type='submit']")
-                        if btn:
-                            await btn.click()
-                        else:
-                            await page.keyboard.press("Enter")
-
-                        # Tunggu hingga login berhasil dialihkan ke dashboard/client panel
-                        logged_in = False
-                        for _ in range(20):
-                            await asyncio.sleep(1)
-                            # Cek jika muncul cooldown setelah submit
-                            wait_el_sub = await page.query_selector(".wait")
-                            if wait_el_sub:
-                                wait_sec = (await wait_el_sub.inner_text()).strip()
-                                await context.close()
-                                return {
-                                    "success": False,
-                                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
-                                }
-                            u = page.url
-                            if "/client/" in u or "/test/" in u or "/dashboard" in u:
-                                logged_in = True
-                                break
-
-                        if not logged_in and (await page.query_selector("#loginEmail, input[name='email']")):
-                            await context.close()
-                            return {
-                                "success": False,
-                                "message": f"Gagal login ke Akun Augestel #{account_idx} ({email}). Kredensial tidak valid atau Cloudflare challenge aktif."
-                            }
-
-                # Navigasi ke halaman numbers setelah login
-                if "/client/numbers" not in page.url:
-                    await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
-                    await asyncio.sleep(2)
-
-            # Cek cooldown lagi jika muncul di halaman numbers
             wait_el = await page.query_selector(".wait")
             if wait_el:
                 wait_sec = (await wait_el.inner_text()).strip()
                 await context.close()
                 return {
                     "success": False,
-                    "message": f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu hingga countdown selesai sebelum melakukan return nomor."
+                    "message": f"Portal Augestel sedang cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu sejenak."
                 }
 
-            # 3. Cari tombol Return All
+            # 3. Cari tombol Return All atau verifikasi apakah tabel sudah kosong
             try:
                 btn = await page.wait_for_selector("#bulkReturnAllBtn", timeout=6000)
             except Exception:
@@ -899,30 +844,39 @@ async def return_all_augestel_portal(account_idx: int) -> dict:
                 empty_el = await page.query_selector(".dataTables_empty")
                 if empty_el:
                     success = True
-                    res_message = "Tidak ada nomor aktif pada akun ini (tabel kosong)."
+                    res_message = "Tidak ada nomor aktif pada akun ini (akun sudah bersih/kosong)."
                 else:
                     curr_title = await page.title()
                     res_message = f"Tombol Return All tidak tersedia di portal (Title: '{curr_title}', URL: '{page.url}')."
 
             await context.close()
 
-            # Bersihkan cache akun ini
-            _NUMBERS_CACHE.pop(f"augestel_{account_idx}", None)
-            _NUMBERS_CACHE.pop("augestel_all", None)
-            cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
-            if os.path.exists(cache_file):
+            # Bersihkan cache HANYA JIKA return berhasil
+            if success:
+                _NUMBERS_CACHE.pop(f"augestel_{account_idx}", None)
+                _NUMBERS_CACHE.pop("augestel_all", None)
+                cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
                 try:
-                    os.remove(cache_file)
-                except Exception:
-                    pass
-            all_cache = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
-            if os.path.exists(all_cache):
-                try:
-                    os.remove(all_cache)
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "success": True,
+                            "account_index": f"aug_{account_idx}",
+                            "email": f"Augestel #{account_idx} ({email})",
+                            "total": 0,
+                            "count": 0,
+                            "numbers": [],
+                            "cached_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }, f, indent=2)
                 except Exception:
                     pass
 
-            if success:
+                all_cache = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+                if os.path.exists(all_cache):
+                    try:
+                        os.remove(all_cache)
+                    except Exception:
+                        pass
+
                 return {"success": True, "message": f"Berhasil return/hapus nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
             else:
                 return {"success": False, "message": f"Gagal return nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
@@ -1032,42 +986,32 @@ async def delete_all_account_numbers(account_index=1) -> dict:
             return {"success": False, "message": "Tidak ada akun Augestel terdaftar!"}
 
         if "all" in acc_str:
-            # Hapus semua akun Augestel secara paralel terkontrol (Semaphore 2)
-            sem = asyncio.Semaphore(2)
-
-            async def _worker(idx):
-                async with sem:
-                    return await return_all_augestel_portal(idx)
-
-            tasks = [_worker(i) for i in range(1, len(aug_accounts) + 1)]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-
+            # Hapus semua akun Augestel secara sekuensial (satu per satu dengan jeda aman)
             succ = 0
             details = []
-            for i, r in enumerate(results, 1):
+            for i in range(1, len(aug_accounts) + 1):
+                r = await return_all_augestel_portal(i)
                 if isinstance(r, dict) and r.get("success"):
                     succ += 1
-                    details.append(f"Akun #{i}: OK")
+                    details.append(f"Akun #{i}: Sukses")
                 elif isinstance(r, dict):
                     details.append(f"Akun #{i}: {r.get('message', 'Gagal')}")
                 else:
                     details.append(f"Akun #{i}: Error")
 
-            # Pastikan semua cache Augestel dibersihkan
-            _NUMBERS_CACHE.clear()
-            for i in range(1, len(aug_accounts) + 1):
-                f_path = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{i}.json")
-                if os.path.exists(f_path):
+                # Beri jeda 3 detik antar akun agar tidak memicu limit IP Cloudflare
+                if i < len(aug_accounts):
+                    await asyncio.sleep(3)
+
+            # Rebuild cache gabungan jika ada akun yang berubah
+            if succ > 0:
+                _NUMBERS_CACHE.pop("augestel_all", None)
+                all_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+                if os.path.exists(all_path):
                     try:
-                        os.remove(f_path)
+                        os.remove(all_path)
                     except Exception:
                         pass
-            all_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
-            if os.path.exists(all_path):
-                try:
-                    os.remove(all_path)
-                except Exception:
-                    pass
 
             return {
                 "success": succ > 0,
