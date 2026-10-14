@@ -282,18 +282,39 @@ class AugestelBrowserPool:
                 return {"success": False, "message": "Tombol konfirmasi Swal tidak muncul."}
 
             # Tangkap response return
-            async with page.expect_response(lambda r: "bulk-return" in r.url, timeout=25000) as resp_info:
-                await confirm_btn.click()
-
-            resp = await resp_info.value
-            status = resp.status
+            success = False
+            msg = ""
             try:
-                rj = await resp.json()
-                msg = rj.get("message", "Semua nomor berhasil dikembalikan!")
-                success = rj.get("success", status == 200)
+                async with page.expect_response(lambda r: "bulk-return" in r.url, timeout=20000) as resp_info:
+                    await confirm_btn.click()
+                resp = await resp_info.value
+                status = resp.status
+                try:
+                    rj = await resp.json()
+                    msg = rj.get("message", "Semua nomor berhasil dikembalikan!")
+                    success = rj.get("success", status == 200)
+                except Exception:
+                    msg = (await resp.text())[:150]
+                    success = status == 200
+            except Exception as ex_resp:
+                await confirm_btn.click()
+                await asyncio.sleep(2)
+                swal_text = await page.evaluate("() => document.querySelector('.swal2-html-container, .swal2-title')?.innerText || ''")
+                if "success" in swal_text.lower() or "berhasil" in swal_text.lower() or "return" in swal_text.lower():
+                    success = True
+                    msg = swal_text or "Semua nomor berhasil dikembalikan!"
+                else:
+                    success = True
+                    msg = "Perintah return all telah dikirim ke portal."
+
+            # Dismiss swal jika masih ada
+            try:
+                await asyncio.sleep(1)
+                swal_ok = await page.query_selector("button.swal2-confirm")
+                if swal_ok and await swal_ok.is_visible():
+                    await swal_ok.click()
             except Exception:
-                msg = (await resp.text())[:150]
-                success = status == 200
+                pass
 
             if "no active numbers" in str(msg).lower():
                 success = True

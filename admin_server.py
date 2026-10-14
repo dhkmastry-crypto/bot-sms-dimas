@@ -2236,6 +2236,52 @@ def api_numbers_export_txt():
         return jsonify({"success": False, "message": f"Gagal export TXT: {e}"}), 500
 
 
+@app.route("/api/numbers/delete-all", methods=["POST"])
+@login_required
+def api_numbers_delete_all():
+    """Hapus / Return All semua nomor untuk akun tertentu atau semua akun"""
+    data = request.get_json(silent=True) or {}
+    acc_idx = data.get("account_index", "1")
+
+    try:
+        from numbers_service import delete_all_account_numbers
+        res = asyncio.run(delete_all_account_numbers(account_index=acc_idx))
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error in api_numbers_delete_all: {e}")
+        return jsonify({"success": False, "message": f"Gagal return all nomor: {e}"}), 500
+
+
+@app.route("/api/augestel/pool/status")
+@login_required
+def api_augestel_pool_status():
+    """Mengambil status real-time Augestel Browser Pool di RAM"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        return jsonify({
+            "success": True,
+            "is_running": pool.is_running,
+            "status": pool.get_status_dict()
+        })
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e), "status": {}})
+
+
+@app.route("/api/augestel/pool/start", methods=["POST"])
+@login_required
+def api_augestel_pool_start():
+    """Trigger manual untuk start/restart browser pool jika diperlukan"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        import threading
+        pool = get_browser_pool()
+        threading.Thread(target=pool.start_pool_sync, daemon=True).start()
+        return jsonify({"success": True, "message": "Browser pool initialization started in background."})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 # ────────────────────────────────────────────
 #  RUN
 # ────────────────────────────────────────────
@@ -2256,4 +2302,5 @@ if __name__ == "__main__":
     except Exception as e_pool:
         logger.warning(f"Gagal auto-start browser pool: {e_pool}")
 
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
+
