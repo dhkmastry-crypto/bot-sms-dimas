@@ -1233,12 +1233,12 @@ def api_debug_inspect_api_doc():
             keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
             fn_code = await page.evaluate('''() => {
                 let res = {};
-                if (typeof generateApiKey === 'function') res.generateApiKey = generateApiKey.toString();
-                if (typeof regenerateApiKey === 'function') res.regenerateApiKey = regenerateApiKey.toString();
-                if (window.__cfg_clients_api_documentation) res.cfg = window.__cfg_clients_api_documentation;
+                if (typeof performGenerateKey === 'function') res.performGenerateKey = performGenerateKey.toString();
+                if (typeof performRegenerateKey === 'function') res.performRegenerateKey = performRegenerateKey.toString();
                 return res;
             }''')
-            return {"title": title, "url": page.url, "keys": keys, "fn_code": fn_code}
+            return {"fn_code": fn_code}
+
 
 
 
