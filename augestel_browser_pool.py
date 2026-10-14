@@ -1275,10 +1275,14 @@ class AugestelBrowserPool:
                     break
                 if max_add > 0 and shared_stats["added"] >= max_add:
                     break
+
+                # Dynamic Smart Balancer: hitung sisa yang dibutuhkan untuk target max_add
+                remaining_needed = (max_add - shared_stats["added"]) if max_add > 0 else 0
+
                 await self.run_auto_add_account(
                     account_idx=idx,
                     range_filter=range_filter,
-                    max_add=max_add,
+                    max_add=remaining_needed,
                     delay=delay,
                     workers_count=workers_count,
                     batch_count=batch_count,

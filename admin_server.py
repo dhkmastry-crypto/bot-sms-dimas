@@ -998,6 +998,129 @@ def api_test_otp():
 # ────────────────────────────────────────────
 #  AUGESTEL WEBHOOK RECEIVER (NO RATE LIMIT)
 # ────────────────────────────────────────────
+#  AUGESTEL EARNINGS & REVENUE ENGINE (FITUR 2)
+# ────────────────────────────────────────────
+EARNINGS_FILE = os.path.join(BASE_DIR, "augestel_earnings.json")
+USD_TO_IDR_RATE = 16250.0  # Kurs estimasi USD ke IDR
+
+def load_augestel_earnings() -> dict:
+    default_data = {
+        "total_revenue_usd": 0.0,
+        "total_revenue_idr": 0,
+        "total_sms": 0,
+        "today_date": datetime.now().strftime("%Y-%m-%d"),
+        "today_revenue_usd": 0.0,
+        "today_sms": 0,
+        "yesterday_revenue_usd": 0.0,
+        "yesterday_sms": 0,
+        "by_account": {},
+        "by_country": {},
+        "by_platform": {},
+        "recent_transactions": []
+    }
+    if not os.path.exists(EARNINGS_FILE):
+        return default_data
+    try:
+        with open(EARNINGS_FILE, "r", encoding="utf-8") as f:
+            d = json.load(f)
+            now_day = datetime.now().strftime("%Y-%m-%d")
+            if d.get("today_date") != now_day:
+                d["yesterday_revenue_usd"] = d.get("today_revenue_usd", 0.0)
+                d["yesterday_sms"] = d.get("today_sms", 0)
+                d["today_date"] = now_day
+                d["today_revenue_usd"] = 0.0
+                d["today_sms"] = 0
+            return d
+    except Exception:
+        return default_data
+
+def save_augestel_earnings(data: dict):
+    try:
+        with open(EARNINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f"Error saving augestel_earnings.json: {e}")
+
+def find_account_by_phone(phone_number: str) -> tuple:
+    """Mencari akun mana yang memiliki nomor telepon ini berdasarkan file cache."""
+    clean_p = re.sub(r'[\s\+\-]', '', str(phone_number))
+    for idx in range(1, 15):
+        c_path = os.path.join(BASE_DIR, f"augestel_numbers_cache_{idx}.json")
+        if os.path.exists(c_path):
+            try:
+                with open(c_path, "r", encoding="utf-8") as f:
+                    c_data = json.load(f)
+                    nums = c_data.get("numbers", [])
+                    for n in nums:
+                        if clean_p in re.sub(r'[\s\+\-]', '', str(n)):
+                            acc_email = ""
+                            try:
+                                with open(os.path.join(BASE_DIR, "augestel_accounts.json"), "r", encoding="utf-8") as af:
+                                    accs = json.load(af)
+                                    if 0 < idx <= len(accs):
+                                        acc_email = accs[idx - 1].get("email", "")
+                            except Exception:
+                                pass
+                            return idx, acc_email or f"Akun #{idx}"
+            except Exception:
+                pass
+    return 1, "Akun #1"
+
+def record_earnings_sms(account_idx=1, account_email="", rate_val=0.015, country_cc="ZW", country_flag="🇿🇼", platform="WhatsApp", phone=""):
+    try:
+        d = load_augestel_earnings()
+        try:
+            rate = float(rate_val or 0.0)
+        except Exception:
+            rate = 0.0120
+        if rate <= 0:
+            rate = 0.0120  # Standar fallback payout per SMS
+
+        d["total_revenue_usd"] = round(d.get("total_revenue_usd", 0.0) + rate, 4)
+        d["total_revenue_idr"] = int(d["total_revenue_usd"] * USD_TO_IDR_RATE)
+        d["total_sms"] = int(d.get("total_sms", 0)) + 1
+        d["today_revenue_usd"] = round(d.get("today_revenue_usd", 0.0) + rate, 4)
+        d["today_sms"] = int(d.get("today_sms", 0)) + 1
+
+        acc_k = str(account_idx)
+        if acc_k not in d["by_account"]:
+            d["by_account"][acc_k] = {"email": account_email or f"Akun #{account_idx}", "sms": 0, "usd": 0.0}
+        d["by_account"][acc_k]["sms"] += 1
+        d["by_account"][acc_k]["usd"] = round(d["by_account"][acc_k]["usd"] + rate, 4)
+        if account_email:
+            d["by_account"][acc_k]["email"] = account_email
+
+        cc = country_cc or "OTHER"
+        if cc not in d["by_country"]:
+            d["by_country"][cc] = {"flag": country_flag or "🌐", "sms": 0, "usd": 0.0}
+        d["by_country"][cc]["sms"] += 1
+        d["by_country"][cc]["usd"] = round(d["by_country"][cc]["usd"] + rate, 4)
+
+        pf = platform or "SMS"
+        if pf not in d["by_platform"]:
+            d["by_platform"][pf] = {"sms": 0, "usd": 0.0}
+        d["by_platform"][pf]["sms"] += 1
+        d["by_platform"][pf]["usd"] = round(d["by_platform"][pf]["usd"] + rate, 4)
+
+        d["recent_transactions"].insert(0, {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "account": f"Akun #{account_idx}",
+            "phone": phone,
+            "platform": platform,
+            "flag": country_flag,
+            "rate_usd": rate
+        })
+        d["recent_transactions"] = d["recent_transactions"][:25]
+
+        save_augestel_earnings(d)
+        return d
+    except Exception as e:
+        logger.error(f"Error record_earnings_sms: {e}")
+        return None
+
+# ────────────────────────────────────────────
+#  AUGESTEL WEBHOOK RECEIVER (NO RATE LIMIT)
+# ────────────────────────────────────────────
 augestel_webhook_seen_ids = set()
 augestel_webhook_history = []
 augestel_webhook_status = {
@@ -1078,9 +1201,12 @@ def augestel_webhook():
                     platform, p_emoji = detect_platform(raw_message)
 
                 try:
-                    rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.00"
+                    rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.0120"
                 except Exception:
-                    rev_str = "$0.00"
+                    rev_str = "$0.0120"
+
+                # Cari akun pemilik nomor
+                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
 
                 sms_entry = {
                     "id": sms_id,
@@ -1097,10 +1223,21 @@ def augestel_webhook():
                     "revenue": rev_str,
                     "rate": rate_val,
                     "range_name": ev_data.get("range_name", "Augestel IPRN"),
-                    "source": "Augestel",
+                    "source": f"Augestel ({matched_acc_email})",
                 }
 
                 augestel_webhook_status["last_sms"] = sms_entry
+
+                # Catat ke revenue & earnings store
+                record_earnings_sms(
+                    account_idx=matched_acc_idx,
+                    account_email=matched_acc_email,
+                    rate_val=rate_val,
+                    country_cc=phone_cc,
+                    country_flag=phone_flag,
+                    platform=platform,
+                    phone=phone
+                )
 
                 msg_text = format_otp_message(sms_entry)
                 keyboard = create_keyboard(sms_entry, FILE_LINK, CHANNEL_LINK, otp_text=otp)
@@ -1120,7 +1257,7 @@ def augestel_webhook():
                 loop.close()
 
                 # Tulis log ke bot.log agar dashboard live-stream & SMS Log langsung terupdate
-                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [Augestel Webhook] Sent OTP: {phone_cc} | {platform} | {otp}\n"
+                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [Augestel Webhook] Sent OTP: {phone_cc} | {platform} | {otp} ({matched_acc_email})\n"
                 log_path = os.path.join(BASE_DIR, "bot.log")
                 try:
                     with open(log_path, "a", encoding="utf-8") as f:
@@ -1129,6 +1266,23 @@ def augestel_webhook():
                     pass
 
                 logger.info(f"✅ [Augestel Webhook] Forwarded OTP {otp} for {phone} to Telegram (msg_id={res.message_id})")
+
+            elif ev_type == "earnings.daily":
+                daily_usd = float(ev_data.get("earnings", 0.0) or ev_data.get("amount", 0.0) or 0.0)
+                daily_sms = int(ev_data.get("sms_count", 0) or 0)
+                logger.info(f"💰 [Augestel Webhook] Daily Earnings Summary received: ${daily_usd:.4f} ({daily_sms} SMS)")
+                d = load_augestel_earnings()
+                d["yesterday_revenue_usd"] = daily_usd
+                if daily_sms > 0:
+                    d["yesterday_sms"] = daily_sms
+                save_augestel_earnings(d)
+                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 💰 [Augestel Webhook] Daily Earnings Summary: ${daily_usd:.4f} ({daily_sms} SMS)\n"
+                log_path = os.path.join(BASE_DIR, "bot.log")
+                try:
+                    with open(log_path, "a", encoding="utf-8") as f:
+                        f.write(log_line)
+                except Exception:
+                    pass
 
             elif ev_type in ["number.assigned", "number.removed"]:
                 num = ev_data.get("number")
@@ -1156,6 +1310,130 @@ def augestel_webhook():
         augestel_webhook_history.pop()
 
     return jsonify({"success": True, "message": "Event received"}), 200
+
+
+@app.route("/api/augestel/earnings")
+@login_required
+def api_augestel_earnings():
+    """Mengembalikan data analitik pendapatan & konversi cuan Augestel"""
+    data = load_augestel_earnings()
+    return jsonify({
+        "success": True,
+        "data": data,
+        "exchange_rate": USD_TO_IDR_RATE
+    })
+
+
+@app.route("/api/augestel/webhook/simulate", methods=["POST"])
+@login_required
+def api_augestel_webhook_simulate():
+    """
+    Fitur 6: Live SMS Simulator & Webhook Tester
+    Mensimulasikan pesan OTP masuk pada akun dan nomor tertentu,
+    mengirimkan kartu OTP interaktif ke Telegram, dan mencatat earnings.
+    """
+    req_data = request.json or {}
+    acc_idx = int(req_data.get("account_index", 1) or 1)
+    phone = str(req_data.get("phone", "+263788124006")).strip()
+    platform = str(req_data.get("platform", "WhatsApp")).strip()
+    otp = str(req_data.get("otp", "884762")).strip()
+    try:
+        rate_val = float(req_data.get("rate", 0.0150) or 0.0150)
+    except Exception:
+        rate_val = 0.0150
+    range_name = str(req_data.get("range_name", "Augestel Test Range")).strip()
+    custom_msg = str(req_data.get("message", "")).strip()
+
+    if not custom_msg:
+        custom_msg = f"Kode verifikasi {platform} Anda adalah: {otp[:3]}-{otp[3:] if len(otp)>3 else otp}. Jangan bagikan kode ini kepada siapapun."
+
+    from ivasms_scraper import get_country_from_phone, mask_phone_number, detect_platform
+    from bot import format_otp_message, create_keyboard
+    from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
+    from telegram import Bot
+    from telegram.constants import ParseMode
+
+    phone_cc, phone_flag = get_country_from_phone(phone)
+    _, p_emoji = detect_platform(platform)
+
+    acc_email = f"Akun #{acc_idx}"
+    try:
+        with open(os.path.join(BASE_DIR, "augestel_accounts.json"), "r", encoding="utf-8") as af:
+            accs = json.load(af)
+            if 0 < acc_idx <= len(accs):
+                acc_email = accs[acc_idx - 1].get("email", acc_email)
+    except Exception:
+        pass
+
+    sms_entry = {
+        "id": f"sim_{int(time.time())}",
+        "phone": phone,
+        "phone_masked": mask_phone_number(phone),
+        "sender": platform,
+        "message": custom_msg,
+        "otp": otp,
+        "platform": platform,
+        "platform_emoji": p_emoji,
+        "country_code": phone_cc,
+        "flag": phone_flag,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "revenue": f"${rate_val:.4f}",
+        "rate": rate_val,
+        "range_name": range_name,
+        "source": f"Augestel ({acc_email})",
+    }
+
+    msg_text = format_otp_message(sms_entry)
+    keyboard = create_keyboard(sms_entry, FILE_LINK, CHANNEL_LINK, otp_text=otp)
+
+    msg_id = None
+    try:
+        async def send_tg():
+            bot = Bot(token=BOT_TOKEN)
+            return await bot.send_message(
+                chat_id=GROUP_CHAT_ID,
+                text=msg_text,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        res = loop.run_until_complete(send_tg())
+        loop.close()
+        msg_id = res.message_id
+    except Exception as e:
+        logger.error(f"Gagal kirim simulated OTP ke TG: {e}")
+
+    updated_earnings = record_earnings_sms(
+        account_idx=acc_idx,
+        account_email=acc_email,
+        rate_val=rate_val,
+        country_cc=phone_cc,
+        country_flag=phone_flag,
+        platform=platform,
+        phone=phone
+    )
+
+    log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 🧪 [Live Simulator] Akun #{acc_idx} ({acc_email}) Sent {platform} OTP {otp} for {phone} (Rate: ${rate_val:.4f})\n"
+    log_path = os.path.join(BASE_DIR, "bot.log")
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception:
+        pass
+
+    return jsonify({
+        "success": True,
+        "message": f"Simulasi Webhook berhasil! OTP {otp} terkirim ke Telegram & pendapatan tercatat (${rate_val:.4f}).",
+        "telegram_sent": bool(msg_id),
+        "telegram_message_id": msg_id,
+        "account": acc_email,
+        "phone": phone,
+        "otp": otp,
+        "rate": rate_val,
+        "earnings": updated_earnings
+    })
 
 
 @app.route("/api/augestel/webhooks/status")
