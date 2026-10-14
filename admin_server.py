@@ -1215,24 +1215,29 @@ def api_debug_check(idx):
             return await page.evaluate("""async () => {
                 const res = await fetch('/Switchfy/api/webhooks', { cache: 'no-store' });
                 const text = await res.text();
-                const re = /paused/gi;
-                let match;
-                const matches = [];
-                while ((match = re.exec(text)) !== null) {
-                    const start = Math.max(0, match.index - 80);
-                    const end = Math.min(text.length, match.index + 80);
-                    matches.push(text.substring(start, end).replace(/\\s+/g, ' '));
-                }
-                const delivMatches = [];
-                const re2 = /delivering/gi;
-                while ((match = re2.exec(text)) !== null) {
-                    const start = Math.max(0, match.index - 80);
-                    const end = Math.min(text.length, match.index + 80);
-                    delivMatches.push(text.substring(start, end).replace(/\\s+/g, ' '));
-                }
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                const cb = doc.querySelector('input[type="checkbox"][name="is_active"]');
+                const cb_checked_attr = cb ? cb.hasAttribute('checked') : null;
+                const cb_checked_prop = cb ? cb.checked : null;
+
+                const urlInput = doc.querySelector('#webhookUrl');
+                const url_val = urlInput ? urlInput.value : '';
+
+                // Find all badges or status pills
+                const badges = Array.from(doc.querySelectorAll('.badge, span[class*="rounded"], div[class*="rounded"]'))
+                    .map(el => el.textContent.trim())
+                    .filter(t => t.length > 0 && t.length < 30 && (t.includes('Deliv') || t.includes('Paus') || t.includes('Active') || t.includes('Off')));
+
+                const has_auto_off_warning = text.includes('Delivery was switched off automatically') || text.includes('consecutive failure(s)');
+
                 return {
-                    paused_matches: matches,
-                    delivering_matches: delivMatches
+                    cb_checked_attr: cb_checked_attr,
+                    cb_checked_prop: cb_checked_prop,
+                    url_val: url_val,
+                    status_badges: badges,
+                    has_auto_off_warning: has_auto_off_warning
                 };
             }""")
         return jsonify(pool.run_coro(run()))
