@@ -698,6 +698,7 @@ async def main():
         batch_count = int(args[5]) if len(args) > 5 else BATCH_COUNT
     except Exception:
         batch_count = BATCH_COUNT
+    number_prefix = str(args[6]).strip() if len(args) > 6 else ""
 
     # Load daftar akun
     acc_file = os.path.join(os.path.dirname(__file__), "augestel_accounts.json")
@@ -739,6 +740,12 @@ async def main():
     logger.info("═" * 60)
     logger.info(f"🎯 Target akun terpilih: {', '.join([f'Akun #{i}' for i in target_indices])} ({len(target_indices)} akun)")
     logger.info(f"🔢 Maksimal nomor per akun: {MAX_ACCOUNT_NUMBERS} nomor (Otomatis skip / lanjut jika penuh)")
+    filter_info = []
+    if range_filter:
+        filter_info.append(f"Range: '{range_filter}'")
+    if number_prefix:
+        filter_info.append(f"Prefix: '{number_prefix}'")
+    logger.info(f"🔍 Filter Aktif: {' & '.join(filter_info) if filter_info else 'Semua'}")
     logger.info("═" * 60)
 
     shared_stats = {
@@ -753,7 +760,7 @@ async def main():
         if max_add > 0 and shared_stats["added"] >= max_add:
             logger.info(f"🎯 Target max_add ({max_add}) telah tercapai!")
             break
-        await process_account(idx, range_filter, max_add, delay, workers, batch_count, shared_stats, stats_lock)
+        await process_account(idx, range_filter, max_add, delay, workers, batch_count, shared_stats, stats_lock, number_prefix=number_prefix)
 
     logger.info("═" * 60)
     logger.info("🏁 AUTO ADD AUGESTEL SELESAI!")

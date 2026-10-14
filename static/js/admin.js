@@ -2507,7 +2507,9 @@ async function checkAugestelAutoAddStatus() {
                 runningInfo.style.display = 'block';
                 if (runningText) {
                     const workerBadge = state.workers ? ` <span class="badge badge-info" style="font-size:0.75rem;"><i class="fas fa-bolt"></i> ${state.workers} Workers</span>` : '';
-                    runningText.innerHTML = `Sedang berjalan pada: <b>${escapeHtml(state.account_email)}</b>${workerBadge}`;
+                    const rangeBadge = state.range_name ? ` <span class="badge" style="background: rgba(167, 139, 250, 0.2); color: #c4b5fd; font-size:0.75rem;"><i class="fas fa-globe"></i> ${escapeHtml(state.range_name)}</span>` : '';
+                    const prefixBadge = state.number_prefix ? ` <span class="badge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; font-size:0.75rem;"><i class="fas fa-phone-alt"></i> ${escapeHtml(state.number_prefix)}</span>` : '';
+                    runningText.innerHTML = `Sedang berjalan pada: <b>${escapeHtml(state.account_email)}</b>${workerBadge}${rangeBadge}${prefixBadge}`;
                 }
             }
         } else {
