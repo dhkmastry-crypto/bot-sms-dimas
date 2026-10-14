@@ -1202,45 +1202,22 @@ def api_augestel_webhooks_guardian_check_now():
         return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-@app.route("/api/debug/test-wh")
+@app.route("/api/augestel/accounts/auto-setup", methods=["POST"])
 @login_required
-def api_debug_test_wh():
+def api_augestel_accounts_auto_setup():
+    """Trigger auto-setup (Login check, API Key generate/retrieve, Webhook install) for an Augestel account"""
+    data = request.get_json(silent=True) or {}
+    idx = int(data.get("index", 1))
     try:
         from augestel_browser_pool import get_browser_pool
         pool = get_browser_pool()
-        if not pool or not pool.is_running or 1 not in pool.pages:
-            return jsonify({"error": "pool not ready"})
-        page = pool.pages[1]
-        async def run():
-            logs = []
-            logs.append("Navigating to webhooks...")
-            await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="networkidle")
-            url_input = await page.wait_for_selector("#webhookUrl", timeout=15000)
-            logs.append("Found url_input, filling...")
-            await url_input.fill("https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook")
-            logs.append(f"Current input value: {await page.evaluate('() => document.querySelector(\"#webhookUrl\").value')}")
-            
-            cb = await page.query_selector('input[type="checkbox"][name="is_active"]')
-            if cb and not await cb.is_checked():
-                await cb.check()
-            logs.append(f"is_active checked: {await cb.is_checked() if cb else False}")
-
-            save_btn = await page.query_selector('button:has-text("Save endpoint"), button:has-text("Update endpoint")')
-            logs.append(f"Save btn text: {await save_btn.inner_text() if save_btn else 'NOT FOUND'}")
-            
-            if save_btn:
-                logs.append("Clicking save_btn...")
-                async with page.expect_navigation(timeout=15000):
-                    await save_btn.click()
-                logs.append(f"After nav URL: {page.url}")
-                logs.append(f"After click input val: {await page.evaluate('() => document.querySelector(\"#webhookUrl\") ? document.querySelector(\"#webhookUrl\").value : \"\"')}")
-                logs.append(f"After click is_active: {await page.evaluate('() => { const cb = document.querySelector(\"input[name=\\'is_active\\']\"); return cb ? cb.checked : false; }')}")
-                await page.screenshot(path="manual_test_wh.png")
-            return logs
-        res = pool.run_coro(run(), timeout=40)
-        return jsonify({"logs": res})
+        if pool and pool.is_running:
+            res = pool.ensure_account_setup_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"success": False, "message": str(e)})
+
 
 
 
