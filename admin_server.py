@@ -1202,9 +1202,42 @@ def api_augestel_webhooks_guardian_check_now():
         return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-
-
-
+@app.route("/api/debug/inspect-api-doc")
+@login_required
+def api_debug_inspect_api_doc():
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if not pool or not pool.is_running or 1 not in pool.pages:
+            return jsonify({"error": "pool not ready"})
+        page = pool.pages[1]
+        async def do_inspect():
+            await page.goto("https://augestel.com/Switchfy/api/documentation", wait_until="domcontentloaded", timeout=30000)
+            await asyncio.sleep(2)
+            content = await page.content()
+            title = await page.title()
+            # find forms, buttons, inputs, sk_live
+            forms = await page.evaluate('''() => {
+                return Array.from(document.querySelectorAll('form, button, a[href*="api"], a[href*="key"], a[href*="token"]')).map(el => ({
+                    tag: el.tagName,
+                    text: el.innerText ? el.innerText.trim() : '',
+                    action: el.getAttribute('action') || '',
+                    method: el.getAttribute('method') || '',
+                    href: el.getAttribute('href') || '',
+                    id: el.id || '',
+                    name: el.getAttribute('name') || '',
+                    class: el.className || ''
+                }));
+            }''')
+            import re
+            keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
+            return {"title": title, "url": page.url, "keys": keys, "elements": forms[:30]}
+        res = pool.run_coro(do_inspect(), timeout=35)
+        # navigate back to numbers
+        pool.run_coro(page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000))
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
 
 @app.route("/api/augestel/webhooks/setup-single", methods=["POST"])
