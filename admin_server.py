@@ -1202,54 +1202,22 @@ def api_augestel_webhooks_guardian_check_now():
         return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-@app.route("/api/debug/inspect-api-doc")
+@app.route("/api/augestel/accounts/auto-setup", methods=["POST"])
 @login_required
-def api_debug_inspect_api_doc():
+def api_augestel_accounts_auto_setup():
+    """Trigger auto-setup (Login check, API Key generate/retrieve, Webhook install) for an Augestel account"""
+    data = request.get_json(silent=True) or {}
+    idx = int(data.get("index", 1))
     try:
         from augestel_browser_pool import get_browser_pool
         pool = get_browser_pool()
-        if not pool or not pool.is_running or 1 not in pool.pages:
-            return jsonify({"error": "pool not ready"})
-        page = pool.pages[1]
-        async def do_inspect():
-            await page.goto("https://augestel.com/Switchfy/api/documentation", wait_until="domcontentloaded", timeout=30000)
-            await asyncio.sleep(2)
-            content = await page.content()
-            title = await page.title()
-            # find forms, buttons, inputs, sk_live
-            forms = await page.evaluate('''() => {
-                return Array.from(document.querySelectorAll('form, button, a[href*="api"], a[href*="key"], a[href*="token"]')).map(el => ({
-                    tag: el.tagName,
-                    text: el.innerText ? el.innerText.trim() : '',
-                    action: el.getAttribute('action') || '',
-                    method: el.getAttribute('method') || '',
-                    href: el.getAttribute('href') || '',
-                    id: el.id || '',
-                    name: el.getAttribute('name') || '',
-                    class: el.className || ''
-                }));
-            }''')
-            import re
-            keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
-            fn_code = await page.evaluate('''() => {
-                let res = {};
-                if (typeof performGenerateKey === 'function') res.performGenerateKey = performGenerateKey.toString();
-                if (typeof performRegenerateKey === 'function') res.performRegenerateKey = performRegenerateKey.toString();
-                return res;
-            }''')
-            return {"fn_code": fn_code}
-
-
-
-
-
-
-        res = pool.run_coro(do_inspect(), timeout=35)
-        # navigate back to numbers
-        pool.run_coro(page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000))
-        return jsonify(res)
+        if pool and pool.is_running:
+            res = pool.ensure_account_setup_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"success": False, "message": str(e)})
+
 
 
 @app.route("/api/augestel/webhooks/setup-single", methods=["POST"])
@@ -2083,7 +2051,7 @@ def api_augestel_accounts_get():
 @app.route("/api/augestel/accounts", methods=["POST"])
 @login_required
 def api_augestel_accounts_save():
-    """Add or update an Augestel account with automatic login and API Key detection"""
+    """Add or update an Augestel account with automatic login, API Key generation & Webhook setup via Browser Pool"""
     data = request.json or {}
     email = data.get("email", "").strip()
     password = data.get("password", "").strip()
@@ -2094,26 +2062,7 @@ def api_augestel_accounts_save():
         return jsonify({"success": False, "message": "Email akun Augestel wajib diisi!"})
 
     if not password and not api_key:
-        return jsonify({"success": False, "message": "Password portal Augestel wajib diisi untuk auto-login!"})
-
-    # Jika API key belum diisi, lakukan auto-login dan deteksi API key otomatis
-    detected_auto = False
-    login_without_key = False
-    if not api_key and password:
-        from augestel_client import AugestelClient
-        ext_res = AugestelClient.login_and_extract_api_key(email=email, password=password)
-        if ext_res.get("success"):
-            if ext_res.get("api_key"):
-                api_key = ext_res["api_key"]
-                detected_auto = True
-            else:
-                api_key = ""
-                login_without_key = True
-        else:
-            return jsonify({
-                "success": False,
-                "message": ext_res.get("message", "Gagal auto-login & mendeteksi API Key. Pastikan email & password benar!")
-            })
+        return jsonify({"success": False, "message": "Password portal Augestel wajib diisi untuk login!"})
 
     acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
     accounts = []
@@ -2124,50 +2073,50 @@ def api_augestel_accounts_save():
         except Exception:
             pass
 
-    cfg = load_config()
     new_entry = {
         "email": email,
         "password": password,
         "api_key": api_key
     }
 
+    target_idx = 1
     if index is not None and isinstance(index, int) and 0 <= index < len(accounts):
         accounts[index] = new_entry
+        target_idx = index + 1
     else:
         found = False
         for i, a in enumerate(accounts):
             if a.get("email", "").lower() == email.lower():
                 accounts[i] = new_entry
+                target_idx = i + 1
                 found = True
                 break
         if not found:
             accounts.append(new_entry)
+            target_idx = len(accounts)
 
     try:
         with open(acc_file, "w", encoding="utf-8") as f:
             json.dump(accounts, f, indent=2)
 
-        # Update primary account to config.py if it's the first account
+        # Update primary account to config.py if it's the first account and has key
         if len(accounts) >= 1 and accounts[0].get("api_key"):
             save_config({
                 "AUGESTEL_EMAIL": accounts[0]["email"],
                 "AUGESTEL_API_KEY": accounts[0].get("api_key", "")
             })
 
-        # Sinkronkan pool browser di RAM secara real-time
+        # Memicu sinkronisasi pool browser di RAM secara real-time
+        # Pool akan otomatis: 1) Login akun baru, 2) Ambil/Generate API Key, 3) Pasang Webhook
         try:
             from augestel_browser_pool import get_browser_pool
             pool = get_browser_pool()
             if pool and pool.is_running:
-                threading.Thread(target=pool.sync_accounts_sync, daemon=True, name="PoolSyncOnSave").start()
+                threading.Thread(target=pool.sync_accounts_sync, daemon=True, name=f"PoolSyncAcc{target_idx}").start()
         except Exception as e_sync:
             logger.warning(f"Gagal memicu sinkronisasi browser pool: {e_sync}")
 
-        msg = f"Akun Augestel {email} berhasil disimpan!"
-        if detected_auto:
-            msg = f"✅ Berhasil Login ke portal Augestel! API Key otomatis terdeteksi ({api_key[:12]}...)."
-        elif login_without_key:
-            msg = f"✅ Berhasil Login ke portal Augestel! Akun terdaftar (API Key belum di-generate di portal)."
+        msg = f"✅ Akun Augestel #{target_idx} ({email}) berhasil disimpan! Sistem Browser Pool di RAM otomatis melakukan login, mengambil/men-generate API Key, dan memasang Webhook."
 
         return jsonify({
             "success": True,
