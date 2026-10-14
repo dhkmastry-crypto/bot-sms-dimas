@@ -2577,6 +2577,32 @@ def api_augestel_pool_status():
         return jsonify({"success": False, "message": str(e)})
 
 
+@app.route("/api/augestel/pool/debug/<int:idx>", methods=["GET"])
+@login_required
+def api_augestel_pool_debug(idx):
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if idx not in pool.pages:
+            return jsonify({"success": False, "message": f"No page for account #{idx}"})
+        page = pool.pages[idx]
+
+        async def get_debug():
+            url = page.url
+            title = await page.title()
+            alerts = await page.evaluate('''() => {
+                const els = Array.from(document.querySelectorAll('.alert, .error, .invalid-feedback, .text-danger, .swal2-html-container, .swal2-title, .wait, #loginError, .login-error'));
+                return els.map(e => ({ tag: e.tagName, class: e.className, text: e.innerText.trim() })).filter(e => e.text.length > 0);
+            }''')
+            body_snippet = await page.evaluate('() => document.body.innerText.substring(0, 1500)')
+            return {"url": url, "title": title, "alerts": alerts, "body_snippet": body_snippet}
+
+        res = pool.run_coro(get_debug(), timeout=15)
+        return jsonify({"success": True, "data": res})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/augestel/pool/start", methods=["POST"])
 @login_required
 def api_augestel_pool_start():
