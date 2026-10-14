@@ -287,8 +287,16 @@ class AugestelBrowserPool:
                                             f_log.write(log_line)
                                     except Exception:
                                         pass
+
+                        # 3. Jika akun sudah login tapi belum punya API Key atau webhook, lengkapi otomatis
+                        if self.status[idx].get("logged_in") and not acc.get("api_key"):
+                            try:
+                                await self.ensure_account_setup(idx)
+                            except Exception as e_setup:
+                                logger.error(f"Error auto-setup on heartbeat #{idx}: {e_setup}")
                     except Exception as ex_hb:
                         logger.debug(f"Heartbeat akun #{idx}: {ex_hb}")
+
             except Exception as e:
                 logger.error(f"Error in heartbeat loop: {e}")
 
@@ -507,11 +515,19 @@ class AugestelBrowserPool:
                 try:
                     await self._init_single_account(idx, email, pwd)
                     await asyncio.sleep(2)
+                    if self.status.get(idx, {}).get("logged_in"):
+                        await self.ensure_account_setup(idx)
                 except Exception as e:
                     logger.error(f"❌ Gagal auto-init browser Akun #{idx}: {e}")
             else:
                 if idx in self.status:
                     self.status[idx]["email"] = email
+                # Jika akun sudah login tapi belum punya API Key atau belum pasang webhook
+                if self.status.get(idx, {}).get("logged_in") and not acc.get("api_key"):
+                    try:
+                        await self.ensure_account_setup(idx)
+                    except Exception as e:
+                        logger.error(f"❌ Gagal auto-setup Akun #{idx}: {e}")
 
         # 2. Tutup dan bersihkan akun yang sudah dihapus dari file
         existing_indices = list(self.contexts.keys())
@@ -530,6 +546,170 @@ class AugestelBrowserPool:
     def sync_accounts_sync(self):
         """Panggilan sinkron dari thread Flask untuk sinkronisasi akun baru/update."""
         return self.run_coro(self._sync_accounts_async(), timeout=180)
+
+    def _update_account_key_on_disk(self, idx: int, api_key: str):
+        """Menyimpan API Key baru ke memory pool dan file augestel_accounts.json secara permanen."""
+        if 0 < idx <= len(self.accounts):
+            self.accounts[idx - 1]["api_key"] = api_key
+        
+        acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
+        try:
+            if os.path.exists(acc_file):
+                with open(acc_file, "r", encoding="utf-8") as f:
+                    disk_accs = json.load(f)
+                if 0 <= idx - 1 < len(disk_accs):
+                    disk_accs[idx - 1]["api_key"] = api_key
+                    with open(acc_file, "w", encoding="utf-8") as f:
+                        json.dump(disk_accs, f, indent=2)
+                    logger.info(f"💾 [Akun #{idx}] API Key berhasil disimpan ke augestel_accounts.json!")
+            
+            # Jika akun #1, perbarui juga config.py jika belum terpasang
+            if idx == 1:
+                try:
+                    from admin_server import save_config
+                    save_config({"AUGESTEL_API_KEY": api_key})
+                except Exception:
+                    pass
+        except Exception as ex:
+            logger.error(f"Gagal simpan API key ke disk untuk Akun #{idx}: {ex}")
+
+    async def ensure_account_api_key(self, idx: int) -> dict:
+        """
+        Ambil API key yang sudah ada atau generate API key baru secara otomatis
+        dari portal Augestel (Switchfy/api/documentation).
+        """
+        if idx not in self.pages:
+            return {"success": False, "message": f"Browser Akun #{idx} belum aktif di pool"}
+        page = self.pages[idx]
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+
+        try:
+            logger.info(f"🔑 [Akun #{idx} | {email}] Mengakses halaman API Documentation...")
+            await page.goto("https://augestel.com/Switchfy/api/documentation", wait_until="domcontentloaded", timeout=45000)
+            await asyncio.sleep(2)
+
+            # Jika diarahkan ke form login, re-login dulu
+            if "/login" in page.url or await page.query_selector("#loginEmail, input[name='email']"):
+                await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+                await page.goto("https://augestel.com/Switchfy/api/documentation", wait_until="domcontentloaded", timeout=45000)
+                await asyncio.sleep(2)
+
+            js_extract = """
+            async () => {
+                // 1. Cek apakah ada display API Key di halaman
+                const keyEl = document.querySelector('#api-key-display');
+                if (keyEl && keyEl.textContent && keyEl.textContent.trim().startsWith('sk_live_')) {
+                    return { success: true, api_key: keyEl.textContent.trim(), generated: false };
+                }
+                const match = document.body.innerText.match(/sk_live_[a-zA-Z0-9_\\-]+/);
+                if (match) {
+                    return { success: true, api_key: match[0], generated: false };
+                }
+
+                // 2. Jika belum ada, panggil generate-key melalui AJAX internal Switchfy
+                const cfg = window.__cfg_clients_api_documentation || {};
+                const genUrl = cfg.k3 || 'https://augestel.com/Switchfy/api/generate-key';
+                const token = cfg.k4 || (document.querySelector('input[name="_token"]') ? document.querySelector('input[name="_token"]').value : '');
+
+                try {
+                    const resp = await new Promise((resolve) => {
+                        window.jQuery.ajax({
+                            url: genUrl,
+                            type: 'POST',
+                            data: { _token: token },
+                            success: function(r) { resolve(r); },
+                            error: function(xhr) { resolve({ success: false, error: xhr.statusText || 'AJAX Error' }); }
+                        });
+                    });
+
+                    if (resp && resp.success && resp.api_key) {
+                        return { success: true, api_key: resp.api_key, generated: true };
+                    }
+                    return { success: false, error: resp.message || resp.error || 'Gagal generate API Key', resp: resp };
+                } catch (e) {
+                    return { success: false, error: e.toString() };
+                }
+            }
+            """
+            eval_res = await page.evaluate(js_extract)
+            if eval_res.get("success") and eval_res.get("api_key"):
+                found_key = eval_res["api_key"]
+                was_gen = eval_res.get("generated", False)
+                action_str = "dibuat baru (Auto-Generate)" if was_gen else "berhasil diambil"
+                logger.info(f"🎉 [Akun #{idx} | {email}] API Key {action_str}: {found_key[:12]}...")
+
+                # Update memory dan simpan ke disk
+                self._update_account_key_on_disk(idx, found_key)
+                return {"success": True, "api_key": found_key, "generated": was_gen}
+            else:
+                err_msg = eval_res.get("error", "API Key tidak ditemukan dan gagal di-generate")
+                logger.warning(f"⚠️ [Akun #{idx} | {email}] {err_msg}")
+                return {"success": False, "message": err_msg}
+        except Exception as e:
+            logger.error(f"❌ [Akun #{idx} | {email}] Error ensure_account_api_key: {e}")
+            return {"success": False, "message": str(e)}
+
+    async def ensure_account_setup(self, idx: int) -> dict:
+        """
+        Memastikan akun baru/update siap pakai sepenuhnya:
+        1. Pastikan Sesi Login Aktif.
+        2. Periksa / Ambil / Auto-Generate API Key jika belum ada.
+        3. Periksa / Auto-Pasang Webhook jika belum aktif.
+        4. Parkir kembali halaman ke client/numbers.
+        """
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+        res_summary = {"email": email, "index": idx, "api_key_ok": False, "webhook_ok": False}
+
+        if idx not in self.pages:
+            return {"success": False, "message": f"Browser Akun #{idx} belum aktif di pool"}
+        page = self.pages[idx]
+
+        # 1. Pastikan login
+        if not self.status.get(idx, {}).get("logged_in"):
+            ok_login = await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+            if not ok_login:
+                res_summary["message"] = self.status.get(idx, {}).get("message", "Gagal login")
+                return res_summary
+
+        # 2. Periksa & Auto-Generate API Key jika belum ada
+        curr_key = acc.get("api_key", "").strip()
+        if not curr_key:
+            key_res = await self.ensure_account_api_key(idx)
+            if key_res.get("success"):
+                res_summary["api_key_ok"] = True
+                res_summary["api_key"] = key_res.get("api_key")
+        else:
+            res_summary["api_key_ok"] = True
+            res_summary["api_key"] = curr_key
+
+        # 3. Periksa & Auto-Pasang Webhook jika belum terpasang
+        wh_chk = await self.check_account_webhook_status(idx)
+        is_active = wh_chk.get("is_active", False)
+        is_paused = wh_chk.get("is_paused", False)
+        curr_url = wh_chk.get("url", "")
+        if (not is_active) or is_paused or (curr_url != self.webhook_url):
+            logger.info(f"⚡ [Akun #{idx} | {email}] Webhook belum terpasang/aktif, memasang webhook otomatis...")
+            wh_res = await self.setup_account_webhook(idx, self.webhook_url)
+            res_summary["webhook_ok"] = wh_res.get("success", False)
+            res_summary["webhook_url"] = self.webhook_url
+        else:
+            res_summary["webhook_ok"] = True
+            res_summary["webhook_url"] = curr_url
+
+        # 4. Kembalikan tab utama ke client/numbers
+        try:
+            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000)
+        except Exception:
+            pass
+
+        res_summary["success"] = bool(res_summary["api_key_ok"] and res_summary["webhook_ok"])
+        return res_summary
+
+    def ensure_account_setup_sync(self, idx: int) -> dict:
+        return self.run_coro(self.ensure_account_setup(idx), timeout=120)
+
 
     async def setup_account_webhook(self, idx: int, webhook_url: str) -> dict:
         """Pasang / aktifkan webhook secara instan via tab yang sedang terbuka di RAM."""
