@@ -559,6 +559,20 @@ def check_augestel_multi_connection(target_index: int = None):
         if cfg.get("AUGESTEL_EMAIL") and cfg.get("AUGESTEL_API_KEY"):
             accounts.append({"email": cfg["AUGESTEL_EMAIL"], "api_key": cfg["AUGESTEL_API_KEY"]})
 
+    pool_dict = {}
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool_inst = get_browser_pool()
+        if pool_inst and pool_inst.is_running:
+            if target_index is not None:
+                try:
+                    pool_inst.check_account_sync(target_index)
+                except Exception:
+                    pass
+            pool_dict = pool_inst.get_status_dict()
+    except Exception:
+        pass
+
     existing_results = {r.get("index"): r for r in augestel_status.get("accounts", []) if isinstance(r, dict)}
     results = []
     any_connected = False
@@ -608,11 +622,25 @@ def check_augestel_multi_connection(target_index: int = None):
                 logger.error(f"Error checking Augestel acc {idx}: {e}")
                 api_connected = False
 
-        # 2. Cek Browser Profile & Sesi Cookie
-        cookie_info = check_augestel_browser_cookie(idx)
-        cookie_connected = cookie_info.get("cookie_connected", False)
+        # 2. Cek Browser Profile & Keep-Alive Browser Pool di RAM
+        p_item = pool_dict.get(idx) or pool_dict.get(str(idx)) or {}
+        pool_logged_in = p_item.get("logged_in", False)
+        pool_message = p_item.get("message", "")
 
-        # Connected jika API valid dan/atau browser session aktif
+        if pool_logged_in:
+            cookie_connected = True
+            has_remember = True
+            has_session = True
+            cookie_status = "Standby di RAM (24/7)"
+            is_pool_active = True
+        else:
+            cookie_info = check_augestel_browser_cookie(idx)
+            cookie_connected = cookie_info.get("cookie_connected", False)
+            has_remember = cookie_info.get("has_remember", False)
+            has_session = cookie_info.get("has_session", False)
+            cookie_status = pool_message if pool_message else cookie_info.get("status_text", "-")
+            is_pool_active = False
+
         overall_connected = api_connected and cookie_connected
         if overall_connected or api_connected or cookie_connected:
             any_connected = True
@@ -622,10 +650,11 @@ def check_augestel_multi_connection(target_index: int = None):
             "email": email,
             "api_connected": api_connected,
             "cookie_connected": cookie_connected,
-            "cookie_status": cookie_info.get("status_text", "-"),
-            "has_remember": cookie_info.get("has_remember", False),
-            "has_session": cookie_info.get("has_session", False),
-            "cookie_count": cookie_info.get("cookie_count", 0),
+            "cookie_status": cookie_status,
+            "has_remember": has_remember,
+            "has_session": has_session,
+            "cookie_count": 3 if pool_logged_in else 0,
+            "is_pool_active": is_pool_active,
             "connected": overall_connected,
             "balance": balance,
             "last_check": now_str
