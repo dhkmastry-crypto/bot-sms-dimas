@@ -51,7 +51,7 @@ def sync_single_account(account_idx: int, account_data: dict) -> dict:
             pass
 
     # Ambil halaman 1 untuk mengetahui total nomor resmi di portal
-    res_p1 = client.get_numbers(page=1, per_page=100)
+    res_p1 = client.get_numbers(page=1, per_page=100, auto_retry=True)
     if not res_p1.get("success"):
         logger.warning(f"⚠️ [Akun #{account_idx}] Gagal ambil halaman 1: {res_p1.get('message')}")
         if len(existing_dict) >= 2500:
@@ -79,7 +79,7 @@ def sync_single_account(account_idx: int, account_data: dict) -> dict:
             success_page = False
             for attempt in range(5):
                 try:
-                    res = client.get_numbers(page=page, per_page=100)
+                    res = client.get_numbers(page=page, per_page=100, auto_retry=True)
                     if res.get("success"):
                         items = res.get("data", [])
                         for it in items:

@@ -222,16 +222,19 @@ class AugestelClient:
             self.seen_ids.add(sms["id"])
         return len(all_sms)
 
-    def get_numbers(self, page: int = 1, per_page: int = 100) -> dict:
-        """Ambil daftar nomor aktif dari Augestel dengan auto-retry jika 429."""
+    def get_numbers(self, page: int = 1, per_page: int = 100, auto_retry: bool = False) -> dict:
+        """Ambil daftar nomor aktif dari Augestel. Jika auto_retry=True, tunggu cooldown 429."""
         url = f"{self.base_url}/numbers"
         params = {"page": page, "per_page": min(per_page, 100)}
-        for attempt in range(8):
+        max_attempts = 8 if auto_retry else 1
+        for attempt in range(max_attempts):
             try:
-                r = self.session.get(url, params=params, timeout=20)
+                r = self.session.get(url, params=params, timeout=10)
                 if r.status_code == 200:
                     return r.json()
                 elif r.status_code == 429:
+                    if not auto_retry:
+                        return {"success": False, "status_code": 429, "message": "Rate limited (429)"}
                     retry_sec = 20
                     try:
                         retry_sec = int(r.json().get("error", {}).get("retry_after", 0)) or 20
@@ -245,12 +248,14 @@ class AugestelClient:
                         pass
                     retry_sec = max(retry_sec, 20) + 1.5
                     self.rate_limit_until = time.time() + retry_sec
-                    logger.info(f"Augestel API ({self.email}) rate limited (429). Menunggu {retry_sec:.1f} detik (attempt {attempt+1}/8)...")
+                    logger.info(f"Augestel API ({self.email}) rate limited (429). Menunggu {retry_sec:.1f} detik (attempt {attempt+1}/{max_attempts})...")
                     time.sleep(retry_sec)
                     continue
                 return {"success": False, "message": f"HTTP {r.status_code}"}
             except Exception as e:
                 logger.error(f"Error fetching Augestel numbers ({self.email}): {e}")
+                if not auto_retry:
+                    return {"success": False, "message": str(e)}
                 time.sleep(3)
                 continue
         return {"success": False, "message": "Rate limited after retries"}
