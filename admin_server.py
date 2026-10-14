@@ -1157,6 +1157,17 @@ def augestel_webhook():
 @login_required
 def api_augestel_webhooks_status():
     """Get current status of Augestel webhooks and recent events"""
+    guardian_status = {}
+    guardian_active = False
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            guardian_status = pool.get_webhook_guardian_status()
+            guardian_active = pool.webhook_guardian_enabled
+    except Exception:
+        pass
+
     return jsonify({
         "success": True,
         "webhook_url": augestel_webhook_status["url"],
@@ -1165,7 +1176,28 @@ def api_augestel_webhooks_status():
         "last_event": augestel_webhook_status["last_event"],
         "last_sms": augestel_webhook_status["last_sms"],
         "recent_history": augestel_webhook_history[:10],
+        "guardian_enabled": guardian_active,
+        "guardian_accounts": guardian_status,
     })
+
+
+@app.route("/api/augestel/webhooks/guardian/check-now", methods=["POST"])
+@login_required
+def api_augestel_webhooks_guardian_check_now():
+    """Trigger Webhook Guardian auto-heal check immediately across all accounts"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.trigger_guardian_auto_heal_sync()
+            return jsonify({
+                "success": True,
+                "results": res,
+                "guardian_status": pool.get_webhook_guardian_status()
+            })
+        return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
 
 
 @app.route("/api/augestel/webhooks/setup-single", methods=["POST"])

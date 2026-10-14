@@ -20,6 +20,8 @@ from playwright.async_api import async_playwright
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 logger = logging.getLogger("augestel_pool")
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
@@ -46,6 +48,9 @@ class AugestelBrowserPool:
         self.contexts = {}  # {account_idx: BrowserContext}
         self.pages = {}     # {account_idx: Page}
         self.status = {}    # {account_idx: {'email': str, 'logged_in': bool, 'last_check': str, 'message': str}}
+        self.webhook_guardian_status = {}  # {account_idx: {'email': str, 'is_delivering': bool, 'is_active': bool, 'is_paused': bool, 'auto_recovered_count': int, ...}}
+        self.webhook_url = "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook"
+        self.webhook_guardian_enabled = True
         self.is_running = False
         self.accounts = self._load_accounts()
         self.thread.start()
@@ -92,6 +97,8 @@ class AugestelBrowserPool:
 
         # Jalankan loop heartbeat keep-alive
         asyncio.create_task(self._heartbeat_loop())
+        # Jalankan loop Webhook Guardian (Auto-Heal 24/7)
+        asyncio.create_task(self._webhook_guardian_loop())
 
     async def _init_single_account(self, idx: int, email: str, password: str):
         user_data_dir = os.path.abspath(f"browser_profile_augestel_{idx}")
@@ -227,7 +234,7 @@ class AugestelBrowserPool:
                     try:
                         curr_url = page.url
                         login_input = await page.query_selector("#loginEmail, input[name='email']")
-                        if "/client/" in curr_url and not login_input:
+                        if ("/client/" in curr_url or "/api/" in curr_url or "numbers" in curr_url) and not login_input:
                             self.status[idx]["logged_in"] = True
                             self.status[idx]["message"] = "Standby di RAM (24/7)"
                             self.status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -550,6 +557,12 @@ class AugestelBrowserPool:
             except Exception:
                 pass
 
+            # Kembalikan tab ke halaman client numbers agar siap standby untuk Return All & Heartbeat
+            try:
+                await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000)
+            except Exception:
+                pass
+
             ok = bool(saved_val == webhook_url and is_active)
             logger.info(f"🎉 [Akun #{idx} | {email}] Webhook status: is_active={is_active}, url={saved_val}, ok={ok}")
             return {"success": ok, "is_active": is_active, "url": saved_val, "email": email, "screenshot": ss_path}
@@ -571,11 +584,239 @@ class AugestelBrowserPool:
     def setup_all_webhooks_sync(self, webhook_url: str) -> dict:
         return self.run_coro(self.setup_all_webhooks(webhook_url), timeout=300)
 
+    # ──────────────────────────────────────────
+    # WEBHOOK GUARDIAN (AUTO-RECOVERY / AUTO-ON)
+    # ──────────────────────────────────────────
+
+    async def check_account_webhook_status(self, idx: int) -> dict:
+        """Memeriksa status webhook akun secara silent melalui fetch dari tab aktif."""
+        if idx not in self.pages:
+            return {"ok": False, "message": f"Browser Akun #{idx} belum aktif di pool"}
+        page = self.pages[idx]
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+
+        try:
+            # Jalankan fetch silent ke Switchfy/api/webhooks dari konteks origin augestel.com
+            js_eval = """
+            async () => {
+                try {
+                    const res = await fetch('/Switchfy/api/webhooks', {
+                        headers: { 'Accept': 'text/html' },
+                        cache: 'no-store'
+                    });
+                    if (!res.ok) {
+                        return { ok: false, status: res.status, error: 'HTTP ' + res.status };
+                    }
+                    const text = await res.text();
+                    
+                    // Cek jika sesi habis dan diarahkan ke login
+                    if (text.includes('id="loginEmail"') || text.includes('name="password"')) {
+                        return { ok: false, session_expired: true, error: 'Session expired' };
+                    }
+
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+
+                    // Checkbox is_active
+                    const cb = doc.querySelector('input[type="checkbox"][name="is_active"]');
+                    const is_active = cb ? Boolean(cb.checked) : false;
+
+                    // Endpoint URL input
+                    const urlInput = doc.querySelector('#webhookUrl');
+                    const current_url = urlInput ? (urlInput.value || '').trim() : '';
+
+                    // Checkbox message.received
+                    const msgCb = doc.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
+                    const msg_received = msgCb ? Boolean(msgCb.checked) : false;
+
+                    const textLower = text.toLowerCase();
+                    // Portal Switchfy menandai "paused" atau "delivery was switched off automatically" jika 20x error
+                    const is_paused = textLower.includes('paused') || textLower.includes('switched off automatically');
+                    
+                    // Webhook dianggap sehat dan aktif jika is_active=true dan tidak paused
+                    const is_delivering = is_active && !is_paused;
+
+                    return {
+                        ok: true,
+                        is_active: is_active,
+                        is_paused: is_paused,
+                        is_delivering: is_delivering,
+                        url: current_url,
+                        msg_received: msg_received
+                    };
+                } catch (e) {
+                    return { ok: false, error: e.toString() };
+                }
+            }
+            """
+            result = await page.evaluate(js_eval)
+            result["email"] = email
+            result["index"] = idx
+            result["checked_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            return result
+        except Exception as ex:
+            return {
+                "ok": False,
+                "email": email,
+                "index": idx,
+                "error": str(ex),
+                "checked_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+    def check_account_webhook_status_sync(self, idx: int) -> dict:
+        return self.run_coro(self.check_account_webhook_status(idx), timeout=30)
+
+    async def check_all_webhooks_status(self) -> dict:
+        results = {}
+        for idx in range(1, len(self.accounts) + 1):
+            res = await self.check_account_webhook_status(idx)
+            results[idx] = res
+            await asyncio.sleep(0.5)
+        return results
+
+    def check_all_webhooks_status_sync(self) -> dict:
+        return self.run_coro(self.check_all_webhooks_status(), timeout=60)
+
+    async def _webhook_guardian_loop(self):
+        """
+        Sistem Penjaga Otomatis (Webhook Guardian):
+        Berjalan 24/7 di latar belakang. Memeriksa status webhook setiap akun secara berkala.
+        Jika webhook terdeteksi OFF (is_active=False) atau PAUSED oleh Switchfy (20x gagal),
+        sistem akan secara otomatis menyalakan kembali (Auto-Heal / Auto-Resume) tanpa perlu campur tangan manual!
+        """
+        logger.info("🛡️ [Webhook Guardian] Service aktif! Memonitor kesehatan webhook 24/7 (Auto-Heal ON)...")
+        # Beri jeda 30 detik saat pertama kali pool start agar semua akun selesai login
+        await asyncio.sleep(30)
+
+        while self.is_running:
+            if not self.webhook_guardian_enabled:
+                await asyncio.sleep(60)
+                continue
+
+            try:
+                for idx, page in list(self.pages.items()):
+                    if not self.is_running or not self.webhook_guardian_enabled:
+                        break
+                    acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+                    email = acc.get("email", "")
+
+                    if idx not in self.webhook_guardian_status:
+                        self.webhook_guardian_status[idx] = {
+                            "email": email,
+                            "is_delivering": False,
+                            "is_active": False,
+                            "is_paused": False,
+                            "url": "",
+                            "last_check": None,
+                            "auto_recovered_count": 0,
+                            "last_recovery": None,
+                            "status": "Checking..."
+                        }
+
+                    res = await self.check_account_webhook_status(idx)
+                    if res.get("ok"):
+                        is_active = res.get("is_active", False)
+                        is_paused = res.get("is_paused", False)
+                        is_delivering = res.get("is_delivering", False)
+                        curr_url = res.get("url", "")
+
+                        self.webhook_guardian_status[idx]["is_delivering"] = is_delivering
+                        self.webhook_guardian_status[idx]["is_active"] = is_active
+                        self.webhook_guardian_status[idx]["is_paused"] = is_paused
+                        self.webhook_guardian_status[idx]["url"] = curr_url
+                        self.webhook_guardian_status[idx]["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                        # Evaluasi kondisi Auto-Heal:
+                        # 1. is_active mati (False)
+                        # 2. is_paused aktif (True / 20 failures)
+                        # 3. URL kosong atau berbeda dari target
+                        needs_healing = (not is_active) or is_paused or (curr_url != self.webhook_url)
+
+                        if needs_healing:
+                            reason = []
+                            if not is_active: reason.append("is_active=False (OFF)")
+                            if is_paused: reason.append("Portal Status=PAUSED (20 failures)")
+                            if curr_url != self.webhook_url: reason.append(f"URL mismatch ({curr_url} != {self.webhook_url})")
+                            reason_str = ", ".join(reason)
+
+                            logger.warning(
+                                f"⚠️ [Webhook Guardian] Akun #{idx} ({email}) Webhook terdeteksi bermasalah! [{reason_str}]. "
+                                f"🛡️ Memulai AUTO-HEAL: Mengaktifkan kembali webhook sekarang..."
+                            )
+                            self.webhook_guardian_status[idx]["status"] = "Auto-Healing..."
+
+                            # Jalankan auto-heal dengan setup_account_webhook
+                            heal_result = await self.setup_account_webhook(idx, self.webhook_url)
+                            if heal_result.get("success"):
+                                self.webhook_guardian_status[idx]["auto_recovered_count"] += 1
+                                self.webhook_guardian_status[idx]["last_recovery"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                self.webhook_guardian_status[idx]["is_delivering"] = True
+                                self.webhook_guardian_status[idx]["is_active"] = True
+                                self.webhook_guardian_status[idx]["is_paused"] = False
+                                self.webhook_guardian_status[idx]["status"] = "🟢 Delivering (Auto-Healed)"
+
+                                logger.info(
+                                    f"🎉 [Webhook Guardian] Akun #{idx} ({email}) BERHASIL di-ON-kan kembali otomatis! "
+                                    f"(Total Auto-Recoveries: {self.webhook_guardian_status[idx]['auto_recovered_count']})"
+                                )
+
+                                # Tulis notifikasi ke bot.log agar tampil di dashboard live-stream
+                                log_entry = (
+                                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ "
+                                    f"🛡️ [Webhook Guardian] Webhook Akun #{idx} ({email}) sempat OFF/Paused dan telah OTOMATIS DINYALAKAN KEMBALI!\n"
+                                )
+                                try:
+                                    with open(os.path.join(BASE_DIR, "bot.log"), "a", encoding="utf-8") as f_log:
+                                        f_log.write(log_entry)
+                                except Exception:
+                                    pass
+                            else:
+                                logger.error(f"❌ [Webhook Guardian] Gagal auto-heal Akun #{idx}: {heal_result.get('message')}")
+                                self.webhook_guardian_status[idx]["status"] = f"Heal Failed: {heal_result.get('message')}"
+                        else:
+                            self.webhook_guardian_status[idx]["status"] = "🟢 Delivering"
+                    else:
+                        if res.get("session_expired"):
+                            logger.warning(f"⚠️ [Webhook Guardian] Akun #{idx} sesi login habis, melakukan re-login...")
+                            await self._ensure_login_for_page(idx, page, email, acc.get("password", ""))
+
+                    await asyncio.sleep(2)
+
+                # Cek berkala setiap 2 menit (120 detik)
+                await asyncio.sleep(120)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Error in _webhook_guardian_loop: {e}")
+                await asyncio.sleep(30)
+
+    def get_webhook_guardian_status(self) -> dict:
+        return self.webhook_guardian_status
+
+    async def _trigger_guardian_auto_heal_async(self) -> dict:
+        """Trigger pemeriksaan dan auto-heal instan untuk semua akun sekarang juga."""
+        results = {}
+        for idx in range(1, len(self.accounts) + 1):
+            chk = await self.check_account_webhook_status(idx)
+            is_active = chk.get("is_active", False)
+            is_paused = chk.get("is_paused", False)
+            curr_url = chk.get("url", "")
+            if (not is_active) or is_paused or (curr_url != self.webhook_url):
+                heal = await self.setup_account_webhook(idx, self.webhook_url)
+                results[idx] = {"checked": chk, "auto_healed": True, "heal_result": heal}
+            else:
+                results[idx] = {"checked": chk, "auto_healed": False, "status": "Already Active"}
+        return results
+
+    def trigger_guardian_auto_heal_sync(self) -> dict:
+        return self.run_coro(self._trigger_guardian_auto_heal_async(), timeout=180)
+
     def get_status_dict(self) -> dict:
         return self.status
-
 
 
 # Global singleton helper
 def get_browser_pool():
     return AugestelBrowserPool.get_instance()
+
