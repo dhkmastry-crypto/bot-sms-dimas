@@ -617,6 +617,33 @@ class AugestelBrowserPool:
     def hide_window_sync(self, idx: int):
         return self.run_coro(self.hide_window(idx), timeout=30)
 
+    async def close_context(self, idx: int):
+        self.pages.pop(idx, None)
+        ctx = self.contexts.pop(idx, None)
+        if ctx:
+            try:
+                await ctx.close()
+                logger.info(f"Browser context Akun #{idx} ditutup.")
+                return {"success": True, "message": f"Konteks browser Akun #{idx} berhasil ditutup"}
+            except Exception as e:
+                return {"success": False, "message": str(e)}
+        return {"success": True, "message": f"Konteks browser Akun #{idx} memang tidak aktif"}
+
+    def close_context_sync(self, idx: int):
+        return self.run_coro(self.close_context(idx), timeout=30)
+
+    async def reinit_account(self, idx: int):
+        self.accounts = self._load_accounts()
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", "")
+        pwd = acc.get("password", "")
+        await self._init_single_account(idx, email, pwd)
+        await self.ensure_account_setup(idx)
+        return {"success": True, "message": f"Akun #{idx} ({email}) berhasil dimuat kembali ke pool RAM!"}
+
+    def reinit_account_sync(self, idx: int):
+        return self.run_coro(self.reinit_account(idx), timeout=60)
+
     def _update_account_key_on_disk(self, idx: int, api_key: str):
         """Menyimpan API Key baru ke memory pool dan file augestel_accounts.json secara permanen."""
         if 0 < idx <= len(self.accounts):

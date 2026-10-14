@@ -2546,6 +2546,36 @@ def api_augestel_pool_hide(idx):
         return jsonify({"success": False, "message": str(e)})
 
 
+@app.route("/api/augestel/pool/close-context/<int:idx>", methods=["GET", "POST"])
+@login_required
+def api_augestel_close_context(idx):
+    """Release profile lock by closing the background context for account idx"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.close_context_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/api/augestel/pool/reinit/<int:idx>", methods=["GET", "POST"])
+@login_required
+def api_augestel_reinit_context(idx):
+    """Reload account idx from disk into RAM pool 24/7 after successful interactive login"""
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool and pool.is_running:
+            res = pool.reinit_account_sync(idx)
+            return jsonify(res)
+        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
 @app.route("/api/augestel/check", methods=["POST"])
 @login_required
 def api_augestel_check():
