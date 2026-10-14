@@ -906,6 +906,7 @@ async function loadAugestelNumbersData(forceRefresh = false) {
     }
 
     try {
+        updateAugestelPoolStatus();
         const res = await fetch(`/api/numbers?account_index=${accIdx}&refresh=${forceRefresh ? '1' : '0'}`);
         const data = await res.json();
 
