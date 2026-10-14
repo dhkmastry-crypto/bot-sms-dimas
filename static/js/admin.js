@@ -1041,6 +1041,41 @@ function downloadAugestelNumbersExport(format) {
     window.location.href = downloadUrl;
 }
 
+async function updateAugestelPoolStatus() {
+    const badge = document.getElementById('augPoolStatusBadge');
+    const text = document.getElementById('augPoolStatusText');
+    if (!badge || !text) return;
+
+    try {
+        const res = await fetch('/api/augestel/pool/status');
+        const data = await res.json();
+        if (data.success && data.status) {
+            const statuses = Object.values(data.status);
+            const loggedInCount = statuses.filter(s => s.logged_in).length;
+            const totalCount = statuses.length || 7;
+
+            if (loggedInCount === totalCount && totalCount > 0) {
+                badge.style.background = 'rgba(16, 185, 129, 0.15)';
+                badge.style.color = '#34d399';
+                badge.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                text.textContent = `Browser Pool: ${loggedInCount}/${totalCount} Akun Standby di RAM (24/7)`;
+            } else if (loggedInCount > 0) {
+                badge.style.background = 'rgba(59, 130, 246, 0.15)';
+                badge.style.color = '#60a5fa';
+                badge.style.border = '1px solid rgba(59, 130, 246, 0.3)';
+                text.textContent = `Browser Pool: ${loggedInCount}/${totalCount} Standby (Menyiapkan Sisa Akun...)`;
+            } else {
+                badge.style.background = 'rgba(245, 158, 11, 0.15)';
+                badge.style.color = '#fbbf24';
+                badge.style.border = '1px solid rgba(245, 158, 11, 0.3)';
+                text.textContent = `Browser Pool: Menyiapkan Sesi (${totalCount} Akun)...`;
+            }
+        }
+    } catch (e) {
+        // silent
+    }
+}
+
 async function deleteAllAugestelNumbers() {
     const select = document.getElementById('augNumAccountSelect');
     const accIdx = select ? select.value : 'augestel_all';
