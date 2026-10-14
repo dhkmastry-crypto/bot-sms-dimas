@@ -50,48 +50,79 @@ def sync_single_account(account_idx: int, account_data: dict) -> dict:
         except Exception:
             pass
 
-    page = 1
-    max_pages = 30  # Cukup untuk 3000 nomor (portal maks 2500)
-    per_page = 100
-    total_portal = 0
+    # Ambil halaman 1 untuk mengetahui total nomor resmi di portal
+    res_p1 = client.get_numbers(page=1, per_page=100)
+    if not res_p1.get("success"):
+        logger.warning(f"⚠️ [Akun #{account_idx}] Gagal ambil halaman 1: {res_p1.get('message')}")
+        if len(existing_dict) >= 2500:
+            final_numbers = list(existing_dict.values())
+            logger.info(f"✨ [Akun #{account_idx} | {email}] Menggunakan cache tersimpan ({len(final_numbers)} nomor).")
+            return {"account_index": account_idx, "email": email, "numbers": final_numbers, "total": len(final_numbers)}
 
-    while page <= max_pages:
-        try:
-            res = client.get_numbers(page=page, per_page=per_page)
-            if not res.get("success"):
-                logger.warning(f"⚠️ [Akun #{account_idx}] Gagal ambil halaman {page}: {res.get('message')}")
-                break
+    pagination = res_p1.get("pagination", {})
+    total_portal = pagination.get("total", len(res_p1.get("data", [])))
+    last_page = pagination.get("last_page", 25)
 
-            items = res.get("data", [])
-            pagination = res.get("pagination", {})
-            total_portal = pagination.get("total", total_portal)
-            last_page = pagination.get("last_page", max_pages)
+    # Masukkan data page 1
+    for it in res_p1.get("data", []):
+        formatted = _format_augestel_number_item(it, len(existing_dict) + 1, account_idx, email)
+        num_str = formatted.get("number")
+        if num_str:
+            existing_dict[num_str] = formatted
 
-            if not items:
-                break
+    logger.info(f"  📥 [Akun #{account_idx} | {email}] Halaman 1/{last_page} didapat. Total portal: {total_portal}. Terkumpul: {len(existing_dict)}")
 
-            for it in items:
-                formatted = _format_augestel_number_item(it, len(existing_dict) + 1, account_idx, email)
-                num_str = formatted.get("number")
-                if num_str:
-                    existing_dict[num_str] = formatted
+    # Jika sudah lengkap (misal 2.500 dari 2.500), selesai
+    if len(existing_dict) < total_portal:
+        # Loop dari page 2 sampai last_page
+        for page in range(2, last_page + 1):
+            success_page = False
+            for attempt in range(5):
+                try:
+                    res = client.get_numbers(page=page, per_page=100)
+                    if res.get("success"):
+                        items = res.get("data", [])
+                        for it in items:
+                            formatted = _format_augestel_number_item(it, len(existing_dict) + 1, account_idx, email)
+                            num_str = formatted.get("number")
+                            if num_str:
+                                existing_dict[num_str] = formatted
+                        logger.info(f"  📥 [Akun #{account_idx} | {email}] Halaman {page}/{last_page} (+{len(items)}). Terkumpul: {len(existing_dict)}/{total_portal}")
+                        success_page = True
+                        break
+                    else:
+                        logger.warning(f"  ⚠️ [Akun #{account_idx} | {email}] Halaman {page} gagal: {res.get('message')}. Retry dalam 22s (attempt {attempt+1}/5)...")
+                        time.sleep(22)
+                except Exception as e:
+                    logger.error(f"  ❌ [Akun #{account_idx} | {email}] Error halaman {page}: {e}")
+                    time.sleep(5)
 
-            logger.info(f"  📥 [Akun #{account_idx} | {email}] Halaman {page}/{last_page} didapat (+{len(items)} nomor). Terkumpul: {len(existing_dict)}/{total_portal}")
+            if not success_page:
+                logger.error(f"  ❌ [Akun #{account_idx} | {email}] Gagal mengambil halaman {page} setelah 5 percobaan.")
 
-            if page >= last_page:
-                break
+            # Periodic backup ke cache disk
+            if page % 3 == 0 or page == last_page:
+                try:
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump({
+                            "success": True,
+                            "account_index": f"aug_{account_idx}",
+                            "email": f"Augestel #{account_idx} ({email})",
+                            "total": total_portal,
+                            "count": len(existing_dict),
+                            "numbers": list(existing_dict.values()),
+                            "cached_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }, f)
+                except Exception:
+                    pass
 
-            page += 1
-            time.sleep(1.2)
-        except Exception as e:
-            logger.error(f"❌ [Akun #{account_idx}] Error halaman {page}: {e}")
-            break
+            time.sleep(1.0)
 
     final_numbers = list(existing_dict.values())
     for i, it in enumerate(final_numbers, 1):
         it["id"] = str(i)
 
-    final_total = total_portal or len(final_numbers)
+    final_total = max(total_portal, len(final_numbers))
 
     # Simpan ke cache disk akun ini
     now_ts = datetime.now()
