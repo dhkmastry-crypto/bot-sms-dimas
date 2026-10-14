@@ -509,7 +509,8 @@
                                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <button class="btn btn-secondary btn-sm" onclick="checkWebhookStatusLive()" id="btnCheckWebhookLive"><i class="fas fa-sync-alt"></i> Cek Status</button>
                                         <button class="btn btn-secondary btn-sm" onclick="triggerGuardianCheckNow()" id="btnGuardianCheckNow" title="Paksa periksa dan auto-heal webhook semua akun sekarang"><i class="fas fa-shield-alt"></i> Auto-Heal Check</button>
-                                        <button class="btn btn-primary btn-sm" onclick="sendTestWebhookPing()" id="btnTestWebhookPing" style="background: #10b981;"><i class="fas fa-paper-plane"></i> Test Kirim Webhook</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="sendTestWebhookPing()" id="btnTestWebhookPing"><i class="fas fa-paper-plane"></i> Quick Ping</button>
+                                        <button class="btn btn-primary btn-sm" onclick="openAugSimulateModal()" style="background: linear-gradient(135deg, #10b981, #059669);"><i class="fas fa-vial"></i> 🧪 Live SMS Simulator</button>
                                     </div>
                                 </div>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 6px;">
@@ -1336,6 +1337,86 @@
                 <button class="btn btn-secondary" onclick="closeCustomTestModal()">Batal</button>
                 <button class="btn btn-primary" id="btnSubmitTest" onclick="submitCustomTestOtp()">
                     <i class="fas fa-paper-plane"></i> Kirim ke Telegram Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Live SMS Simulator & Webhook Tester (Fitur 6) -->
+    <div class="modal-overlay" id="augSimulateModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fas fa-satellite-dish" style="color: #10b981;"></i> Live SMS Simulator & Webhook Tester</h3>
+                <button class="modal-close" onclick="closeAugSimulateModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="margin-bottom: 14px; font-size: 0.85rem;">
+                    Uji alur webhook, format kartu Telegram, dan pencatatan pendapatan (*earnings*) secara instan untuk akun pilihan Anda:
+                </p>
+                <div class="form-group">
+                    <label><i class="fas fa-user-circle"></i> Target Akun Augestel</label>
+                    <select id="simAccountSelect" class="form-input">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-globe"></i> Negara & Bendera</label>
+                        <select id="simCountry" class="form-input" onchange="updateSimCountryFlag()">
+                            <option value="ZW|🇿🇼|+263788124006">🇿🇼 Zimbabwe (+263)</option>
+                            <option value="DE|🇩🇪|+491712345678">🇩🇪 Germany (+49)</option>
+                            <option value="PK|🇵🇰|+923412345678">🇵🇰 Pakistan (+92)</option>
+                            <option value="ID|🇮🇩|+6281234567890">🇮🇩 Indonesia (+62)</option>
+                            <option value="US|🇺🇸|+12025550143">🇺🇸 United States (+1)</option>
+                            <option value="ML|🇲🇱|+22378901234">🇲🇱 Mali (+223)</option>
+                            <option value="FR|🇫🇷|+33612345678">🇫🇷 France (+33)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-mobile-alt"></i> Platform / Layanan</label>
+                        <select id="simPlatform" class="form-input">
+                            <option value="WhatsApp">🟢 WhatsApp</option>
+                            <option value="Telegram">🔵 Telegram</option>
+                            <option value="Google">🔴 Google</option>
+                            <option value="TikTok">⚫ TikTok</option>
+                            <option value="Instagram">🟣 Instagram</option>
+                            <option value="Facebook">🔷 Facebook</option>
+                            <option value="Bank/Finance">💳 Bank / e-Wallet</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-phone-alt"></i> Nomor HP</label>
+                        <input type="text" id="simPhone" class="form-input mono" value="+263788124006">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-key"></i> Kode OTP</label>
+                        <div class="input-group">
+                            <input type="text" id="simOtp" class="form-input mono" value="884762">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="randomizeSimOtp()" title="Acak Kode OTP">
+                                <i class="fas fa-dice"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label><i class="fas fa-dollar-sign" style="color: #10b981;"></i> Payout Rate ($ USD)</label>
+                        <input type="number" id="simRate" class="form-input mono" value="0.0150" step="0.0050" min="0.001">
+                        <small class="form-hint">Tarif cuan yang ditambahkan ke statistik harian.</small>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Range Name</label>
+                        <input type="text" id="simRangeName" class="form-input" value="Augestel Zimbabwe Econet">
+                    </div>
+                </div>
+                <div id="simResultBox" style="display: none; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-top: 10px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAugSimulateModal()">Tutup</button>
+                <button class="btn btn-primary" id="btnSubmitAugSimulate" onclick="submitAugSimulateSms()" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="fas fa-paper-plane"></i> Kirim Test Webhook & Cuan Sekarang 🚀
                 </button>
             </div>
         </div>
