@@ -251,9 +251,9 @@ async def ensure_augestel_login(page, email: str, password: str) -> bool:
         return False
 
 
-async def fetch_test_terminations(page, range_search: str = "", start: int = 0, length: int = 25) -> dict:
+async def fetch_test_terminations(page, range_search: str = "", number_search: str = "", start: int = 0, length: int = 25) -> dict:
     """Fetch terminations dari DataTable Augestel."""
-    res = await page.evaluate('''async ([rangeSearch, start, length]) => {
+    res = await page.evaluate('''async ([rangeSearch, numberSearch, start, length]) => {
         try {
             const url = new URL('/Switchfy/test/numbers', window.location.origin);
             url.searchParams.set('draw', '1');
@@ -283,6 +283,10 @@ async def fetch_test_terminations(page, range_search: str = "", start: int = 0, 
             if (rangeSearch && rangeSearch.trim()) {
                 url.searchParams.set('columns[0][search][value]', rangeSearch.trim());
             }
+            if (numberSearch && numberSearch.trim()) {
+                const cleanNum = numberSearch.trim().replace(/^[+\s]+/, '');
+                url.searchParams.set('columns[2][search][value]', cleanNum);
+            }
             url.searchParams.set('order[0][column]', '8');
             url.searchParams.set('order[0][dir]', 'desc');
             url.searchParams.set('search[value]', '');
@@ -300,7 +304,7 @@ async def fetch_test_terminations(page, range_search: str = "", start: int = 0, 
         } catch(e) {
             return { error: e.message, data: [], recordsTotal: 0, recordsFiltered: 0 };
         }
-    }''', [range_search, start, length])
+    }''', [range_search, number_search, start, length])
     return res
 
 
