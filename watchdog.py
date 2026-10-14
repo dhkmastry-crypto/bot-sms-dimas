@@ -168,7 +168,29 @@ def check_session_health():
         logger.debug(f"Health check parse note: {e}")
 
 
+_singleton_socket = None
+
+
+def acquire_singleton_lock(port=54321):
+    """Pastikan hanya 1 instance Watchdog yang berjalan di sistem."""
+    global _singleton_socket
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", port))
+        s.listen(1)
+        _singleton_socket = s
+        return True
+    except socket.error:
+        return False
+
+
 def main():
+    if not acquire_singleton_lock():
+        logger.warning("⚠️ Watchdog sudah berjalan di proses lain (Instance aktif terdeteksi).")
+        logger.warning("Keluar untuk mencegah konflik proses duplikat.")
+        sys.exit(99)
+
     logger.info("=" * 60)
     logger.info("🛡️ OTP IVA SMS - 24/7 AUTO-HEAL WATCHDOG ACTIVE")
     logger.info(f"🌐 Static URL: https://{NGROK_DOMAIN}")
