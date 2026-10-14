@@ -42,12 +42,54 @@ function showToast(message, type = 'info') {
     }, 4500);
 }
 
-function toggleSidebar() {
+function toggleSidebar(forceState) {
     const sidebar = document.getElementById('sidebar');
-    const main = document.getElementById('mainContent');
-    if (sidebar) sidebar.classList.toggle('collapsed');
-    if (main) main.classList.toggle('expanded');
+    const overlay = document.getElementById('sidebarOverlay');
+    const isMobile = window.innerWidth <= 992;
+
+    if (isMobile) {
+        if (typeof forceState === 'boolean') {
+            if (forceState) {
+                sidebar && sidebar.classList.add('mobile-open');
+                overlay && overlay.classList.add('active');
+                document.body.classList.add('drawer-open');
+            } else {
+                sidebar && sidebar.classList.remove('mobile-open');
+                overlay && overlay.classList.remove('active');
+                document.body.classList.remove('drawer-open');
+            }
+        } else {
+            const isOpen = sidebar ? sidebar.classList.toggle('mobile-open') : false;
+            if (isOpen) {
+                overlay && overlay.classList.add('active');
+                document.body.classList.add('drawer-open');
+            } else {
+                overlay && overlay.classList.remove('active');
+                document.body.classList.remove('drawer-open');
+            }
+        }
+    } else {
+        const main = document.getElementById('mainContent');
+        if (sidebar) sidebar.classList.toggle('collapsed');
+        if (main) main.classList.toggle('expanded');
+    }
 }
+
+// Auto close mobile drawer on nav clicks or resize
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 992) {
+                toggleSidebar(false);
+            }
+        });
+    });
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 992) {
+            toggleSidebar(false);
+        }
+    });
+});
 
 function updateClock() {
     const clockEl = document.getElementById('currentTime');

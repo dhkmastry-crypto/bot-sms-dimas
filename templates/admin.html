@@ -30,8 +30,11 @@
                     <span class="logo-subtitle">IVA SMS File</span>
                 </div>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="Toggle Sidebar">
                 <i class="fas fa-bars"></i>
+            </button>
+            <button class="sidebar-close-mobile" id="sidebarCloseMobile" onclick="toggleSidebar(false)" title="Tutup Menu">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
@@ -94,6 +97,9 @@
             </a>
         </div>
     </aside>
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
 
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
@@ -1199,6 +1205,30 @@
 
         </div>
     </main>
+
+    <!-- Mobile Bottom Navigation Dock (Android & iOS) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <a href="/" class="mobile-nav-tab {% if page == 'dashboard' %}active{% endif %}" title="Dashboard">
+            <i class="fas fa-chart-pie"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="/sms-log" class="mobile-nav-tab {% if page == 'sms-log' %}active{% endif %}" title="SMS Log">
+            <i class="fas fa-envelope"></i>
+            <span>SMS Log</span>
+        </a>
+        <a href="/numbers" class="mobile-nav-tab {% if page == 'numbers' or page == 'numbers-augestel' %}active{% endif %}" title="Numbers">
+            <i class="fas fa-phone-alt"></i>
+            <span>Numbers</span>
+        </a>
+        <a href="/bot-control" class="mobile-nav-tab {% if page == 'bot-control' %}active{% endif %}" title="Bot Control">
+            <i class="fas fa-gamepad"></i>
+            <span>Bot</span>
+        </a>
+        <button type="button" class="mobile-nav-tab mobile-menu-btn" onclick="toggleSidebar(true)" title="Menu">
+            <i class="fas fa-bars"></i>
+            <span>Menu</span>
+        </button>
+    </nav>
 
     <!-- Modal Custom Test OTP -->
     <div class="modal-overlay" id="customTestModal" style="display: none;">
