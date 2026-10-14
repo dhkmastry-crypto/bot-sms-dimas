@@ -1067,10 +1067,32 @@ async function deleteAllAugestelNumbers() {
         });
         const data = await res.json();
         if (data.success) {
-            showToast(data.message || 'Semua nomor Augestel berhasil di-return!', 'success');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Return All!',
+                    text: data.message || 'Semua nomor Augestel berhasil di-return ke portal.',
+                    background: '#1e293b',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#10b981'
+                });
+            } else {
+                showToast(data.message || 'Semua nomor Augestel berhasil di-return!', 'success');
+            }
             await loadAugestelNumbersData(true);
         } else {
-            showToast(data.message || 'Gagal return semua nomor!', 'error');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian: Return Nomor Belum Berhasil',
+                    text: data.message || 'Gagal return semua nomor dari portal Augestel.',
+                    background: '#1e293b',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#ef4444'
+                });
+            } else {
+                showToast(data.message || 'Gagal return semua nomor!', 'error');
+            }
         }
     } catch (e) {
         showToast('Error: ' + e.message, 'error');
