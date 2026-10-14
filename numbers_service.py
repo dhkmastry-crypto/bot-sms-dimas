@@ -745,148 +745,54 @@ def generate_numbers_txt(numbers_data: list) -> str:
 
 
 async def return_all_augestel_portal(account_idx: int) -> dict:
-    """Melakukan bulk-return-all pada portal Augestel untuk akun terpilih via browser session."""
+    """Melakukan bulk-return-all pada portal Augestel via browser pool aktif (Standby 24/7)."""
     accs = get_augestel_accounts()
     if not accs or account_idx < 1 or account_idx > len(accs):
         return {"success": False, "message": f"Akun Augestel #{account_idx} tidak ditemukan!"}
 
     acc = accs[account_idx - 1]
     email = acc.get("email", "")
-    pwd = acc.get("password", "")
-    user_data_dir = os.path.abspath(f"browser_profile_augestel_{account_idx}")
 
-    logger.info(f"🗑️ Menjalankan Return All Numbers Augestel untuk Akun #{account_idx} ({email})...")
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if not pool.is_running:
+            logger.info("Memulai Augestel Browser Pool di latar belakang...")
+            pool.start_pool_sync()
 
-    from auto_add_augestel import ensure_augestel_login
+        # Eksekusi return all via live tab yang sedang terbuka di pool
+        res = await pool.return_all_account(account_idx)
 
-    async with async_playwright() as p:
-        try:
-            context = await p.chromium.launch_persistent_context(
-                user_data_dir=user_data_dir,
-                channel="msedge",
-                headless=False,
-                args=[
-                    "--disable-blink-features=AutomationControlled",
-                    "--no-sandbox",
-                    "--disable-gpu",
-                    "--window-position=-2000,-2000",
-                ]
-            )
-        except Exception as e:
-            return {"success": False, "message": f"Browser gagal dibuka: {e}"}
-
-        page = context.pages[0] if context.pages else await context.new_page()
-
-        try:
-            # 1. Pastikan status login aktif menggunakan ensure_augestel_login
-            logged_in = await ensure_augestel_login(page, email, pwd)
-            if not logged_in:
-                wait_el = await page.query_selector(".wait")
-                sec_txt = (await wait_el.inner_text()).strip() if wait_el else ""
-                await context.close()
-                msg = f"Portal Augestel sedang dalam masa jeda keamanan/cooldown anti-spam ({sec_txt} detik lagi). Harap tunggu hingga countdown selesai." if sec_txt else f"Gagal login ke Akun #{account_idx} ({email}). Kredensial tidak valid atau Cloudflare challenge aktif."
-                return {"success": False, "message": msg}
-
-            # 2. Navigasi ke halaman client numbers
-            await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="networkidle", timeout=45000)
-            await asyncio.sleep(2)
-
-            wait_el = await page.query_selector(".wait")
-            if wait_el:
-                wait_sec = (await wait_el.inner_text()).strip()
-                await context.close()
-                return {
-                    "success": False,
-                    "message": f"Portal Augestel sedang cooldown anti-spam ({wait_sec} detik lagi). Harap tunggu sejenak."
-                }
-
-            # 3. Cari tombol Return All atau verifikasi apakah tabel sudah kosong
+        # Bersihkan cache akun ini jika berhasil
+        if res.get("success"):
+            _NUMBERS_CACHE.pop(f"augestel_{account_idx}", None)
+            _NUMBERS_CACHE.pop("augestel_all", None)
+            cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
             try:
-                btn = await page.wait_for_selector("#bulkReturnAllBtn", timeout=6000)
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "success": True,
+                        "account_index": f"aug_{account_idx}",
+                        "email": f"Augestel #{account_idx} ({email})",
+                        "total": 0,
+                        "count": 0,
+                        "numbers": [],
+                        "cached_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }, f, indent=2)
             except Exception:
-                btn = None
+                pass
 
-            res_message = ""
-            success = False
-
-            if btn and await btn.is_visible():
-                await btn.click()
+            all_cache = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
+            if os.path.exists(all_cache):
                 try:
-                    confirm_btn = await page.wait_for_selector("button.swal2-confirm", timeout=5000)
-                except Exception:
-                    confirm_btn = None
-
-                if confirm_btn and await confirm_btn.is_visible():
-                    try:
-                        async with page.expect_response(lambda r: "bulk-return" in r.url, timeout=25000) as resp_info:
-                            await confirm_btn.click()
-                        resp = await resp_info.value
-                        try:
-                            resp_json = await resp.json()
-                            success = resp_json.get("success", resp.status == 200)
-                            res_message = resp_json.get("message", "Semua nomor berhasil dikembalikan!")
-                            if "no active numbers" in str(res_message).lower():
-                                success = True
-                                res_message = "Tidak ada nomor aktif yang perlu di-return (akun sudah bersih/kosong)."
-                        except Exception:
-                            res_text = await resp.text()
-                            success = resp.status == 200
-                            res_message = res_text[:150]
-                            if "no active numbers" in str(res_message).lower():
-                                success = True
-                                res_message = "Tidak ada nomor aktif yang perlu di-return (akun sudah bersih/kosong)."
-                    except Exception as e_resp:
-                        res_message = f"Timeout respon portal return all: {e_resp}"
-                else:
-                    res_message = "Tombol konfirmasi Swal tidak muncul."
-            else:
-                # Cek jika tabel kosong
-                empty_el = await page.query_selector(".dataTables_empty")
-                if empty_el:
-                    success = True
-                    res_message = "Tidak ada nomor aktif pada akun ini (akun sudah bersih/kosong)."
-                else:
-                    curr_title = await page.title()
-                    res_message = f"Tombol Return All tidak tersedia di portal (Title: '{curr_title}', URL: '{page.url}')."
-
-            await context.close()
-
-            # Bersihkan cache HANYA JIKA return berhasil
-            if success:
-                _NUMBERS_CACHE.pop(f"augestel_{account_idx}", None)
-                _NUMBERS_CACHE.pop("augestel_all", None)
-                cache_file = os.path.join(os.path.dirname(__file__), f"augestel_numbers_cache_{account_idx}.json")
-                try:
-                    with open(cache_file, "w", encoding="utf-8") as f:
-                        json.dump({
-                            "success": True,
-                            "account_index": f"aug_{account_idx}",
-                            "email": f"Augestel #{account_idx} ({email})",
-                            "total": 0,
-                            "count": 0,
-                            "numbers": [],
-                            "cached_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }, f, indent=2)
+                    os.remove(all_cache)
                 except Exception:
                     pass
 
-                all_cache = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
-                if os.path.exists(all_cache):
-                    try:
-                        os.remove(all_cache)
-                    except Exception:
-                        pass
-
-                return {"success": True, "message": f"Berhasil return/hapus nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
-            else:
-                return {"success": False, "message": f"Gagal return nomor Akun Augestel #{account_idx} ({email}): {res_message}"}
-
-        except Exception as e:
-            try:
-                await context.close()
-            except Exception:
-                pass
-            return {"success": False, "message": f"Error eksekusi return all Augestel #{account_idx}: {e}"}
+        return res
+    except Exception as e:
+        logger.error(f"Error eksekusi return all pool Akun #{account_idx}: {e}")
+        return {"success": False, "message": f"Error eksekusi pool Augestel #{account_idx}: {e}"}
 
 
 async def _delete_ivasms_single_account(acc_idx: int, acc: dict) -> dict:
