@@ -1229,9 +1229,19 @@ def api_debug_inspect_api_doc():
                     class: el.className || ''
                 }));
             }''')
-            import re
-            keys = re.findall(r"sk_live_[a-zA-Z0-9_\-]+", content)
-            return {"title": title, "url": page.url, "keys": keys, "elements": forms[:30]}
+            card_html = await page.evaluate('''() => {
+                const btn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Regenerate') || b.innerText.includes('Generate'));
+                return btn && btn.closest('div.rounded-2xl, div.rounded-xl, section, div.bg-white') ? btn.closest('div.rounded-2xl, div.rounded-xl, section, div.bg-white').outerHTML : (btn ? btn.parentElement.parentElement.outerHTML : '');
+            }''')
+            all_forms = await page.evaluate('''() => {
+                return Array.from(document.querySelectorAll('form')).map(f => ({
+                    action: f.getAttribute('action'),
+                    method: f.getAttribute('method'),
+                    html: f.innerHTML
+                }));
+            }''')
+            return {"title": title, "url": page.url, "keys": keys, "card": card_html, "forms": all_forms}
+
         res = pool.run_coro(do_inspect(), timeout=35)
         # navigate back to numbers
         pool.run_coro(page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000))
