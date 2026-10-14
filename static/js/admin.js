@@ -2981,7 +2981,8 @@ function enableSmartCapBalancerMode() {
     if (delayInput) delayInput.value = '15';
     if (workersInput) workersInput.value = '2';
 
-    showToast('🚀 Mode Smart Balancer AKTIF! Seluruh 8 akun dipilih untuk diisi merata hingga batas 2.500 nomor per akun.', 'success');
+    const count = (augAddAccountsCache && augAddAccountsCache.length) ? augAddAccountsCache.length : document.querySelectorAll('.aug-acc-chk').length;
+    showToast(`🚀 Mode Smart Balancer AKTIF! Seluruh ${count} akun dipilih untuk diisi merata hingga batas 2.500 nomor per akun.`, 'success');
 }
 
 // ────────────────────────────────────────────
