@@ -629,7 +629,7 @@ def generate_numbers_excel(numbers_data: list, email: str = "") -> BytesIO:
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "IVASMS Numbers"
+    ws.title = "Augestel Numbers" if ("aug" in str(email).lower() or any("aug" in str(it.get("account_index", "")).lower() for it in numbers_data[:10])) else "IVASMS Numbers"
 
     # Styling header
     header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
@@ -721,11 +721,13 @@ def generate_numbers_excel(numbers_data: list, email: str = "") -> BytesIO:
                 else:
                     c.alignment = left_align
 
-    # Auto adjust column width
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or '')) for cell in col)
-        col_letter = openpyxl.utils.get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+    # Explicit column widths for speed (avoids iterating 150k cells)
+    if is_all_accounts:
+        col_widths = {'A': 8, 'B': 36, 'C': 22, 'D': 22, 'E': 14, 'F': 16, 'G': 16, 'H': 16, 'I': 14}
+    else:
+        col_widths = {'A': 8, 'B': 22, 'C': 22, 'D': 14, 'E': 16, 'F': 16, 'G': 16, 'H': 14}
+    for col_letter, width in col_widths.items():
+        ws.column_dimensions[col_letter].width = width
 
     buf = BytesIO()
     wb.save(buf)
