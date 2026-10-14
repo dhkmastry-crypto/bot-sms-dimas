@@ -672,6 +672,10 @@ async def process_account(account_idx: int, range_filter: str, max_add: int, del
                 agg_file = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
                 if os.path.exists(agg_file):
                     os.remove(agg_file)
+                # Sinkronkan detail nomor di background thread
+                import threading
+                from sync_all_augestel_numbers import sync_single_account
+                threading.Thread(target=sync_single_account, args=(account_idx, account_data), daemon=True).start()
             except Exception as ex_cache:
                 logger.debug(f"Gagal update cache disk akun #{account_idx}: {ex_cache}")
 

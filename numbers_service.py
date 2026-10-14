@@ -323,6 +323,17 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
                     json.dump(result, f, indent=2)
             except Exception:
                 pass
+
+            # Jika data nomor di cache belum lengkap dibanding total portal, jalankan background sync otomatis
+            if len(formatted_numbers) < portal_total:
+                import threading
+                def _bg_sync_acc():
+                    try:
+                        from sync_all_augestel_numbers import sync_single_account
+                        sync_single_account(target_idx, acc)
+                    except Exception:
+                        pass
+                threading.Thread(target=_bg_sync_acc, daemon=True).start()
             return result
         except Exception as e:
             if disk_data:
