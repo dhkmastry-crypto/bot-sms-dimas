@@ -2096,6 +2096,9 @@ async function loadAugestelAccountsList() {
                         </div>
                     </div>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button class="btn btn-sm" style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; font-weight: 600;" onclick="showAugestelWindow(${idx + 1})" title="Buka browser di layar desktop VPS untuk login / selesaikan captcha">
+                            <i class="fas fa-desktop"></i> Buka di Layar
+                        </button>
                         <button class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 600;" onclick="openAugSimulateModal(${idx + 1}, '${email}')" title="Test Live Webhook & Kirim SMS Dummy ke Telegram">
                             <i class="fas fa-vial"></i> Test SMS
                         </button>
@@ -2112,6 +2115,39 @@ async function loadAugestelAccountsList() {
         checkWebhookStatusLive();
     } catch (e) {
         container.innerHTML = `<div class="text-danger" style="padding: 10px;">Gagal memuat akun: ${e.message}</div>`;
+    }
+}
+
+async function showAugestelWindow(idx) {
+    showToast(`🖥️ Membuka jendela browser Akun #${idx} di layar desktop VPS...`, 'info');
+    try {
+        const res = await fetch(`/api/augestel/pool/show/${idx}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ ${data.message}`, 'success');
+        } else {
+            showToast(`⚠️ ${data.message}`, 'warning');
+        }
+    } catch (e) {
+        showToast(`❌ Error: ${e.message}`, 'error');
+    }
+}
+
+async function hideAugestelWindow(idx) {
+    try {
+        const res = await fetch(`/api/augestel/pool/hide/${idx}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(`✅ ${data.message}`, 'success');
+        }
+    } catch (e) {
+        showToast(`❌ Error: ${e.message}`, 'error');
     }
 }
 
