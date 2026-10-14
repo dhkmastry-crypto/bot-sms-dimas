@@ -1519,7 +1519,7 @@ def api_augestel_auto_add_start():
     
     try:
         proc = subprocess.Popen(
-            [sys.executable, "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count)],
+            [sys.executable, "-u", "auto_add_augestel.py", range_name, str(max_add), str(delay), account_arg, str(workers), str(batch_count)],
             cwd=BASE_DIR,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
