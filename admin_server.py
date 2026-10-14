@@ -2591,18 +2591,19 @@ def api_augestel_pool_debug(idx):
             url = page.url
             title = await page.title()
             form_info = await page.evaluate('''() => {
-                const iframes = Array.from(document.querySelectorAll('iframe')).map(f => ({
-                    src: f.src,
-                    name: f.name,
-                    id: f.id,
-                    visible: f.offsetParent !== null
-                }));
-                const turnstileEl = document.querySelector('.cf-turnstile, [data-sitekey], [name="cf-turnstile-response"]');
-                const sitekey = turnstileEl ? (turnstileEl.getAttribute('data-sitekey') || '') : '';
-                const turnstileResponse = document.querySelector('[name="cf-turnstile-response"]') ? document.querySelector('[name="cf-turnstile-response"]').value : '';
-                const formHtml = document.querySelector('#loginForm, form') ? document.querySelector('#loginForm, form').innerHTML.substring(0, 1500) : '';
-                return { iframes, sitekey, turnstileResponse, formHtml };
+                const f = document.querySelector('#loginForm, form');
+                return {
+                    formOuterHtml: f ? f.outerHTML : 'no form',
+                    bodyText: document.body.innerText
+                };
             }''')
+            try:
+                import os
+                scr_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scratch", f"login_acc{idx}.png")
+                await page.screenshot(path=scr_path, full_page=True)
+                form_info["screenshot"] = scr_path
+            except Exception as e_scr:
+                form_info["screenshot_err"] = str(e_scr)
             return {"url": url, "title": title, "form_info": form_info}
 
         res = pool.run_coro(get_debug(), timeout=15)
