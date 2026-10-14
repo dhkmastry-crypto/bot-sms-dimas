@@ -450,6 +450,7 @@
                                     </div>
                                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                                         <button class="btn btn-secondary btn-sm" onclick="checkWebhookStatusLive()" id="btnCheckWebhookLive"><i class="fas fa-sync-alt"></i> Cek Status</button>
+                                        <button class="btn btn-secondary btn-sm" onclick="triggerGuardianCheckNow()" id="btnGuardianCheckNow" title="Paksa periksa dan auto-heal webhook semua akun sekarang"><i class="fas fa-shield-alt"></i> Auto-Heal Check</button>
                                         <button class="btn btn-primary btn-sm" onclick="sendTestWebhookPing()" id="btnTestWebhookPing" style="background: #10b981;"><i class="fas fa-paper-plane"></i> Test Kirim Webhook</button>
                                     </div>
                                 </div>
@@ -466,6 +467,13 @@
                                         <div style="font-size: 0.78rem; color: var(--text-muted);">Status Tunnel Publik</div>
                                         <div style="font-size: 0.95rem; font-weight: 600; color: #38bdf8;" id="whTunnelStatus">🟢 Ngrok Online (24/7)</div>
                                     </div>
+                                    <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
+                                        <div style="font-size: 0.78rem; color: var(--text-muted);">Webhook Guardian (Auto-ON)</div>
+                                        <div style="font-size: 0.95rem; font-weight: 600; color: #10b981;" id="whGuardianStatus">🟢 Auto-Heal Aktif (24/7)</div>
+                                    </div>
+                                </div>
+                                <div id="whGuardianAccountsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;">
+                                    <!-- Badges per akun diisi otomatis via checkWebhookStatusLive() -->
                                 </div>
                             </div>
                         </div>
