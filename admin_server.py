@@ -159,6 +159,7 @@ def load_config():
             "FILE_LINK": r'FILE_LINK\s*=\s*"([^"]*)"',
             "NUMBER_LINK": r'NUMBER_LINK\s*=\s*"([^"]*)"',
             "OWNER_LINK": r'OWNER_LINK\s*=\s*"([^"]*)"',
+            "OWNER_CHAT_ID": r'OWNER_CHAT_ID\s*=\s*"([^"]*)"',
             "SENSOR_TEXT": r'SENSOR_TEXT\s*=\s*"([^"]*)"',
             "BOT_NAME": r'BOT_NAME\s*=\s*"([^"]*)"',
             "IVASMS_URL": r'IVASMS_URL\s*=\s*"([^"]*)"',
