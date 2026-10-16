@@ -1085,6 +1085,32 @@ function downloadAugestelNumbersExport(format) {
     window.location.href = downloadUrl;
 }
 
+async function sendAugestelNumbersToTelegram() {
+    const btn = document.getElementById('btnSendAugTxtTelegram');
+    if (btn) btn.disabled = true;
+
+    showToast('🚀 Sedang mengekspor seluruh nomor & mengirimkan file .txt ke Telegram...', 'info');
+
+    try {
+        const res = await fetch('/api/numbers/send-telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(`✅ Berhasil! File TXT (${(data.total_numbers || 0).toLocaleString('id-ID')} nomor) telah terkirim ke Telegram.`, 'success');
+        } else {
+            showToast('⚠️ ' + (data.message || 'Gagal mengirim file ke Telegram'), 'warning');
+        }
+    } catch (e) {
+        showToast('❌ Terjadi kesalahan: ' + e.message, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+}
+
 async function updateAugestelPoolStatus() {
     const badge = document.getElementById('augPoolStatusBadge');
     const text = document.getElementById('augPoolStatusText');
@@ -1437,6 +1463,7 @@ async function loadSettings() {
         if (document.getElementById('cfgSensorText')) document.getElementById('cfgSensorText').value = sensorText;
         if (document.getElementById('cfgNumberLink')) document.getElementById('cfgNumberLink').value = fileLink;
         if (document.getElementById('cfgOwnerLink')) document.getElementById('cfgOwnerLink').value = cfg.OWNER_LINK || '';
+        if (document.getElementById('cfgOwnerChatId')) document.getElementById('cfgOwnerChatId').value = cfg.OWNER_CHAT_ID || '';
     } catch (e) {
         showToast('Gagal memuat konfigurasi: ' + e.message, 'error');
     }
@@ -1458,6 +1485,7 @@ async function saveSettings() {
         NUMBER_LINK: fileLink,
         SENSOR_TEXT: sensorText,
         OWNER_LINK: document.getElementById('cfgOwnerLink')?.value.trim(),
+        OWNER_CHAT_ID: document.getElementById('cfgOwnerChatId')?.value.trim(),
     };
 
     if (document.getElementById('cfgEmail')) {
