@@ -366,25 +366,110 @@ def update_bot_status(ivasms_ok: bool = None, elite_ok: bool = None, augestel_ok
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler untuk /start command."""
+    """Handler untuk /start command dengan auto-detection Pemilik Bot."""
+    chat = update.effective_chat
+    user = update.effective_user
+
+    owner_info = ""
+    if chat and chat.type == "private":
+        try:
+            from telegram_file_sender import get_owner_chat_id, set_owner_chat_id
+            curr_owner = get_owner_chat_id()
+            if not curr_owner:
+                set_owner_chat_id(str(chat.id))
+                owner_info = (
+                    f"\n\n👑 *Status Pemilik Bot:*\n"
+                    f"Chat ID Anda (`{chat.id}`) telah *otomatis tersimpan* sebagai Pemilik Bot!\n"
+                    f"File nomor TXT akan otomatis dikirimkan ke chat pribadi ini setiap kali seluruh nomor akun Augestel selesai terdeteksi."
+                )
+            elif curr_owner == str(chat.id):
+                owner_info = (
+                    f"\n\n👑 *Status Pemilik Bot:*\n"
+                    f"Anda terdaftar sebagai Pemilik Bot (`{chat.id}`).\n"
+                    f"Ketik /filenomor untuk meminta file TXT nomor terbaru kapan saja."
+                )
+        except Exception:
+            pass
+
     welcome_msg = (
         f"🤖 *{BOT_NAME} - OTP Monitor Bot*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"\n"
-        f"Bot ini memonitor IVASMS dan mengirim\n"
+        f"Bot ini memonitor IVASMS & Augestel dan mengirim\n"
         f"kode OTP secara *real-time* ke grup.\n"
         f"\n"
         f"📋 *Perintah:*\n"
         f"  /start — Menu utama\n"
-        f"  /status — Status koneksi\n"
-        f"  /stats — Statistik OTP\n"
+        f"  /status — Status koneksi provider\n"
+        f"  /stats — Statistik OTP & cuan\n"
+        f"  /filenomor — Minta file TXT seluruh nomor Augestel\n"
+        f"  /myid — Cek Chat ID Telegram Anda\n"
+        f"  /setowner — Daftarkan chat ini sebagai Pemilik\n"
         f"  /ping — Cek bot hidup\n"
         f"\n"
         f"⚡ Polling interval: `{POLL_INTERVAL}` detik\n"
-        f"🌐 Source: `{IVASMS_URL}`\n"
+        f"🌐 Source: `{IVASMS_URL}`"
+        f"{owner_info}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     await update.message.reply_text(welcome_msg, parse_mode=ParseMode.MARKDOWN)
+
+
+async def cmd_myid(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler untuk melihat Chat ID Telegram."""
+    chat = update.effective_chat
+    user = update.effective_user
+    await update.message.reply_text(
+        f"🆔 *Info Telegram Anda:*\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"• Chat ID: `{chat.id}`\n"
+        f"• Tipe: `{chat.type}`\n"
+        f"• Nama: {user.full_name or 'N/A'}\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"Kirim `/setowner` di chat pribadi ini untuk mendaftarkan akun Anda sebagai penerima file nomor TXT otomatis.",
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+
+async def cmd_setowner(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler untuk mendaftarkan chat pribadi sebagai Pemilik Bot."""
+    chat = update.effective_chat
+    if not chat or chat.type != "private":
+        await update.message.reply_text("⚠️ Perintah `/setowner` harus dikirim melalui Chat Pribadi dengan bot (bukan di dalam grup)!", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    try:
+        from telegram_file_sender import set_owner_chat_id
+        set_owner_chat_id(str(chat.id))
+        await update.message.reply_text(
+            f"👑 *Sukses Terdaftar!*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"Chat ID `{chat.id}` kini resmi terdaftar sebagai *Pemilik Bot Telegram*.\n\n"
+            f"Setiap kali seluruh nomor akun Augestel selesai terdeteksi/disinkronkan, file `.txt` (1 nomor per baris) akan otomatis dikirimkan ke chat pribadi ini!\n\n"
+            f"Ketik `/filenomor` kapan saja untuk meminta file terbaru saat ini.",
+            parse_mode=ParseMode.MARKDOWN
+        )
+    except Exception as e:
+        await update.message.reply_text(f"❌ Gagal menyimpan: {e}", parse_mode=ParseMode.MARKDOWN)
+
+
+async def cmd_filenomor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler untuk meminta file TXT seluruh nomor Augestel secara on-demand."""
+    chat = update.effective_chat
+    status_msg = await update.message.reply_text("⏳ Sedang menyiapkan file TXT seluruh nomor Augestel...", parse_mode=ParseMode.MARKDOWN)
+    try:
+        from telegram_file_sender import export_and_send_augestel_numbers_txt
+        res = export_and_send_augestel_numbers_txt(target_chat_id=str(chat.id), force=True, trigger_reason="Permintaan On-Demand /filenomor")
+        if res.get("success"):
+            try:
+                await status_msg.delete()
+            except Exception:
+                pass
+        else:
+            await status_msg.edit_text(f"❌ Gagal mengirim file nomor: {res.get('message')}")
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Terjadi kesalahan: {e}")
+
 
 
 async def cmd_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -873,6 +958,11 @@ def main():
     app.add_handler(CommandHandler("status", cmd_status))
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("ping", cmd_ping))
+    app.add_handler(CommandHandler("myid", cmd_myid))
+    app.add_handler(CommandHandler("setowner", cmd_setowner))
+    app.add_handler(CommandHandler("filenomor", cmd_filenomor))
+    app.add_handler(CommandHandler("getnumbers", cmd_filenomor))
+    app.add_handler(CommandHandler("numbers", cmd_filenomor))
 
     # Register callback handler untuk inline buttons
     from telegram.ext import CallbackQueryHandler
