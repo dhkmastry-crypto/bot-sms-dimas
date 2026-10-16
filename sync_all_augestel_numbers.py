@@ -214,6 +214,13 @@ def sync_all_accounts():
     logger.info(f"📊 Total nomor teragregasi: {len(all_combined)} nomor (dari total {total_sum} nomor di portal)")
     logger.info("═" * 65)
 
+    # Otomatis simpan & kirim file TXT ke Telegram Pemilik Bot
+    try:
+        from telegram_file_sender import export_and_send_augestel_numbers_txt
+        export_and_send_augestel_numbers_txt(force=True, trigger_reason="Sinkronisasi Seluruh Akun Tuntas")
+    except Exception as ex_send:
+        logger.error(f"Gagal mengirim file nomor TXT ke Telegram: {ex_send}")
+
 
 if __name__ == "__main__":
     sync_all_accounts()

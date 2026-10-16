@@ -2107,6 +2107,11 @@ def api_augestel_auto_add_start():
                         get_all_numbers(force_refresh=True, provider="augestel")
                     except Exception:
                         pass
+                    try:
+                        from telegram_file_sender import export_and_send_augestel_numbers_txt
+                        export_and_send_augestel_numbers_txt(force=True, trigger_reason="Auto-Add Selesai (Nomor Baru Ditambahkan)")
+                    except Exception as ex_send:
+                        logger.error(f"Auto-send TXT error after fallback auto-add: {ex_send}")
         
         thread = threading.Thread(target=monitor_augestel_auto_add, daemon=True)
         thread.start()
@@ -2957,6 +2962,20 @@ def api_numbers_export_txt():
     except Exception as e:
         logger.error(f"Error in api_numbers_export_txt: {e}")
         return jsonify({"success": False, "message": f"Gagal export TXT: {e}"}), 500
+
+
+@app.route("/api/numbers/send-telegram", methods=["POST"])
+@login_required
+def api_numbers_send_telegram():
+    """Mengirim file TXT nomor Augestel ke Pemilik Bot Telegram secara manual dari dashboard"""
+    try:
+        from telegram_file_sender import export_and_send_augestel_numbers_txt
+        res = export_and_send_augestel_numbers_txt(force=True, trigger_reason="Manual dari Web Dashboard")
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error in api_numbers_send_telegram: {e}")
+        return jsonify({"success": False, "message": f"Gagal kirim ke Telegram: {e}"}), 500
+
 
 # ────────────────────────────────────────────
 #  RUN
