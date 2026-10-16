@@ -218,6 +218,7 @@ def save_config(new_config):
             "FILE_LINK": (r'(FILE_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
             "NUMBER_LINK": (r'(NUMBER_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
             "OWNER_LINK": (r'(OWNER_LINK\s*=\s*)"[^"]*"', r'\1"{}"'),
+            "OWNER_CHAT_ID": (r'(OWNER_CHAT_ID\s*=\s*)"[^"]*"', r'\1"{}"'),
             "SENSOR_TEXT": (r'(SENSOR_TEXT\s*=\s*)"[^"]*"', r'\1"{}"'),
             "BOT_NAME": (r'(BOT_NAME\s*=\s*)"[^"]*"', r'\1"{}"'),
             "IVASMS_EMAIL": (r'(IVASMS_EMAIL\s*=\s*)"[^"]*"', r'\1"{}"'),
@@ -2015,6 +2016,11 @@ def api_augestel_auto_add_start():
                         get_all_numbers(force_refresh=True, provider="augestel")
                     except Exception:
                         pass
+                    try:
+                        from telegram_file_sender import export_and_send_augestel_numbers_txt
+                        export_and_send_augestel_numbers_txt(force=True, trigger_reason="Auto-Add Selesai (Nomor Baru Ditambahkan)")
+                    except Exception as ex_send:
+                        logger.error(f"Auto-send TXT error after pool auto-add: {ex_send}")
 
         th = threading.Thread(target=run_pool_auto_add_thread, daemon=True)
         th.start()
