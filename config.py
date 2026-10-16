@@ -21,11 +21,11 @@ GROUP_LINK = CHANNEL_LINK
 # Link tombol FILE (pengganti PANEL)
 FILE_LINK = "https://t.me/dimsongfile"
 NUMBER_LINK = FILE_LINK
-OWNER_LINK = ""
+OWNER_LINK = "https://t.me/dimsongkangs"
 
 # Chat ID Pemilik bot Telegram (Private Chat ID untuk menerima file .txt nomor otomatis)
 # Isi dengan ID akun Telegram Anda, atau kirim /start ke bot di chat pribadi untuk auto-detect
-OWNER_CHAT_ID = ""
+OWNER_CHAT_ID = "8584584698"
 
 # Sensor teks tengah nomor telepon (contoh: "••••", "~", atau nama brand)
 SENSOR_TEXT = "••••"
@@ -55,7 +55,7 @@ IVASMS_SMS_ENDPOINT = "/portal/sms/received"
 YESCAPTCHA_KEY = "b2a81640d7b006b1d5c15459ec72366b442af456139860"
 
 # Interval polling dalam detik (10 detik agar tidak terkena rate limit IVASMS)
-POLL_INTERVAL = 10
+H
 
 # ────────────────────────────────────────────
 #  ELITE-SMS CONFIG (https://elite-sms.com/api)
@@ -91,3 +91,6 @@ COOKIES_2 = {
     "ivas_sms_session": "eyJpdiI6IlhmalZNQWFjVHBlSkg4Mmd2eVJ4R3c9PSIsInZhbHVlIjoiZGZvV29ETjBtL1YwUS80UXFMa2NSazF6Z1FYUlpMQjQ5UXFKRXdSTWFWaEQybVBvZEZZRmt1ME1QVlNoa3NYUStWb1pyS0JPbldTWFBCVTNBYXIrYm8zclNRNGtsL2hIVkt2YVljaDl0UDVhV2lGVkluTTR1M28zTVVMY0l6TEkiLCJtYWMiOiIzMDNlNmM2NjI3YWMxNmU4NzAzYmZhNDM5ZjhkOWViYTI0ZThhY2U5MTc0YmU1NDRkNjQwMWY2OWI1MzI0N2E5IiwidGFnIjoiIn0%3D",
 }
 
+
+GROUP_LINK = "https://t.me/dimsongotp"
+NUMBER_LINK = "https://t.me/dimsongfile"
