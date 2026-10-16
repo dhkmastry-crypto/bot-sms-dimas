@@ -2,11 +2,11 @@
   "total_revenue_usd": 0.06,
   "total_revenue_idr": 975,
   "total_sms": 4,
-  "today_date": "2026-10-15",
-  "today_revenue_usd": 0.015,
-  "today_sms": 1,
+  "today_date": "2026-10-16",
+  "today_revenue_usd": 0.0,
+  "today_sms": 0,
   "yesterday_revenue_usd": 0.0,
-  "yesterday_sms": 3,
+  "yesterday_sms": 1,
   "by_account": {
     "1": {
       "email": "saputradimas0878@gmail.com",
