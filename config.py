@@ -23,6 +23,10 @@ FILE_LINK = "https://t.me/dimsongfile"
 NUMBER_LINK = FILE_LINK
 OWNER_LINK = ""
 
+# Chat ID Pemilik bot Telegram (Private Chat ID untuk menerima file .txt nomor otomatis)
+# Isi dengan ID akun Telegram Anda, atau kirim /start ke bot di chat pribadi untuk auto-detect
+OWNER_CHAT_ID = ""
+
 # Sensor teks tengah nomor telepon (contoh: "••••", "~", atau nama brand)
 SENSOR_TEXT = "••••"
 
