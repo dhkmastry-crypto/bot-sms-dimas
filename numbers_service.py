@@ -439,6 +439,20 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             json.dump(result, f, indent=2)
     except Exception:
         pass
+
+    # Otomatis simpan & kirim file TXT ke Pemilik jika ada nomor terdeteksi
+    if len(all_combined) > 0:
+        try:
+            import threading
+            from telegram_file_sender import export_and_send_augestel_numbers_txt
+            threading.Thread(
+                target=export_and_send_augestel_numbers_txt,
+                kwargs={"force": False, "trigger_reason": "Deteksi Otomatis Seluruh Akun"},
+                daemon=True
+            ).start()
+        except Exception as ex_trig:
+            logger.debug(f"Auto-send trigger error: {ex_trig}")
+
     return result
 
 
