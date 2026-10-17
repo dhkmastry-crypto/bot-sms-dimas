@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.304,
-  "total_revenue_idr": 37440,
-  "total_sms": 144,
+  "total_revenue_usd": 2.32,
+  "total_revenue_idr": 37700,
+  "total_sms": 145,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 0.736,
-  "today_sms": 46,
+  "today_revenue_usd": 0.752,
+  "today_sms": 47,
   "yesterday_revenue_usd": 0.0,
   "yesterday_sms": 0,
   "by_account": {
@@ -52,9 +52,9 @@
     },
     "pakupakuwak@gmail.com": {
       "email": "pakupakuwak@gmail.com",
-      "sms": 4,
-      "usd": 0.064,
-      "idr": 1040
+      "sms": 5,
+      "usd": 0.08,
+      "idr": 1300
     },
     "dimasganteung69@gmail.com": {
       "email": "dimasganteung69@gmail.com",
@@ -119,6 +119,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 04:53:13",
+      "account": "pakupakuwak@gmail.com",
+      "phone": "265881544779",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 04:30:17",
       "account": "saputradimas0878@gmail.com",
@@ -350,16 +358,11 @@
       "otp": "249617",
       "country": "MW",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 01:47:18",
-      "account": "mayateng86@gmail.com",
-      "platform": "WhatsApp",
-      "otp": "175770",
-      "country": "MW",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 04:30:17",
-  "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)"
+  "last_event_time": "2026-10-18 04:53:13",
+  "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
+  "daily_breakdown": [],
+  "top_numbers": [],
+  "last_api_sync": null
 }

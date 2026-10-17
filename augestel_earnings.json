@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.288,
-  "total_revenue_idr": 37180,
-  "total_sms": 143,
+  "total_revenue_usd": 2.304,
+  "total_revenue_idr": 37440,
+  "total_sms": 144,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.936,
-  "today_sms": 121,
+  "today_revenue_usd": 1.952,
+  "today_sms": 122,
   "yesterday_revenue_usd": 0.336,
   "yesterday_sms": 21,
   "by_account": {
@@ -205,9 +205,9 @@
     },
     "6": {
       "email": "pakupakuwak@gmail.com",
-      "sms": 5,
-      "usd": 0.08,
-      "idr": 1300,
+      "sms": 6,
+      "usd": 0.096,
+      "idr": 1560,
       "api_connected": true,
       "top_numbers": [
         {
@@ -999,6 +999,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 04:53:13",
+      "account": "Akun #6",
+      "phone": "265881544779",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 04:30:15",
       "account": "Akun #1",
       "phone": "265881650315",
@@ -1201,5 +1209,6 @@
   ],
   "last_api_sync": "2026-10-18 04:40:26",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 32
+  "total_accounts_synced": 32,
+  "last_event_time": null
 }
