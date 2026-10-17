@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.4,
-  "total_revenue_idr": 39000,
-  "total_sms": 150,
+  "total_revenue_usd": 2.416,
+  "total_revenue_idr": 39260,
+  "total_sms": 151,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 2.048,
-  "today_sms": 128,
+  "today_revenue_usd": 2.064,
+  "today_sms": 129,
   "yesterday_revenue_usd": 0.336,
   "yesterday_sms": 21,
   "by_account": {
@@ -708,9 +708,9 @@
     },
     "28": {
       "email": "iprn_7536b3d4@jetable.fr.nf",
-      "sms": 2,
-      "usd": 0.032,
-      "idr": 520,
+      "sms": 3,
+      "usd": 0.048,
+      "idr": 780,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1017,6 +1017,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 06:11:12",
+      "account": "Akun #28",
+      "phone": "243850273767",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 06:03:12",
       "account": "Akun #9",
       "phone": "265881589091",
@@ -1244,14 +1252,6 @@
       "time": "2026-10-18 02:15:15",
       "account": "Akun #3",
       "phone": "265881342358",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 02:15:15",
-      "account": "Akun #3",
-      "phone": "265881482487",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
