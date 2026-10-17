@@ -119,22 +119,14 @@ function initPage(page) {
         setInterval(refreshLogs, 6000);
     } else if (page === 'sms-log') {
         loadSmsLog(1);
-    } else if (page === 'accounts') {
-        loadAccountsList();
-    } else if (page === 'augestel-accounts') {
+    } else if (page === 'accounts' || page === 'augestel-accounts' || page === 'accounts-augestel') {
         loadAugestelAccountsList();
-    } else if (page === 'auto-add') {
-        loadAutoAddAccountsOptions();
-        checkAutoAddStatus();
-        autoAddInterval = setInterval(checkAutoAddStatus, 3000);
-    } else if (page === 'auto-add-augestel') {
+    } else if (page === 'auto-add' || page === 'auto-add-augestel') {
         loadAugAddAccountSelect();
         checkAugestelAutoAddStatus();
         if (typeof augAutoAddInterval !== 'undefined' && augAutoAddInterval) clearInterval(augAutoAddInterval);
         augAutoAddInterval = setInterval(checkAugestelAutoAddStatus, 3000);
-    } else if (page === 'numbers') {
-        initNumbersPage();
-    } else if (page === 'numbers-augestel') {
+    } else if (page === 'numbers' || page === 'numbers-augestel') {
         initAugestelNumbersPage();
     } else if (page === 'bot-control') {
         loadBotControl();
@@ -157,7 +149,7 @@ async function checkGlobalConnection() {
         const indicator = document.getElementById('connectionStatus');
         if (!indicator) return;
 
-        const isOnline = data.stats && (data.stats.bot_running || data.stats.ivasms_connected);
+        const isOnline = data.stats && (data.stats.bot_running || data.stats.augestel_connected);
         const dot = indicator.querySelector('.status-dot');
         const span = indicator.querySelector('span');
 
@@ -165,9 +157,9 @@ async function checkGlobalConnection() {
             if (data.stats.bot_running) {
                 dot.className = 'status-dot online';
                 span.textContent = 'Bot Running';
-            } else if (data.stats.ivasms_connected) {
+            } else if (data.stats.augestel_connected) {
                 dot.className = 'status-dot online';
-                span.textContent = 'IVASMS Ready';
+                span.textContent = 'Augestel Ready';
             } else {
                 dot.className = 'status-dot offline';
                 span.textContent = 'Bot Offline';
@@ -885,44 +877,241 @@ async function initAugestelNumbersPage() {
     await loadAugestelNumbersData(false);
 }
 
-async function loadAugestelNumbersAccountOptions() {
-    const select = document.getElementById('augNumAccountSelect');
-    if (!select) return;
+let augestelAccountsList = [];
+let selectedAugAccounts = new Set();
 
+function isAllAugAccountsSelected() {
+    return augestelAccountsList.length > 0 && selectedAugAccounts.size === augestelAccountsList.length;
+}
+
+function getSelectedAugAccountParam() {
+    if (selectedAugAccounts.size === 0 || isAllAugAccountsSelected()) {
+        return 'augestel_all';
+    }
+    if (selectedAugAccounts.size === 1) {
+        return `augestel_${Array.from(selectedAugAccounts)[0]}`;
+    }
+    const sorted = Array.from(selectedAugAccounts).map(Number).sort((a, b) => a - b);
+    return sorted.map(i => `aug_${i}`).join(',');
+}
+
+async function loadAugestelNumbersAccountOptions() {
     try {
         const res = await fetch('/api/augestel/accounts');
         const data = await res.json();
-        const accounts = data.accounts || [];
+        augestelAccountsList = data.accounts || [];
 
-        if (accounts.length === 0) {
-            select.innerHTML = '<option value="augestel_1">Akun #1 (Default)</option>';
-            return;
+        if (augestelAccountsList.length === 0) {
+            augestelAccountsList = [{ email: 'Akun #1 (Default)' }];
         }
 
-        const currentVal = select.value;
-        let html = '';
-        if (accounts.length > 1) {
-            html += `<option value="augestel_all">⚡ SEMUA AKUN AUGESTEL (Total Gabungan ${accounts.length} Akun)</option>`;
+        // Initialize with all accounts by default if empty
+        if (selectedAugAccounts.size === 0) {
+            augestelAccountsList.forEach((_, i) => selectedAugAccounts.add(i + 1));
         }
-        html += accounts.map((acc, i) => {
-            const idx = i + 1;
-            return `<option value="augestel_${idx}">Akun #${idx} (${escapeHtml(acc.email)})</option>`;
-        }).join('');
 
-        select.innerHTML = html;
-
-        if (currentVal && (currentVal === 'augestel_all' || html.includes(`value="${currentVal}"`))) {
-            select.value = currentVal;
-        }
+        renderAugAccountCheckboxList();
+        updateAugAccountSelectorUI();
     } catch (e) {
         console.error('Failed to load Augestel accounts for numbers:', e);
     }
 }
 
+function renderAugAccountCheckboxList() {
+    const listEl = document.getElementById('augAccCheckboxList');
+    if (!listEl) return;
+
+    if (augestelAccountsList.length === 0) {
+        listEl.innerHTML = '<div style="padding: 10px; color: #94a3b8; font-size: 0.8rem; text-align: center;">Tidak ada akun terdaftar</div>';
+        return;
+    }
+
+    listEl.innerHTML = augestelAccountsList.map((acc, i) => {
+        const idx = i + 1;
+        const isChecked = selectedAugAccounts.has(idx);
+        return `
+            <label class="aug-acc-item" id="augAccItem_${idx}" data-email="${escapeHtml(acc.email).toLowerCase()}" data-idx="${idx}">
+                <input type="checkbox" value="${idx}" ${isChecked ? 'checked' : ''} onchange="onAugAccountCheckboxToggle(${idx}, this.checked)">
+                <span class="aug-acc-tag">#${idx}</span>
+                <span class="aug-acc-email" title="${escapeHtml(acc.email)}">${escapeHtml(acc.email)}</span>
+            </label>
+        `;
+    }).join('');
+}
+
+function onAugAccountCheckboxToggle(idx, isChecked) {
+    idx = Number(idx);
+    if (isChecked) {
+        selectedAugAccounts.add(idx);
+    } else {
+        if (selectedAugAccounts.size <= 1) {
+            showToast('Minimal 1 akun Augestel harus dipilih!', 'warning');
+            const cb = document.querySelector(`#augAccItem_${idx} input[type="checkbox"]`);
+            if (cb) cb.checked = true;
+            return;
+        }
+        selectedAugAccounts.delete(idx);
+    }
+    updateAugAccountSelectorUI();
+}
+
+function selectAugAllAccounts(selectAll) {
+    if (selectAll) {
+        augestelAccountsList.forEach((_, i) => selectedAugAccounts.add(i + 1));
+    } else {
+        selectedAugAccounts.clear();
+        selectedAugAccounts.add(1);
+        showToast('Menyisakan Akun #1 saja (minimal 1 akun)', 'info');
+    }
+    renderAugAccountCheckboxList();
+    updateAugAccountSelectorUI();
+}
+
+function toggleAugAccountDropdown(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('augAccMultiDropdown');
+    const chev = document.getElementById('augAccMultiChevron');
+    if (!dropdown) return;
+
+    if (dropdown.style.display === 'none' || !dropdown.style.display) {
+        dropdown.style.display = 'block';
+        if (chev) chev.style.transform = 'rotate(180deg)';
+        const searchInput = document.getElementById('augAccSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+            filterAugAccountOptions();
+            setTimeout(() => searchInput.focus(), 50);
+        }
+    } else {
+        dropdown.style.display = 'none';
+        if (chev) chev.style.transform = 'rotate(0deg)';
+    }
+}
+
+function applyAugAccountSelection() {
+    if (selectedAugAccounts.size === 0) {
+        showToast('Pilih minimal 1 akun Augestel!', 'warning');
+        return;
+    }
+    const dropdown = document.getElementById('augAccMultiDropdown');
+    const chev = document.getElementById('augAccMultiChevron');
+    if (dropdown) dropdown.style.display = 'none';
+    if (chev) chev.style.transform = 'rotate(0deg)';
+
+    updateAugAccountSelectorUI();
+    loadAugestelNumbersData(false);
+}
+
+function toggleAugAccountCardSelection(idx) {
+    idx = Number(idx);
+    if (selectedAugAccounts.has(idx)) {
+        if (selectedAugAccounts.size <= 1) {
+            showToast('Minimal 1 akun harus aktif!', 'warning');
+            return;
+        }
+        selectedAugAccounts.delete(idx);
+        showToast(`Akun #${idx} dikecualikan dari filter`, 'info');
+    } else {
+        selectedAugAccounts.add(idx);
+        showToast(`Akun #${idx} ditambahkan ke filter`, 'success');
+    }
+    renderAugAccountCheckboxList();
+    updateAugAccountSelectorUI();
+    loadAugestelNumbersData(false);
+}
+
+function filterAugAccountOptions() {
+    const q = (document.getElementById('augAccSearchInput')?.value || '').toLowerCase().trim();
+    document.querySelectorAll('.aug-acc-item').forEach(item => {
+        const email = item.getAttribute('data-email') || '';
+        const idx = item.getAttribute('data-idx') || '';
+        if (!q || email.includes(q) || idx.includes(q) || `akun #${idx}`.includes(q)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function updateAugAccountSelectorUI() {
+    const hiddenInput = document.getElementById('augNumAccountSelect');
+    const param = getSelectedAugAccountParam();
+    if (hiddenInput) hiddenInput.value = param;
+
+    const labelSpan = document.getElementById('augAccMultiLabel');
+    const badgeSpan = document.getElementById('augAccMultiBadge');
+    const countText = document.getElementById('augAccSelectedCountText');
+
+    const totalAccounts = augestelAccountsList.length;
+    const selCount = selectedAugAccounts.size;
+
+    if (labelSpan && badgeSpan) {
+        if (selCount === totalAccounts || totalAccounts === 0) {
+            labelSpan.innerHTML = `<i class="fas fa-bolt" style="color: #a78bfa;"></i> <span>Semua Akun Augestel (${totalAccounts} Akun)</span>`;
+            badgeSpan.textContent = 'Semua';
+            badgeSpan.style.background = 'rgba(139, 92, 246, 0.25)';
+            badgeSpan.style.color = '#c4b5fd';
+        } else if (selCount === 1) {
+            const singleIdx = Array.from(selectedAugAccounts)[0];
+            const acc = augestelAccountsList[singleIdx - 1];
+            const em = acc ? acc.email : `Akun #${singleIdx}`;
+            labelSpan.innerHTML = `<i class="fas fa-user-check" style="color: #38bdf8;"></i> <span>Akun #${singleIdx} (${escapeHtml(em)})</span>`;
+            badgeSpan.textContent = `1 Akun`;
+            badgeSpan.style.background = 'rgba(56, 189, 248, 0.2)';
+            badgeSpan.style.color = '#7dd3fc';
+        } else {
+            const sorted = Array.from(selectedAugAccounts).map(Number).sort((a,b)=>a-b);
+            labelSpan.innerHTML = `<i class="fas fa-users-cog" style="color: #34d399;"></i> <span>${selCount} Akun Terpilih (#${sorted.join(', #')})</span>`;
+            badgeSpan.textContent = `${selCount} Akun`;
+            badgeSpan.style.background = 'rgba(16, 185, 129, 0.2)';
+            badgeSpan.style.color = '#6ee7b7';
+        }
+    }
+
+    if (countText) {
+        countText.textContent = `${selCount} dari ${totalAccounts} akun terpilih`;
+    }
+
+    // Update breakdown cards visual active/inactive state if cards exist
+    document.querySelectorAll('.account-breakdown-card.aug-acc-card-interactive').forEach(card => {
+        const cIdx = Number(card.getAttribute('data-account-index'));
+        const isSel = selectedAugAccounts.has(cIdx);
+        if (isSel) {
+            card.classList.remove('unselected');
+            card.classList.add('selected');
+            const badge = card.querySelector('.aug-card-select-badge');
+            if (badge) {
+                badge.className = 'aug-card-select-badge badge-selected';
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> Terpilih';
+            }
+        } else {
+            card.classList.remove('selected');
+            card.classList.add('unselected');
+            const badge = card.querySelector('.aug-card-select-badge');
+            if (badge) {
+                badge.className = 'aug-card-select-badge badge-unselected';
+                badge.innerHTML = '<i class="far fa-circle"></i> Nonaktif';
+            }
+        }
+    });
+}
+
+// Global click listener to close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('augAccMultiDropdown');
+    const btn = document.getElementById('augAccMultiBtn');
+    if (dropdown && dropdown.style.display === 'block') {
+        if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.style.display = 'none';
+            const chev = document.getElementById('augAccMultiChevron');
+            if (chev) chev.style.transform = 'rotate(0deg)';
+        }
+    }
+});
+
 async function loadAugestelNumbersData(forceRefresh = false) {
-    const select = document.getElementById('augNumAccountSelect');
-    const accIdx = select ? select.value : 'augestel_all';
-    const isAll = accIdx === 'augestel_all';
+    const accIdx = getSelectedAugAccountParam();
+    const isMultiple = accIdx === 'augestel_all' || accIdx.includes(',');
     const tbody = document.getElementById('augNumbersTableBody');
     const statTotal = document.getElementById('augNumStatTotal');
     const statAcc = document.getElementById('augNumStatAccount');
@@ -939,10 +1128,10 @@ async function loadAugestelNumbersData(forceRefresh = false) {
     if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="${isAll ? 7 : 6}" class="text-center" style="padding: 30px;">
+                <td colspan="${isMultiple ? 8 : 7}" class="text-center" style="padding: 30px;">
                     <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: #8b5cf6;"></i>
                     <div style="margin-top: 10px; font-weight: 500;">
-                        ${isAll ? 'Memuat dan mendeteksi nomor dari seluruh akun Augestel terdaftar...' : (forceRefresh ? 'Menghubungkan ke API Augestel dan mendeteksi nomor realtime...' : 'Memuat data nomor akun Augestel...')}
+                        ${isMultiple ? 'Memuat dan mendeteksi nomor dari akun-akun Augestel terpilih...' : (forceRefresh ? 'Menghubungkan ke API Augestel dan mendeteksi nomor realtime...' : 'Memuat data nomor akun Augestel...')}
                     </div>
                 </td>
             </tr>
@@ -951,13 +1140,13 @@ async function loadAugestelNumbersData(forceRefresh = false) {
 
     try {
         updateAugestelPoolStatus();
-        const res = await fetch(`/api/numbers?account_index=${accIdx}&refresh=${forceRefresh ? '1' : '0'}`);
+        const res = await fetch(`/api/numbers?account_index=${encodeURIComponent(accIdx)}&refresh=${forceRefresh ? '1' : '0'}`);
         const data = await res.json();
 
         if (!data.success) {
             showToast(data.message || 'Gagal mengambil nomor dari portal Augestel', 'error');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isMultiple ? 8 : 7}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
             }
             if (statTotal) statTotal.textContent = '0';
             if (breakdownEl) breakdownEl.style.display = 'none';
@@ -969,42 +1158,79 @@ async function loadAugestelNumbersData(forceRefresh = false) {
 
         if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
         if (statAcc) {
-            statAcc.textContent = isAll ? `Semua Akun Augestel (${(data.accounts_breakdown || []).length} Akun)` : (data.email || 'Augestel Portal');
+            if (accIdx === 'augestel_all') {
+                statAcc.textContent = `Semua Akun Augestel (${(data.accounts_breakdown || []).length} Akun)`;
+            } else if (accIdx.includes(',')) {
+                statAcc.textContent = `${selectedAugAccounts.size} Akun Terpilih (#${Array.from(selectedAugAccounts).map(Number).sort((a,b)=>a-b).join(', #')})`;
+            } else {
+                statAcc.textContent = data.email || 'Augestel Portal';
+            }
         }
         if (statLast) statLast.textContent = data.cached_at || 'Baru saja';
         if (summary) {
+            const accDesc = isMultiple ? ` (${selectedAugAccounts.size} Akun Terpilih)` : '';
             if (allAugestelNumbersList.length >= total) {
-                summary.innerHTML = `Menampilkan total <b>${total.toLocaleString('id-ID')}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+                summary.innerHTML = `Menampilkan total <b>${total.toLocaleString('id-ID')}</b> nomor${accDesc}`;
             } else {
-                summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length.toLocaleString('id-ID')}</b> dari total <b>${total.toLocaleString('id-ID')}</b> nomor${isAll ? ' (Semua Akun Augestel)' : ''}`;
+                summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length.toLocaleString('id-ID')}</b> dari total <b>${total.toLocaleString('id-ID')}</b> nomor${accDesc}`;
             }
         }
 
-        // Render breakdown cards jika memilih semua akun
+        // Render interactive breakdown cards
         if (breakdownEl) {
-            if (isAll && data.accounts_breakdown && data.accounts_breakdown.length > 0) {
+            if (data.accounts_breakdown && data.accounts_breakdown.length > 0) {
                 breakdownEl.style.display = 'grid';
-                breakdownEl.innerHTML = data.accounts_breakdown.map(b => `
-                    <div class="account-breakdown-card" style="border-left: 3px solid #8b5cf6;">
-                        <span class="account-breakdown-badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd;"><i class="fas fa-satellite-dish"></i> Akun #${b.account_index}</span>
-                        <span class="account-breakdown-email" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
-                        <span class="account-breakdown-count" style="color: #a78bfa;">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
+                const headerHtml = `
+                    <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; padding: 4px 6px; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-size: 0.82rem; font-weight: 600; color: #c4b5fd;">
+                            <i class="fas fa-hand-pointer" style="margin-right: 6px; color: #a78bfa;"></i> Klik kartu akun di bawah untuk filter multi-select akun secara instan:
+                        </span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn btn-xs" onclick="selectAugAllAccounts(true); loadAugestelNumbersData(false);" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4); font-size: 0.72rem; padding: 2px 8px;">
+                                <i class="fas fa-check-double"></i> Pilih Semua
+                            </button>
+                            <button type="button" class="btn btn-xs" onclick="selectAugAllAccounts(false); loadAugestelNumbersData(false);" style="background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.72rem; padding: 2px 8px;">
+                                <i class="fas fa-undo"></i> Reset (Akun #1)
+                            </button>
+                        </div>
                     </div>
-                `).join('');
+                `;
+
+                const cardsHtml = data.accounts_breakdown.map(b => {
+                    const idx = Number(b.account_index);
+                    const isSel = selectedAugAccounts.has(idx);
+                    return `
+                        <div class="account-breakdown-card aug-acc-card-interactive ${isSel ? 'selected' : 'unselected'}" 
+                             data-account-index="${idx}" 
+                             onclick="toggleAugAccountCardSelection(${idx})" 
+                             title="Klik untuk ${isSel ? 'mengecualikan' : 'memilih'} Akun #${idx} dari filter">
+                            <span class="account-breakdown-badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd;">
+                                <i class="fas fa-satellite-dish"></i> Akun #${idx}
+                            </span>
+                            <span class="account-breakdown-email" title="${escapeHtml(b.email)}">${escapeHtml(b.email)}</span>
+                            <span class="account-breakdown-count" style="color: #a78bfa;">${(b.total || 0).toLocaleString('id-ID')} nomor</span>
+                            <span class="aug-card-select-badge ${isSel ? 'badge-selected' : 'badge-unselected'}">
+                                ${isSel ? '<i class="fas fa-check-circle"></i> Terpilih' : '<i class="far fa-circle"></i> Nonaktif'}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+
+                breakdownEl.innerHTML = headerHtml + cardsHtml;
             } else {
                 breakdownEl.style.display = 'none';
                 breakdownEl.innerHTML = '';
             }
         }
 
-        renderAugestelNumbersTable(allAugestelNumbersList, isAll);
+        renderAugestelNumbersTable(allAugestelNumbersList, isMultiple);
         if (forceRefresh) {
             showToast(`Berhasil mendeteksi total ${total} nomor Augestel!`, 'success');
         }
     } catch (e) {
         showToast(`Error: ${e.message}`, 'error');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${isMultiple ? 8 : 7}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
         }
     } finally {
         if (btnRef) {
@@ -1014,25 +1240,37 @@ async function loadAugestelNumbersData(forceRefresh = false) {
     }
 }
 
+// ── Multi-Select State for Augestel Numbers ──
+let selectedAugNumbers = new Set();
+let currentVisibleAugNumbers = [];
+let lastAugCheckedIndex = null;
+
 function renderAugestelNumbersTable(list, isAll = false) {
     const tbody = document.getElementById('augNumbersTableBody');
     const thAcc = document.getElementById('thAugAccountCol');
     if (thAcc) thAcc.style.display = isAll ? '' : 'none';
 
+    currentVisibleAugNumbers = list || [];
+
     if (!tbody) return;
 
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isAll ? 7 : 6}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor Augestel yang ditemukan.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${isAll ? 8 : 7}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor Augestel yang ditemukan.</td></tr>`;
+        updateAugSelectionUI();
         return;
     }
 
     tbody.innerHTML = list.map((item, idx) => {
+        const isChecked = selectedAugNumbers.has(String(item.number));
         const accCol = isAll ? `<td style="text-align: center;"><span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> ${item.account_index ? item.account_index.replace('aug_', '#') : '#1'}</span></td>` : '';
         return `
-            <tr>
+            <tr id="augRow_${idx}" class="${isChecked ? 'selected-aug-row' : ''}" onclick="handleAugRowClick(event, ${idx})" style="cursor: pointer;">
+                <td style="text-align: center;" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="aug-num-checkbox" data-index="${idx}" data-number="${escapeHtml(item.number)}" ${isChecked ? 'checked' : ''} onchange="onAugNumberSelectChange(this, ${idx}, event)" style="cursor: pointer; width: 17px; height: 17px; accent-color: #8b5cf6; vertical-align: middle;">
+                </td>
                 <td class="text-muted mono" style="font-size: 0.82rem; text-align: center;">${idx + 1}</td>
                 ${accCol}
-                <td class="selectable mono" style="font-weight: 600; color: #a78bfa;" title="Klik untuk salin" onclick="copyText('${escapeHtml(item.number)}')">
+                <td class="selectable mono" style="font-weight: 600; color: #a78bfa;" title="Klik untuk salin satu nomor" onclick="event.stopPropagation(); copyText('${escapeHtml(item.number)}')">
                     <i class="fas fa-phone-alt" style="font-size: 0.72rem; opacity: 0.65; margin-right: 6px;"></i>
                     <span>${escapeHtml(item.number)}</span>
                 </td>
@@ -1043,17 +1281,346 @@ function renderAugestelNumbersTable(list, isAll = false) {
             </tr>
         `;
     }).join('');
+
+    updateAugSelectionUI();
+}
+
+function handleAugRowClick(event, idx) {
+    if (['INPUT', 'BUTTON', 'A', 'I', 'SELECT'].includes(event.target.tagName)) return;
+    const cb = document.querySelector(`.aug-num-checkbox[data-index="${idx}"]`);
+    if (cb) {
+        cb.checked = !cb.checked;
+        onAugNumberSelectChange(cb, idx, event);
+    }
+}
+
+function onAugNumberSelectChange(checkbox, index, event) {
+    const isChecked = checkbox.checked;
+    const num = checkbox.dataset.number;
+
+    if (event && event.shiftKey && lastAugCheckedIndex !== null && lastAugCheckedIndex !== index) {
+        const start = Math.min(lastAugCheckedIndex, index);
+        const end = Math.max(lastAugCheckedIndex, index);
+        for (let i = start; i <= end; i++) {
+            const item = currentVisibleAugNumbers[i];
+            if (item && item.number) {
+                if (isChecked) {
+                    selectedAugNumbers.add(String(item.number));
+                } else {
+                    selectedAugNumbers.delete(String(item.number));
+                }
+                const rowCb = document.querySelector(`.aug-num-checkbox[data-index="${i}"]`);
+                if (rowCb) rowCb.checked = isChecked;
+                const rowEl = document.getElementById(`augRow_${i}`);
+                if (rowEl) {
+                    if (isChecked) rowEl.classList.add('selected-aug-row');
+                    else rowEl.classList.remove('selected-aug-row');
+                }
+            }
+        }
+    } else {
+        if (isChecked) {
+            selectedAugNumbers.add(String(num));
+        } else {
+            selectedAugNumbers.delete(String(num));
+        }
+        const rowEl = document.getElementById(`augRow_${index}`);
+        if (rowEl) {
+            if (isChecked) rowEl.classList.add('selected-aug-row');
+            else rowEl.classList.remove('selected-aug-row');
+        }
+    }
+
+    lastAugCheckedIndex = index;
+    updateAugSelectionUI();
+}
+
+function toggleSelectAllAugNumbers(masterCheckbox) {
+    const isChecked = masterCheckbox.checked;
+    currentVisibleAugNumbers.forEach((item, i) => {
+        if (item && item.number) {
+            if (isChecked) {
+                selectedAugNumbers.add(String(item.number));
+            } else {
+                selectedAugNumbers.delete(String(item.number));
+            }
+            const rowCb = document.querySelector(`.aug-num-checkbox[data-index="${i}"]`);
+            if (rowCb) rowCb.checked = isChecked;
+            const rowEl = document.getElementById(`augRow_${i}`);
+            if (rowEl) {
+                if (isChecked) rowEl.classList.add('selected-aug-row');
+                else rowEl.classList.remove('selected-aug-row');
+            }
+        }
+    });
+    updateAugSelectionUI();
+}
+
+function selectAllFilteredAugNumbers() {
+    currentVisibleAugNumbers.forEach((item, i) => {
+        if (item && item.number) {
+            selectedAugNumbers.add(String(item.number));
+            const rowCb = document.querySelector(`.aug-num-checkbox[data-index="${i}"]`);
+            if (rowCb) rowCb.checked = true;
+            const rowEl = document.getElementById(`augRow_${i}`);
+            if (rowEl) rowEl.classList.add('selected-aug-row');
+        }
+    });
+    updateAugSelectionUI();
+    showToast(`✅ Berhasil memilih seluruh ${currentVisibleAugNumbers.length.toLocaleString('id-ID')} nomor di tabel!`, 'success');
+}
+
+function clearAugNumberSelection() {
+    selectedAugNumbers.clear();
+    lastAugCheckedIndex = null;
+    document.querySelectorAll('.aug-num-checkbox').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.selected-aug-row').forEach(row => row.classList.remove('selected-aug-row'));
+    updateAugSelectionUI();
+}
+
+function updateAugSelectionUI() {
+    const count = selectedAugNumbers.size;
+    const toolbar = document.getElementById('augSelectedToolbar');
+    const countText = document.getElementById('augSelectedCountText');
+    const masterCb = document.getElementById('augSelectAllCheckbox');
+    const visCountEl = document.getElementById('augTotalVisibleCount');
+
+    if (visCountEl) visCountEl.textContent = currentVisibleAugNumbers.length.toLocaleString('id-ID');
+    if (countText) countText.textContent = count.toLocaleString('id-ID');
+
+    document.querySelectorAll('.aug-sel-num-count').forEach(el => {
+        el.textContent = count.toLocaleString('id-ID');
+    });
+
+    if (toolbar) {
+        if (count > 0) {
+            toolbar.style.display = 'flex';
+        } else {
+            toolbar.style.display = 'none';
+        }
+    }
+
+    if (masterCb && currentVisibleAugNumbers.length > 0) {
+        let selectedVisibleCount = 0;
+        currentVisibleAugNumbers.forEach(item => {
+            if (item && item.number && selectedAugNumbers.has(String(item.number))) {
+                selectedVisibleCount++;
+            }
+        });
+
+        if (selectedVisibleCount === 0) {
+            masterCb.checked = false;
+            masterCb.indeterminate = false;
+        } else if (selectedVisibleCount === currentVisibleAugNumbers.length) {
+            masterCb.checked = true;
+            masterCb.indeterminate = false;
+        } else {
+            masterCb.checked = false;
+            masterCb.indeterminate = true;
+        }
+    } else if (masterCb) {
+        masterCb.checked = false;
+        masterCb.indeterminate = false;
+    }
+}
+
+function getSelectedAugNumbersData() {
+    const list = [];
+    allAugestelNumbersList.forEach(item => {
+        if (item && item.number && selectedAugNumbers.has(String(item.number))) {
+            list.push(item);
+        }
+    });
+    return list;
+}
+
+function copySelectedAugNumbers() {
+    const list = getSelectedAugNumbersData();
+    if (list.length === 0) {
+        showToast('Pilih minimal 1 nomor terlebih dahulu', 'warning');
+        return;
+    }
+
+    const textToCopy = list.map(item => String(item.number).trim()).join('\n');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            showToast(`✅ Berhasil menyalin ${list.length.toLocaleString('id-ID')} nomor ke clipboard!`, 'success');
+        }).catch(() => {
+            copyTextFallback(textToCopy, list.length);
+        });
+    } else {
+        copyTextFallback(textToCopy, list.length);
+    }
+}
+
+function copyTextFallback(text, count) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+        document.execCommand('copy');
+        showToast(`✅ Berhasil menyalin ${count.toLocaleString('id-ID')} nomor ke clipboard!`, 'success');
+    } catch (e) {
+        showToast('Gagal menyalin: ' + e.message, 'error');
+    }
+    document.body.removeChild(ta);
+}
+
+function exportSelectedAugNumbersTxt() {
+    const list = getSelectedAugNumbersData();
+    if (list.length === 0) {
+        showToast('Pilih minimal 1 nomor terlebih dahulu', 'warning');
+        return;
+    }
+
+    const lines = list.map(item => String(item.number).trim()).join('\n');
+    const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const nowStr = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+    a.href = url;
+    a.download = `augestel_selected_${list.length}_nomor_${nowStr}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`✅ File TXT (${list.length.toLocaleString('id-ID')} nomor) berhasil didownload!`, 'success');
+}
+
+async function exportSelectedAugNumbersExcel() {
+    const list = getSelectedAugNumbersData();
+    if (list.length === 0) {
+        showToast('Pilih minimal 1 nomor terlebih dahulu', 'warning');
+        return;
+    }
+
+    showToast(`📊 Menyiapkan export Excel untuk ${list.length.toLocaleString('id-ID')} nomor terpilih...`, 'info');
+
+    try {
+        const res = await fetch('/api/numbers/export-selected/excel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ numbers: list })
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.message || 'Gagal export Excel', 'error');
+            return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const nowStr = new Date().toISOString().replace(/[-:T.]/g, '').slice(0, 14);
+        a.href = url;
+        a.download = `augestel_selected_${list.length}_nomor_${nowStr}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast(`✅ File Excel (${list.length.toLocaleString('id-ID')} nomor) berhasil didownload!`, 'success');
+    } catch (e) {
+        showToast('Error export Excel: ' + e.message, 'error');
+    }
+}
+
+async function sendSelectedAugNumbersTelegram() {
+    const list = getSelectedAugNumbersData();
+    if (list.length === 0) {
+        showToast('Pilih minimal 1 nomor terlebih dahulu', 'warning');
+        return;
+    }
+
+    showToast(`🚀 Mengirim ${list.length.toLocaleString('id-ID')} nomor terpilih ke Telegram...`, 'info');
+
+    try {
+        const res = await fetch('/api/numbers/send-telegram-selected', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ numbers: list })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Terkirim ke Telegram!',
+                    text: data.message || `File TXT berisi ${list.length} nomor telah dikirim ke Telegram Pemilik.`,
+                    background: '#1e293b',
+                    color: '#f8fafc',
+                    confirmButtonColor: '#38bdf8'
+                });
+            } else {
+                showToast(data.message, 'success');
+            }
+        } else {
+            showToast('⚠️ ' + (data.message || 'Gagal mengirim ke Telegram'), 'warning');
+        }
+    } catch (e) {
+        showToast('❌ Error: ' + e.message, 'error');
+    }
+}
+
+async function deleteSelectedAugNumbers() {
+    const list = getSelectedAugNumbersData();
+    if (list.length === 0) {
+        showToast('Pilih minimal 1 nomor terlebih dahulu', 'warning');
+        return;
+    }
+
+    const accIdx = typeof getSelectedAugAccountParam === 'function' ? getSelectedAugAccountParam() : (document.getElementById('augNumAccountSelect')?.value || 'augestel_all');
+
+    const confirmMsg = `Apakah Anda yakin ingin MENGHAPUS / RETURN ${list.length.toLocaleString('id-ID')} NOMOR TERPILIH?\n\n` +
+        `• Nomor yang dipilih akan dihapus dari daftar akun Augestel.\n` +
+        `• Cache database lokal akan otomatis diperbarui.`;
+
+    if (!confirm(confirmMsg)) return;
+
+    showToast(`Sedang menghapus/return ${list.length.toLocaleString('id-ID')} nomor terpilih...`, 'info');
+
+    try {
+        const res = await fetch('/api/numbers/delete-selected', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                numbers: list.map(item => String(item.number).trim()),
+                account_index: accIdx
+            })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast(data.message || `Berhasil menghapus ${list.length} nomor!`, 'success');
+            // Hapus dari data memori lokal
+            const delSet = new Set(list.map(item => String(item.number).trim()));
+            allAugestelNumbersList = allAugestelNumbersList.filter(item => !delSet.has(String(item.number).trim()));
+            clearAugNumberSelection();
+            filterAugestelNumbersTable();
+        } else {
+            showToast(data.message || 'Gagal menghapus nomor terpilih', 'error');
+        }
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
 }
 
 function filterAugestelNumbersTable() {
     const query = (document.getElementById('augNumSearchInput')?.value || '').toLowerCase().trim();
     const summary = document.getElementById('augNumCountSummary');
-    const select = document.getElementById('augNumAccountSelect');
-    const isAll = select && select.value === 'augestel_all';
+    const accIdx = getSelectedAugAccountParam();
+    const isMultiple = accIdx === 'augestel_all' || accIdx.includes(',');
 
     if (!query) {
-        renderAugestelNumbersTable(allAugestelNumbersList, isAll);
-        if (summary) summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length}</b> nomor`;
+        renderAugestelNumbersTable(allAugestelNumbersList, isMultiple);
+        if (summary) summary.innerHTML = `Menampilkan <b>${allAugestelNumbersList.length.toLocaleString('id-ID')}</b> nomor`;
         return;
     }
 
@@ -1064,13 +1631,12 @@ function filterAugestelNumbersTable() {
                (item.id && item.id.includes(query));
     });
 
-    renderAugestelNumbersTable(filtered, isAll);
-    if (summary) summary.innerHTML = `Ditemukan <b>${filtered.length}</b> hasil dari <b>${allAugestelNumbersList.length}</b> nomor`;
+    renderAugestelNumbersTable(filtered, isMultiple);
+    if (summary) summary.innerHTML = `Ditemukan <b>${filtered.length.toLocaleString('id-ID')}</b> hasil dari <b>${allAugestelNumbersList.length.toLocaleString('id-ID')}</b> nomor`;
 }
 
 function downloadAugestelNumbersExport(format) {
-    const select = document.getElementById('augNumAccountSelect');
-    const accIdx = select ? select.value : 'augestel_all';
+    const accIdx = getSelectedAugAccountParam();
     const isAll = accIdx === 'augestel_all';
 
     if (allAugestelNumbersList.length === 0) {
@@ -1078,10 +1644,10 @@ function downloadAugestelNumbersExport(format) {
         return;
     }
 
-    const label = isAll ? 'SEMUA AKUN AUGESTEL' : `Akun Augestel (${accIdx.replace('aug_', '#')})`;
+    const label = isAll ? 'SEMUA AKUN AUGESTEL' : `${selectedAugAccounts.size} Akun Terpilih (#${Array.from(selectedAugAccounts).map(Number).sort((a,b)=>a-b).join(', #')})`;
     const countLabel = allAugestelNumbersList.length ? `(${allAugestelNumbersList.length.toLocaleString('id-ID')} nomor)` : '';
     showToast(`Menyiapkan export ${format.toUpperCase()} ${label} ${countLabel}...`, 'info');
-    const downloadUrl = `/api/numbers/export/${format}?account_index=${accIdx}`;
+    const downloadUrl = `/api/numbers/export/${format}?account_index=${encodeURIComponent(accIdx)}`;
     window.location.href = downloadUrl;
 }
 
@@ -1089,13 +1655,15 @@ async function sendAugestelNumbersToTelegram() {
     const btn = document.getElementById('btnSendAugTxtTelegram');
     if (btn) btn.disabled = true;
 
-    showToast('🚀 Sedang mengekspor seluruh nomor & mengirimkan file .txt ke Telegram...', 'info');
+    const accIdx = getSelectedAugAccountParam();
+    const label = accIdx === 'augestel_all' ? 'seluruh akun' : `${selectedAugAccounts.size} akun terpilih`;
+    showToast(`🚀 Sedang mengekspor nomor ${label} & mengirimkan file .txt ke Telegram...`, 'info');
 
     try {
         const res = await fetch('/api/numbers/send-telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
+            body: JSON.stringify({ account_index: accIdx })
         });
         const data = await res.json();
 
@@ -1147,14 +1715,13 @@ async function updateAugestelPoolStatus() {
 }
 
 async function deleteAllAugestelNumbers() {
-    const select = document.getElementById('augNumAccountSelect');
-    const accIdx = select ? select.value : 'augestel_all';
+    const accIdx = getSelectedAugAccountParam();
     const isAll = accIdx === 'augestel_all';
-    const accLabel = isAll ? 'SEMUA AKUN AUGESTEL' : `Akun Augestel (${accIdx.replace('augestel_', '#')})`;
+    const accLabel = isAll ? 'SEMUA AKUN AUGESTEL' : `${selectedAugAccounts.size} AKUN TERPILIH (#${Array.from(selectedAugAccounts).map(Number).sort((a,b)=>a-b).join(', #')})`;
 
     const confirmMsg = `Apakah Anda yakin ingin RETURN ALL / HAPUS SEMUA NOMOR untuk ${accLabel}?\n\n` +
-        `• Tindakan ini akan mengembalikan semua nomor langsung ke sistem via https://augestel.com/Switchfy/client/numbers menggunakan sesi browser resmi.\n` +
-        `• Seluruh cache nomor juga akan otomatis dibersihkan.`;
+        `• Tindakan ini akan mengembalikan semua nomor akun terpilih langsung ke sistem via https://augestel.com/Switchfy/client/numbers menggunakan sesi browser resmi.\n` +
+        `• Seluruh cache nomor akun terpilih juga akan otomatis dibersihkan.`;
     if (!confirm(confirmMsg)) return;
 
     const btn = document.getElementById('btnDeleteAllAugNumbers');
@@ -2465,6 +3032,15 @@ async function checkWebhookStatusLive() {
             if (timeEl) timeEl.innerText = data.last_received ? `${data.last_received} (${data.last_event || 'event'})` : 'Belum ada';
             if (badgeEl) badgeEl.innerHTML = '<i class="fas fa-circle" style="font-size: 0.6rem;"></i> 200 OK - AKTIF &amp; LISTENING';
 
+            const urlInput = document.getElementById('webhookUrlDisplay');
+            if (urlInput && data.webhook_url) urlInput.value = data.webhook_url;
+
+            const tunnelStatusEl = document.getElementById('whTunnelStatus');
+            if (tunnelStatusEl && data.tunnel_url) {
+                const isCf = data.tunnel_url.includes('trycloudflare.com') || data.tunnel_url.includes('cloudflare');
+                tunnelStatusEl.innerHTML = isCf ? '🟢 Cloudflare Tunnel (24/7)' : '🟢 Tunnel Online';
+            }
+
             if (guardEl) {
                 if (data.guardian_enabled) {
                     guardEl.innerHTML = '<span style="color: #10b981;">🟢 Auto-Heal Aktif (24/7)</span>';
@@ -3014,59 +3590,317 @@ function enableSmartCapBalancerMode() {
 }
 
 // ────────────────────────────────────────────
-//  FITUR 2: EARNINGS & REVENUE ANALYTICS
+//  FITUR 2: EARNINGS & REVENUE ANALYTICS (DUAL MODE: REST API & REAL-TIME WEBHOOK)
 // ────────────────────────────────────────────
-async function loadEarningsAnalytics() {
-    try {
-        const res = await fetch('/api/augestel/earnings');
-        const json = await res.json();
-        if (!json.success || !json.data) return;
-        const d = json.data;
+let currentEarningsMode = 'api';
+let _cachedEarningsPayload = null;
+let _earningsSyncInterval = null;
 
-        const elTotalUsd = document.getElementById('earnTotalUsd');
-        const elTotalIdr = document.getElementById('earnTotalIdr');
-        const elTodayUsd = document.getElementById('earnTodayUsd');
-        const elTodaySms = document.getElementById('earnTodaySms');
-        const elYestUsd = document.getElementById('earnYesterdayUsd');
-        const elYestSms = document.getElementById('earnYesterdaySms');
-        const elTotalSms = document.getElementById('earnTotalSms');
-        const elStatRev = document.getElementById('statRevenue');
+function switchEarningsTab(tabName) {
+    const vAccounts = document.getElementById('earnViewAccounts');
+    const vDaily = document.getElementById('earnViewDaily');
+    const vNumbers = document.getElementById('earnViewNumbers');
 
-        if (elTotalUsd) elTotalUsd.textContent = `$${d.total_revenue_usd.toFixed(4)}`;
-        if (elTotalIdr) elTotalIdr.textContent = `≈ Rp ${d.total_revenue_idr.toLocaleString('id-ID')}`;
-        if (elTodayUsd) elTodayUsd.textContent = `$${d.today_revenue_usd.toFixed(4)}`;
-        if (elTodaySms) elTodaySms.textContent = d.today_sms;
-        if (elYestUsd) elYestUsd.textContent = `$${d.yesterday_revenue_usd.toFixed(4)}`;
-        if (elYestSms) elYestSms.textContent = d.yesterday_sms;
-        if (elTotalSms) elTotalSms.textContent = d.total_sms;
-        if (elStatRev) elStatRev.textContent = `$${d.total_revenue_usd.toFixed(2)}`;
+    const bAcc = document.getElementById('btnTabEarnAcc');
+    const bDaily = document.getElementById('btnTabEarnDaily');
+    const bNums = document.getElementById('btnTabEarnNums');
 
-        // Render rincian akun
-        const accContainer = document.getElementById('earnAccountsList');
-        if (accContainer) {
-            const accs = d.by_account || {};
-            const keys = Object.keys(accs);
-            if (keys.length === 0) {
-                accContainer.innerHTML = '<div class="text-muted" style="font-size: 0.82rem; grid-column: 1 / -1; padding: 10px;">Belum ada traffic cuan tercatat. Kirim simulasi lewat <b>Live SMS Simulator</b> untuk menguji live-update!</div>';
-            } else {
-                accContainer.innerHTML = keys.sort((a,b) => parseInt(a) - parseInt(b)).map(k => {
-                    const item = accs[k];
-                    const idrEst = Math.round(item.usd * (json.exchange_rate || 16250));
-                    return `
-                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;">
-                            <div>
-                                <div style="font-weight: 700; font-size: 0.88rem; color: #fff;">Akun #${k}</div>
-                                <div class="text-muted" style="font-size: 0.75rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.email)}</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="font-weight: 800; font-size: 0.95rem; color: #10b981;">$${item.usd.toFixed(4)}</div>
-                                <div style="font-size: 0.75rem; color: #38bdf8;">${item.sms} SMS (Rp ${idrEst.toLocaleString('id-ID')})</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
+    const activeStyle = "background: rgba(124, 92, 252, 0.25); color: #fff; border: 1px solid var(--accent);";
+    const inactiveStyle = "background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border);";
+
+    if (vAccounts) vAccounts.style.display = tabName === 'accounts' ? 'block' : 'none';
+    if (vDaily) vDaily.style.display = tabName === 'daily' ? 'block' : 'none';
+    if (vNumbers) vNumbers.style.display = tabName === 'numbers' ? 'block' : 'none';
+
+    if (bAcc) bAcc.style.cssText = tabName === 'accounts' ? activeStyle : inactiveStyle;
+    if (bDaily) bDaily.style.cssText = tabName === 'daily' ? activeStyle : inactiveStyle;
+    if (bNums) bNums.style.cssText = tabName === 'numbers' ? activeStyle : inactiveStyle;
+}
+
+function setEarningsMode(mode) {
+    if (mode !== 'api' && mode !== 'webhook') mode = 'api';
+    currentEarningsMode = mode;
+
+    const btnApi = document.getElementById('btnModeApi');
+    const btnWb = document.getElementById('btnModeWebhook');
+    const badgeEngine = document.getElementById('earnEngineBadge');
+    const titleTotal = document.getElementById('earnCardTitleTotal');
+    const btnSyncApi = document.getElementById('btnSyncEarningsApi');
+    const accTitleBadge = document.getElementById('earnTotalAccountsBadge');
+
+    if (mode === 'api') {
+        if (btnApi) {
+            btnApi.style.background = 'var(--accent)';
+            btnApi.style.color = '#fff';
+            btnApi.style.fontWeight = '700';
         }
+        if (btnWb) {
+            btnWb.style.background = 'transparent';
+            btnWb.style.color = 'var(--text-muted)';
+            btnWb.style.fontWeight = '600';
+        }
+        if (badgeEngine) {
+            badgeEngine.className = 'badge badge-success';
+            badgeEngine.innerHTML = '<i class="fas fa-bolt"></i> Official Augestel REST API';
+        }
+        if (titleTotal) {
+            titleTotal.textContent = 'Total Payout (Akumulasi API)';
+        }
+        if (btnSyncApi) {
+            btnSyncApi.style.display = 'inline-flex';
+        }
+        if (accTitleBadge) {
+            accTitleBadge.textContent = 'Total 32 Akun Terdaftar (Data Resmi REST API)';
+        }
+    } else {
+        if (btnApi) {
+            btnApi.style.background = 'transparent';
+            btnApi.style.color = 'var(--text-muted)';
+            btnApi.style.fontWeight = '600';
+        }
+        if (btnWb) {
+            btnWb.style.background = 'linear-gradient(135deg, #0284c7, #0ea5e9)';
+            btnWb.style.color = '#fff';
+            btnWb.style.fontWeight = '700';
+        }
+        if (badgeEngine) {
+            badgeEngine.className = 'badge badge-info';
+            badgeEngine.innerHTML = '<i class="fas fa-satellite-dish"></i> Live Webhook Stream (Real-Time)';
+        }
+        if (titleTotal) {
+            titleTotal.textContent = 'Total Payout (Real-Time Webhook)';
+        }
+        if (btnSyncApi) {
+            btnSyncApi.style.display = 'none';
+        }
+        if (accTitleBadge) {
+            accTitleBadge.textContent = 'Data Real-Time Push Webhook (Auto-Recorded)';
+        }
+    }
+
+    if (_cachedEarningsPayload) {
+        const rate = _cachedEarningsPayload.exchange_rate || 16250;
+        const d = (mode === 'webhook' ? _cachedEarningsPayload.webhook_data : _cachedEarningsPayload.api_data) || _cachedEarningsPayload.data;
+        if (d) {
+            renderEarningsData(d, rate, mode);
+            return;
+        }
+    }
+
+    loadEarningsAnalytics(mode);
+}
+
+async function triggerApiEarningsSync() {
+    const btn = document.getElementById('btnSyncEarningsApi');
+    const badgeSyncing = document.getElementById('earnSyncingBadge');
+    const badgeProgress = document.getElementById('earnSyncProgress');
+
+    if (btn) btn.disabled = true;
+    if (badgeSyncing) badgeSyncing.style.display = 'inline-flex';
+    if (badgeProgress) badgeProgress.textContent = '0%';
+
+    try {
+        const res = await fetch('/api/augestel/earnings/sync', { method: 'POST' });
+        const json = await res.json();
+        showNotification(json.message || "Sinkronisasi API Augestel dimulai...", "info");
+
+        if (_earningsSyncInterval) clearInterval(_earningsSyncInterval);
+        _earningsSyncInterval = setInterval(async () => {
+            try {
+                const sRes = await fetch('/api/augestel/earnings/sync-status');
+                const sJson = await sRes.json();
+                const st = sJson.sync_status || {};
+
+                if (badgeProgress) badgeProgress.textContent = `${st.progress_pct || 0}%`;
+
+                if (!st.is_syncing) {
+                    clearInterval(_earningsSyncInterval);
+                    _earningsSyncInterval = null;
+                    if (badgeSyncing) badgeSyncing.style.display = 'none';
+                    if (btn) btn.disabled = false;
+                    showNotification(`✅ Sinkronisasi API selesai! ${st.total_synced || 32} akun berhasil dimutakhirkan.`, "success");
+                    loadEarningsAnalytics('api');
+                }
+            } catch (err) {
+                console.error('Error polling sync status:', err);
+            }
+        }, 1500);
+
+    } catch (e) {
+        showNotification("Gagal memicu sinkronisasi API: " + e.message, "error");
+        if (btn) btn.disabled = false;
+        if (badgeSyncing) badgeSyncing.style.display = 'none';
+    }
+}
+
+function renderEarningsData(d, rate, mode) {
+    if (!d) return;
+    rate = rate || 16250;
+    mode = mode || currentEarningsMode;
+
+    const elTotalUsd = document.getElementById('earnTotalUsd');
+    const elTotalIdr = document.getElementById('earnTotalIdr');
+    const elTodayUsd = document.getElementById('earnTodayUsd');
+    const elTodaySms = document.getElementById('earnTodaySms');
+    const elYestUsd = document.getElementById('earnYesterdayUsd');
+    const elYestSms = document.getElementById('earnYesterdaySms');
+    const elTotalSms = document.getElementById('earnTotalSms');
+    const elStatRev = document.getElementById('statRevenue');
+    const elAvgRate = document.getElementById('earnAvgRate');
+    const elLastSync = document.getElementById('earnLastSyncBadge');
+    const elAccCount = document.getElementById('earnAccCount');
+
+    const totalUsd = typeof d.total_revenue_usd === 'number' ? d.total_revenue_usd : parseFloat(d.total_revenue_usd || 0);
+    const totalIdr = d.total_revenue_idr || Math.round(totalUsd * rate);
+    const totalSms = d.total_sms || 0;
+
+    if (elTotalUsd) elTotalUsd.textContent = `$${totalUsd.toFixed(4)}`;
+    if (elTotalIdr) elTotalIdr.textContent = `≈ Rp ${totalIdr.toLocaleString('id-ID')}`;
+    if (elTodayUsd) elTodayUsd.textContent = `$${(d.today_revenue_usd || 0).toFixed(4)}`;
+    if (elTodaySms) elTodaySms.textContent = d.today_sms || 0;
+    if (elYestUsd) elYestUsd.textContent = `$${(d.yesterday_revenue_usd || 0).toFixed(4)}`;
+    if (elYestSms) elYestSms.textContent = d.yesterday_sms || 0;
+    if (elTotalSms) elTotalSms.textContent = totalSms;
+    if (elStatRev) elStatRev.textContent = `$${totalUsd.toFixed(2)}`;
+
+    if (elAvgRate) {
+        if (totalSms > 0) {
+            const avg = totalUsd / totalSms;
+            elAvgRate.textContent = `~$${avg.toFixed(4)}`;
+        } else {
+            elAvgRate.textContent = '~$0.0160';
+        }
+    }
+
+    if (elLastSync) {
+        if (mode === 'api') {
+            if (d.last_api_sync) {
+                elLastSync.innerHTML = `<i class="fas fa-check-circle text-success"></i> API Sync: ${escapeHtml(d.last_api_sync)}`;
+            } else {
+                elLastSync.innerHTML = `<i class="fas fa-clock"></i> API Sync: Standby`;
+            }
+        } else {
+            const lastTime = d.last_event_time || d.last_updated || 'Real-Time Active';
+            elLastSync.innerHTML = `<i class="fas fa-satellite-dish text-info"></i> Webhook: ${escapeHtml(lastTime)}`;
+        }
+    }
+
+    // 1. Render Rincian Akun
+    const accContainer = document.getElementById('earnAccountsList');
+    const accs = d.by_account || {};
+    const keys = Object.keys(accs);
+    if (elAccCount) elAccCount.textContent = keys.length || 32;
+
+    if (accContainer) {
+        if (keys.length === 0) {
+            accContainer.innerHTML = `<div class="text-muted" style="font-size: 0.82rem; grid-column: 1 / -1; padding: 10px;">Belum ada data pendapatan akun untuk mode ini.</div>`;
+        } else {
+            const sortedKeys = keys.sort((a,b) => {
+                const na = parseInt(a);
+                const nb = parseInt(b);
+                if (!isNaN(na) && !isNaN(nb)) return na - nb;
+                return String(a).localeCompare(String(b));
+            });
+
+            accContainer.innerHTML = sortedKeys.map(k => {
+                const item = accs[k];
+                const u = typeof item.usd === 'number' ? item.usd : parseFloat(item.usd || 0);
+                const idrEst = item.idr || Math.round(u * rate);
+                const isConn = item.api_connected !== false;
+                const isNumericKey = !isNaN(parseInt(k)) && String(parseInt(k)) === String(k);
+                const accLabel = isNumericKey ? `Akun #${k}` : (item.email ? `Akun ${escapeHtml(item.email)}` : escapeHtml(k));
+                const badgeText = mode === 'api' ? (isConn ? 'API OK' : 'Cache') : 'Webhook';
+                const badgeClass = mode === 'api' ? (isConn ? 'badge-success' : 'badge-warning') : 'badge-info';
+
+                return `
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid ${u > 0 ? 'rgba(16, 185, 129, 0.3)' : 'var(--border)'}; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; transition: transform 0.2s;" onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform='translateY(0)'">
+                        <div style="min-width: 0; flex: 1; padding-right: 10px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-weight: 700; font-size: 0.88rem; color: #fff;">${accLabel}</span>
+                                <span class="badge ${badgeClass}" style="font-size: 0.65rem; padding: 1px 6px;">${badgeText}</span>
+                            </div>
+                            <div class="text-muted" style="font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(item.email || k)}">${escapeHtml(item.email || k)}</div>
+                        </div>
+                        <div style="text-align: right; flex-shrink: 0;">
+                            <div style="font-weight: 800; font-size: 0.95rem; color: ${u > 0 ? '#10b981' : '#64748b'};">$${u.toFixed(4)}</div>
+                            <div style="font-size: 0.74rem; color: #38bdf8;">${item.sms || 0} SMS <span class="text-muted">(Rp ${idrEst.toLocaleString('id-ID')})</span></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 2. Render Riwayat Harian (Daily Breakdown Table)
+    const dailyBody = document.getElementById('earnDailyTableBody');
+    if (dailyBody) {
+        const daily = d.daily_breakdown || [];
+        if (daily.length === 0) {
+            dailyBody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 20px;" class="text-muted">Belum ada riwayat harian tercatat untuk versi ${mode === 'api' ? 'REST API' : 'Webhook'}.</td></tr>`;
+        } else {
+            dailyBody.innerHTML = daily.map(item => {
+                const earn = typeof item.earnings === 'number' ? item.earnings : parseFloat(item.earnings || 0);
+                const idr = item.earnings_idr || Math.round(earn * rate);
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem;">
+                        <td style="padding: 10px 12px; font-weight: 600; color: #e2e8f0;"><i class="far fa-calendar-check" style="color: #38bdf8; margin-right: 6px;"></i> ${escapeHtml(item.period)}</td>
+                        <td style="padding: 10px 12px; text-align: center;"><span class="badge badge-success" style="font-weight: 700;">${item.messages || item.delivered || 0} SMS</span></td>
+                        <td style="padding: 10px 12px; text-align: right; font-weight: 700; color: #10b981;">$${earn.toFixed(4)}</td>
+                        <td style="padding: 10px 12px; text-align: right; font-weight: 600; color: #38bdf8;">Rp ${idr.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // 3. Render Top Numbers Table / Recent Transactions
+    const numsBody = document.getElementById('earnNumbersTableBody');
+    if (numsBody) {
+        const topNums = d.top_numbers || [];
+        if (topNums.length > 0) {
+            numsBody.innerHTML = topNums.map((tn, i) => {
+                const earn = typeof tn.earnings === 'number' ? tn.earnings : parseFloat(tn.earnings || 0);
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.84rem;">
+                        <td style="padding: 9px 12px; color: var(--text-muted); font-weight: 700;">#${i + 1}</td>
+                        <td style="padding: 9px 12px; font-family: monospace; font-weight: 700; color: #f8fafc;"><i class="fas fa-phone-alt" style="color: #10b981; margin-right: 6px; font-size: 0.75rem;"></i> +${escapeHtml(tn.number)}</td>
+                        <td style="padding: 9px 12px; color: #94a3b8; font-size: 0.78rem;">${escapeHtml(tn.range_name || '-')}</td>
+                        <td style="padding: 9px 12px; color: #cbd5e1; font-size: 0.78rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tn.account || '-')}">${escapeHtml(tn.account || '-')}</td>
+                        <td style="padding: 9px 12px; text-align: center;"><span class="badge badge-info" style="font-weight: 700;">${tn.messages || 0}</span></td>
+                        <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: #10b981;">$${earn.toFixed(4)}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else if (d.recent_transactions && d.recent_transactions.length > 0) {
+            numsBody.innerHTML = d.recent_transactions.slice(0, 20).map((tx, i) => {
+                const r = typeof tx.rate_usd === 'number' ? tx.rate_usd : parseFloat(tx.rate_usd || 0.016);
+                return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.84rem;">
+                        <td style="padding: 9px 12px; color: var(--text-muted); font-weight: 700;">#${i + 1}</td>
+                        <td style="padding: 9px 12px; font-family: monospace; font-weight: 700; color: #f8fafc;"><i class="fas fa-sms" style="color: #38bdf8; margin-right: 6px; font-size: 0.75rem;"></i> ${escapeHtml(tx.phone || '-')}</td>
+                        <td style="padding: 9px 12px; color: #94a3b8; font-size: 0.78rem;">${escapeHtml(tx.platform || 'SMS')} (${escapeHtml(tx.flag || '')})</td>
+                        <td style="padding: 9px 12px; color: #cbd5e1; font-size: 0.78rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(tx.account || '-')}">${escapeHtml(tx.account || '-')}</td>
+                        <td style="padding: 9px 12px; text-align: center;"><span class="badge badge-success" style="font-weight: 700;">1 OTP</span></td>
+                        <td style="padding: 9px 12px; text-align: right; font-weight: 800; color: #10b981;">+$${r.toFixed(4)}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            numsBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px;" class="text-muted">Belum ada traffic pada nomor Augestel untuk versi ini.</td></tr>`;
+        }
+    }
+}
+
+async function loadEarningsAnalytics(mode) {
+    if (!mode) mode = currentEarningsMode;
+    try {
+        const res = await fetch(`/api/augestel/earnings?mode=${encodeURIComponent(mode)}`);
+        const json = await res.json();
+        if (!json.success) return;
+        _cachedEarningsPayload = json;
+        const rate = json.exchange_rate || 16250;
+        const activeData = (mode === 'webhook' ? json.webhook_data : json.api_data) || json.data;
+        renderEarningsData(activeData, rate, mode);
     } catch (e) {
         console.error('Error loadEarningsAnalytics:', e);
     }

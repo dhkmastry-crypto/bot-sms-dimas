@@ -1,0 +1,365 @@
+{
+  "total_revenue_usd": 2.304,
+  "total_revenue_idr": 37440,
+  "total_sms": 144,
+  "today_date": "2026-10-18",
+  "today_revenue_usd": 0.736,
+  "today_sms": 46,
+  "yesterday_revenue_usd": 0.0,
+  "yesterday_sms": 0,
+  "by_account": {
+    "Akun #1": {
+      "email": "Akun #1",
+      "sms": 46,
+      "usd": 0.736,
+      "idr": 11960
+    },
+    "malinoo788@gmail.com": {
+      "email": "malinoo788@gmail.com",
+      "sms": 4,
+      "usd": 0.064,
+      "idr": 1040
+    },
+    "dimsongkang@gmail.com": {
+      "email": "dimsongkang@gmail.com",
+      "sms": 3,
+      "usd": 0.048,
+      "idr": 780
+    },
+    "mayateng86@gmail.com": {
+      "email": "mayateng86@gmail.com",
+      "sms": 16,
+      "usd": 0.256,
+      "idr": 4160
+    },
+    "saputradimas0878@gmail.com": {
+      "email": "saputradimas0878@gmail.com",
+      "sms": 17,
+      "usd": 0.272,
+      "idr": 4420
+    },
+    "beras.capakor@gmail.com": {
+      "email": "beras.capakor@gmail.com",
+      "sms": 10,
+      "usd": 0.16,
+      "idr": 2600
+    },
+    "keztokitems@gmail.com": {
+      "email": "keztokitems@gmail.com",
+      "sms": 2,
+      "usd": 0.032,
+      "idr": 520
+    },
+    "pakupakuwak@gmail.com": {
+      "email": "pakupakuwak@gmail.com",
+      "sms": 4,
+      "usd": 0.064,
+      "idr": 1040
+    },
+    "dimasganteung69@gmail.com": {
+      "email": "dimasganteung69@gmail.com",
+      "sms": 3,
+      "usd": 0.048,
+      "idr": 780
+    },
+    "dhkmastry@gmail.com": {
+      "email": "dhkmastry@gmail.com",
+      "sms": 11,
+      "usd": 0.176,
+      "idr": 2860
+    },
+    "azarinnur@gmail.com": {
+      "email": "azarinnur@gmail.com",
+      "sms": 5,
+      "usd": 0.08,
+      "idr": 1300
+    },
+    "Fikriramdn424@gmail.com": {
+      "email": "Fikriramdn424@gmail.com",
+      "sms": 12,
+      "usd": 0.192,
+      "idr": 3120
+    },
+    "Ekiprijipratama03@gmail.com": {
+      "email": "Ekiprijipratama03@gmail.com",
+      "sms": 8,
+      "usd": 0.128,
+      "idr": 2080
+    },
+    "songkanjut@gmail.com": {
+      "email": "songkanjut@gmail.com",
+      "sms": 1,
+      "usd": 0.016,
+      "idr": 260
+    },
+    "maskupukupu15@gmail.com": {
+      "email": "maskupukupu15@gmail.com",
+      "sms": 2,
+      "usd": 0.032,
+      "idr": 520
+    }
+  },
+  "by_country": {
+    "ZW": {
+      "sms": 1,
+      "usd": 0.016
+    },
+    "ID": {
+      "sms": 36,
+      "usd": 0.576
+    },
+    "CD": {
+      "sms": 12,
+      "usd": 0.192
+    },
+    "MW": {
+      "sms": 95,
+      "usd": 1.52
+    }
+  },
+  "by_platform": {},
+  "recent_transactions": [
+    {
+      "time": "2026-10-18 04:30:17",
+      "account": "saputradimas0878@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "345550",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 04:19:15",
+      "account": "maskupukupu15@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "737515",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 04:14:14",
+      "account": "Fikriramdn424@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "791410",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 04:05:16",
+      "account": "Akun #1",
+      "platform": "WhatsApp",
+      "otp": "215017",
+      "country": "CD",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:59:15",
+      "account": "dhkmastry@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "488455",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:56:16",
+      "account": "beras.capakor@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "238281",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:54:14",
+      "account": "dhkmastry@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "880632",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:49:16",
+      "account": "beras.capakor@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "786058",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:46:14",
+      "account": "Fikriramdn424@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "154691",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:40:14",
+      "account": "dhkmastry@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "662273",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:39:18",
+      "account": "Akun #1",
+      "platform": "WhatsApp",
+      "otp": "483234",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:34:19",
+      "account": "Akun #1",
+      "platform": "WhatsApp",
+      "otp": "522018",
+      "country": "CD",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:34:18",
+      "account": "maskupukupu15@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "437958",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:27:17",
+      "account": "malinoo788@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "797654",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:15:14",
+      "account": "dimasganteung69@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "191352",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 03:03:17",
+      "account": "songkanjut@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "189522",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:56:13",
+      "account": "mayateng86@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "620842",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:56:13",
+      "account": "Ekiprijipratama03@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "713505",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:39:14",
+      "account": "dhkmastry@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "781566",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:34:18",
+      "account": "Akun #1",
+      "platform": "WhatsApp",
+      "otp": "219350",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:24:30",
+      "account": "Akun #1",
+      "platform": "WhatsApp",
+      "otp": "498623",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:15:18",
+      "account": "Fikriramdn424@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "803387",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:15:18",
+      "account": "Fikriramdn424@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "117423",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 02:07:15",
+      "account": "Ekiprijipratama03@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "279451",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:55:14",
+      "account": "Fikriramdn424@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "110558",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:54:16",
+      "account": "Ekiprijipratama03@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "810760",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:54:15",
+      "account": "Ekiprijipratama03@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "778072",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:49:16",
+      "account": "mayateng86@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "276722",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:47:18",
+      "account": "saputradimas0878@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "249617",
+      "country": "MW",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 01:47:18",
+      "account": "mayateng86@gmail.com",
+      "platform": "WhatsApp",
+      "otp": "175770",
+      "country": "MW",
+      "rate_usd": 0.016
+    }
+  ],
+  "last_event_time": "2026-10-18 04:30:17",
+  "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)"
+}

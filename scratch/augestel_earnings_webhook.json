@@ -1,0 +1,16 @@
+{
+  "total_revenue_usd": 0.0,
+  "total_revenue_idr": 0,
+  "total_sms": 0,
+  "today_date": "2026-10-18",
+  "today_revenue_usd": 0.0,
+  "today_sms": 0,
+  "yesterday_revenue_usd": 0.0,
+  "yesterday_sms": 0,
+  "by_account": {},
+  "by_country": {},
+  "by_platform": {},
+  "recent_transactions": [],
+  "last_event_time": null,
+  "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)"
+}

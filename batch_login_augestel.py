@@ -16,6 +16,8 @@ sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 from playwright.async_api import async_playwright
 
+from augestel_browser_pool import cleanup_profile_locks_and_orphans
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s │ %(levelname)-8s │ %(message)s",
@@ -27,6 +29,7 @@ logger = logging.getLogger("batch_login_augestel")
 async def login_single_account(account_idx: int, email: str, password: str) -> dict:
     """Melakukan login pada satu akun dan menyimpan sesi ke browser profile."""
     user_data_dir = os.path.abspath(f"browser_profile_augestel_{account_idx}")
+    cleanup_profile_locks_and_orphans(user_data_dir)
     logger.info(f"👉 [Akun #{account_idx}] Memeriksa sesi untuk: {email}")
 
     async with async_playwright() as p:
@@ -43,8 +46,28 @@ async def login_single_account(account_idx: int, email: str, password: str) -> d
                 ],
             )
         except Exception as e:
-            logger.error(f"❌ [Akun #{account_idx}] Gagal meluncurkan browser: {e}")
-            return {"index": account_idx, "email": email, "success": False, "message": str(e)}
+            if "processsingleton" in str(e).lower() or "lock" in str(e).lower():
+                logger.warning(f"⚠️ [Akun #{account_idx}] Lock terdeteksi ({e}). Membersihkan & coba ulang...")
+                cleanup_profile_locks_and_orphans(user_data_dir)
+                await asyncio.sleep(2)
+                try:
+                    context = await p.chromium.launch_persistent_context(
+                        user_data_dir=user_data_dir,
+                        channel="msedge",
+                        headless=False,
+                        args=[
+                            "--disable-blink-features=AutomationControlled",
+                            "--no-sandbox",
+                            "--disable-gpu",
+                            "--window-position=-2000,-2000",
+                        ],
+                    )
+                except Exception as e2:
+                    logger.error(f"❌ [Akun #{account_idx}] Gagal meluncurkan browser: {e2}")
+                    return {"index": account_idx, "email": email, "success": False, "message": str(e2)}
+            else:
+                logger.error(f"❌ [Akun #{account_idx}] Gagal meluncurkan browser: {e}")
+                return {"index": account_idx, "email": email, "success": False, "message": str(e)}
 
         page = context.pages[0] if context.pages else await context.new_page()
 

@@ -1919,3 +1919,167 @@ body.drawer-open {
     transform: scale(0.98);
 }
 
+/* ──── MULTI-SELECT ENHANCEMENTS (AUGESTEL) ──── */
+.selected-aug-row td {
+    background: rgba(139, 92, 246, 0.16) !important;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.25) !important;
+}
+
+.selected-aug-row {
+    position: relative;
+    box-shadow: inset 4px 0 0 #a78bfa;
+}
+
+.selected-aug-row:hover td {
+    background: rgba(139, 92, 246, 0.24) !important;
+}
+
+.aug-selected-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aug-num-checkbox {
+    cursor: pointer;
+    width: 17px;
+    height: 17px;
+    accent-color: #8b5cf6;
+    transition: transform 0.1s ease;
+}
+
+.aug-num-checkbox:active {
+    transform: scale(1.15);
+}
+
+/* ──── MULTI-SELECT ACCOUNT PICKER (AUGESTEL) ──── */
+.aug-account-ms-wrapper {
+    position: relative;
+    user-select: none;
+}
+
+#augAccMultiBtn {
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+#augAccMultiBtn:hover,
+#augAccMultiBtn:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+}
+
+.aug-acc-dropdown-menu {
+    animation: fadeInDown 0.18s ease-out;
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.aug-acc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    margin: 0;
+}
+
+.aug-acc-item:hover {
+    background: rgba(139, 92, 246, 0.18);
+}
+
+.aug-acc-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #8b5cf6;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.aug-acc-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(139, 92, 246, 0.25);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    flex-shrink: 0;
+}
+
+.aug-acc-email {
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+/* Interactive breakdown cards for multi-select */
+.account-breakdown-card.aug-acc-card-interactive {
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+}
+
+.account-breakdown-card.aug-acc-card-interactive.selected {
+    border-color: #8b5cf6 !important;
+    background: rgba(139, 92, 246, 0.12) !important;
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.28) !important;
+    opacity: 1 !important;
+    transform: translateY(-1px);
+}
+
+.account-breakdown-card.aug-acc-card-interactive.unselected {
+    opacity: 0.42 !important;
+    border: 1px dashed rgba(255, 255, 255, 0.18) !important;
+    background: rgba(15, 23, 42, 0.4) !important;
+    filter: grayscale(40%);
+}
+
+.account-breakdown-card.aug-acc-card-interactive:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35) !important;
+    opacity: 1 !important;
+}
+
+.aug-card-select-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    flex-shrink: 0;
+}
+
+.aug-card-select-badge.badge-selected {
+    background: rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.5);
+}
+
+.aug-card-select-badge.badge-unselected {
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+

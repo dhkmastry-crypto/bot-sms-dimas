@@ -8,7 +8,7 @@ import re
 import hashlib
 import time
 import datetime
-from ivasms_scraper import (
+from otp_utils import (
     get_country_from_phone,
     mask_phone_number,
     detect_platform,

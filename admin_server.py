@@ -31,6 +31,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, send_file, Response
 
+from augestel_earnings_service import (
+    load_augestel_earnings,
+    load_api_earnings,
+    load_webhook_earnings,
+    save_augestel_earnings,
+    trigger_background_api_sync,
+    get_sync_state,
+    record_incremental_webhook_sms,
+    record_webhook_daily_summary,
+    USD_TO_IDR_RATE,
+)
+
 # ────────────────────────────────────────────
 #  APP SETUP
 # ────────────────────────────────────────────
@@ -364,96 +376,13 @@ def get_shared_status():
 
 
 async def check_ivasms_connection(target_index: int = None):
-    """Check IVASMS connection for each registered account, or specific account if target_index given"""
+    """Stub kompatibilitas untuk cek IVASMS (Platform dinonaktifkan)."""
     global ivasms_status
-    acc_file = os.path.join(BASE_DIR, "ivasms_accounts.json")
-    accounts = []
-    if os.path.exists(acc_file):
-        try:
-            with open(acc_file, "r", encoding="utf-8") as f:
-                accounts = json.load(f)
-        except Exception:
-            pass
-
-    if not accounts:
-        cfg = load_config()
-        if cfg.get("IVASMS_EMAIL") and cfg.get("IVASMS_PASSWORD"):
-            accounts.append({"email": cfg["IVASMS_EMAIL"], "password": cfg["IVASMS_PASSWORD"]})
-        if cfg.get("IVASMS_EMAIL_2") and cfg.get("IVASMS_PASSWORD_2"):
-            accounts.append({"email": cfg["IVASMS_EMAIL_2"], "password": cfg["IVASMS_PASSWORD_2"]})
-
-    existing_results = {r.get("index"): r for r in ivasms_status.get("accounts", []) if isinstance(r, dict)}
-    results = []
-    any_connected = False
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    import importlib, config
-    importlib.reload(config)
-    from ivasms_scraper import IVASMSClient
-
-    for idx, acc in enumerate(accounts, start=1):
-        email = acc.get("email", "")
-        pwd = acc.get("password", "")
-        if not email:
-            continue
-
-        # If checking a single account, preserve others
-        if target_index is not None and idx != target_index:
-            prev = existing_results.get(idx, {
-                "index": idx,
-                "email": email,
-                "connected": False,
-                "last_check": "-"
-            })
-            if prev.get("connected"):
-                any_connected = True
-            results.append(prev)
-            continue
-
-        cookies = acc.get("cookies") or (config.COOKIES if idx == 1 else getattr(config, "COOKIES_2", {}) if idx == 2 else {})
-        client = IVASMSClient(cookies, config.IVASMS_URL)
-        connected = client.check_connection()
-
-        if not connected:
-            # Fallback browser sync
-            try:
-                from cookie_sync import get_fresh_cookies_from_browser
-                fresh = await get_fresh_cookies_from_browser(account_index=idx, email=email, password=pwd)
-                if fresh and "ivas_sms_session" in fresh:
-                    client.update_cookies(fresh)
-                    connected = client.check_connection()
-            except Exception as e:
-                logger.error(f"Error checking acc {idx}: {e}")
-
-        if connected:
-            any_connected = True
-
-        results.append({
-            "index": idx,
-            "email": email,
-            "connected": connected,
-            "last_check": now_str
-        })
-
-    ivasms_status["connected"] = any_connected
-    ivasms_status["last_check"] = now_str
-    ivasms_status["accounts"] = results
-
-    # Sync to status.json
-    try:
-        status_file = os.path.join(BASE_DIR, "status.json")
-        s_data = {}
-        if os.path.exists(status_file):
-            with open(status_file, "r", encoding="utf-8") as f:
-                s_data = json.load(f)
-        s_data["ivasms_connected"] = any_connected
-        s_data["last_update"] = now_str
-        s_data["accounts_status"] = results
-        with open(status_file, "w", encoding="utf-8") as f:
-            json.dump(s_data, f, indent=2)
-    except Exception:
-        pass
-
+    ivasms_status = {
+        "connected": False,
+        "last_check": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "accounts": []
+    }
     return ivasms_status
 
 
@@ -736,38 +665,23 @@ def sms_log_page():
 
 
 @app.route("/accounts")
-@login_required
-def accounts_page():
-    return render_template("admin.html", page="accounts")
-
-
 @app.route("/augestel-accounts")
 @login_required
-def augestel_accounts_page():
-    return render_template("admin.html", page="augestel-accounts")
+def accounts_page():
+    return render_template("admin.html", page="accounts-augestel")
 
 
 @app.route("/auto-add")
-@login_required
-def auto_add_page():
-    return render_template("admin.html", page="auto-add")
-
-
 @app.route("/auto-add-augestel")
 @login_required
-def auto_add_augestel_page():
+def auto_add_page():
     return render_template("admin.html", page="auto-add-augestel")
 
 
 @app.route("/numbers")
-@login_required
-def numbers_page():
-    return render_template("admin.html", page="numbers")
-
-
 @app.route("/numbers-augestel")
 @login_required
-def numbers_augestel_page():
+def numbers_page():
     return render_template("admin.html", page="numbers-augestel")
 
 
@@ -807,16 +721,6 @@ def api_dashboard():
         ivasms_status["last_check"] = shared.get("last_update")
     else:
         check_bot_running()
-        if not ivasms_status.get("last_check"):
-            try:
-                import importlib, config
-                importlib.reload(config)
-                from ivasms_scraper import IVASMSClient
-                cl = IVASMSClient(config.COOKIES, config.IVASMS_URL)
-                ivasms_status["connected"] = cl.check_connection()
-                ivasms_status["last_check"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            except Exception:
-                pass
     
     # Ambil metrik revenue & breakdown dari shared status
     total_revenue = 0.0
@@ -836,7 +740,7 @@ def api_dashboard():
             "otp_received": otp_count,
             "errors": error_count,
             "bot_running": bot_status["running"],
-            "ivasms_connected": ivasms_status.get("connected", False),
+            "ivasms_connected": False,
             "augestel_connected": shared.get("augestel_connected", True) if shared else True,
             "poll_interval": config.get("POLL_INTERVAL", "10"),
             "bot_name": config.get("BOT_NAME", "OTP_BOT"),
@@ -847,7 +751,7 @@ def api_dashboard():
         },
         "recent_logs": log_entries[-10:],
         "bot_status": bot_status,
-        "ivasms_status": ivasms_status,
+        "ivasms_status": {"connected": False, "accounts": []},
     })
 
 
@@ -1003,50 +907,11 @@ def api_test_otp():
 #  AUGESTEL EARNINGS & REVENUE ENGINE (FITUR 2)
 # ────────────────────────────────────────────
 EARNINGS_FILE = os.path.join(BASE_DIR, "augestel_earnings.json")
-USD_TO_IDR_RATE = 16250.0  # Kurs estimasi USD ke IDR
-
-def load_augestel_earnings() -> dict:
-    default_data = {
-        "total_revenue_usd": 0.0,
-        "total_revenue_idr": 0,
-        "total_sms": 0,
-        "today_date": datetime.now().strftime("%Y-%m-%d"),
-        "today_revenue_usd": 0.0,
-        "today_sms": 0,
-        "yesterday_revenue_usd": 0.0,
-        "yesterday_sms": 0,
-        "by_account": {},
-        "by_country": {},
-        "by_platform": {},
-        "recent_transactions": []
-    }
-    if not os.path.exists(EARNINGS_FILE):
-        return default_data
-    try:
-        with open(EARNINGS_FILE, "r", encoding="utf-8") as f:
-            d = json.load(f)
-            now_day = datetime.now().strftime("%Y-%m-%d")
-            if d.get("today_date") != now_day:
-                d["yesterday_revenue_usd"] = d.get("today_revenue_usd", 0.0)
-                d["yesterday_sms"] = d.get("today_sms", 0)
-                d["today_date"] = now_day
-                d["today_revenue_usd"] = 0.0
-                d["today_sms"] = 0
-            return d
-    except Exception:
-        return default_data
-
-def save_augestel_earnings(data: dict):
-    try:
-        with open(EARNINGS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        logger.error(f"Error saving augestel_earnings.json: {e}")
 
 def find_account_by_phone(phone_number: str) -> tuple:
-    """Mencari akun mana yang memiliki nomor telepon ini berdasarkan file cache."""
+    """Mencari akun mana yang memiliki nomor telepon ini berdasarkan file cache 32 akun."""
     clean_p = re.sub(r'[\s\+\-]', '', str(phone_number))
-    for idx in range(1, 15):
+    for idx in range(1, 33):
         c_path = os.path.join(BASE_DIR, f"augestel_numbers_cache_{idx}.json")
         if os.path.exists(c_path):
             try:
@@ -1069,60 +934,25 @@ def find_account_by_phone(phone_number: str) -> tuple:
     return 1, "Akun #1"
 
 def record_earnings_sms(account_idx=1, account_email="", rate_val=0.015, country_cc="ZW", country_flag="🇿🇼", platform="WhatsApp", phone=""):
-    try:
-        d = load_augestel_earnings()
-        try:
-            rate = float(rate_val or 0.0)
-        except Exception:
-            rate = 0.0120
-        if rate <= 0:
-            rate = 0.0120  # Standar fallback payout per SMS
-
-        d["total_revenue_usd"] = round(d.get("total_revenue_usd", 0.0) + rate, 4)
-        d["total_revenue_idr"] = int(d["total_revenue_usd"] * USD_TO_IDR_RATE)
-        d["total_sms"] = int(d.get("total_sms", 0)) + 1
-        d["today_revenue_usd"] = round(d.get("today_revenue_usd", 0.0) + rate, 4)
-        d["today_sms"] = int(d.get("today_sms", 0)) + 1
-
-        acc_k = str(account_idx)
-        if acc_k not in d["by_account"]:
-            d["by_account"][acc_k] = {"email": account_email or f"Akun #{account_idx}", "sms": 0, "usd": 0.0}
-        d["by_account"][acc_k]["sms"] += 1
-        d["by_account"][acc_k]["usd"] = round(d["by_account"][acc_k]["usd"] + rate, 4)
-        if account_email:
-            d["by_account"][acc_k]["email"] = account_email
-
-        cc = country_cc or "OTHER"
-        if cc not in d["by_country"]:
-            d["by_country"][cc] = {"flag": country_flag or "🌐", "sms": 0, "usd": 0.0}
-        d["by_country"][cc]["sms"] += 1
-        d["by_country"][cc]["usd"] = round(d["by_country"][cc]["usd"] + rate, 4)
-
-        pf = platform or "SMS"
-        if pf not in d["by_platform"]:
-            d["by_platform"][pf] = {"sms": 0, "usd": 0.0}
-        d["by_platform"][pf]["sms"] += 1
-        d["by_platform"][pf]["usd"] = round(d["by_platform"][pf]["usd"] + rate, 4)
-
-        d["recent_transactions"].insert(0, {
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "account": f"Akun #{account_idx}",
-            "phone": phone,
-            "platform": platform,
-            "flag": country_flag,
-            "rate_usd": rate
-        })
-        d["recent_transactions"] = d["recent_transactions"][:25]
-
-        save_augestel_earnings(d)
-        return d
-    except Exception as e:
-        logger.error(f"Error record_earnings_sms: {e}")
-        return None
+    """Catat pertambahan cuan SMS real-time melalui service analitik API."""
+    return record_incremental_webhook_sms(account_idx, account_email, rate_val, country_cc, country_flag, platform, phone)
 
 # ────────────────────────────────────────────
 #  AUGESTEL WEBHOOK RECEIVER (NO RATE LIMIT)
 # ────────────────────────────────────────────
+def get_current_tunnel_url():
+    """Mengambil link publik aktif saat ini (Cloudflare Tunnel atau Ngrok)"""
+    tf = os.path.join(BASE_DIR, "tunnel_url.txt")
+    if os.path.exists(tf):
+        try:
+            with open(tf, "r", encoding="utf-8") as f:
+                u = f.read().strip()
+                if u.startswith("http"):
+                    return u
+        except Exception:
+            pass
+    return "https://bonnet-grinning-naming.ngrok-free.dev"
+
 augestel_webhook_seen_ids = set()
 augestel_webhook_history = []
 augestel_webhook_status = {
@@ -1177,24 +1007,12 @@ def augestel_webhook():
                 received_at = str(ev_data.get("received_at", "")).strip()
                 rate_val = ev_data.get("rate", 0.0)
 
-                unique_hash = hashlib.sha256(
-                    f"{phone}|{received_at}|{source_sender}|{raw_message}".encode("utf-8")
-                ).hexdigest()[:16]
-                sms_id = f"aug_{unique_hash}"
-
-                if sms_id in augestel_webhook_seen_ids:
-                    logger.info(f"Augestel Webhook: Duplicate SMS skipped ({sms_id})")
-                    return
-
-                augestel_webhook_seen_ids.add(sms_id)
-                if len(augestel_webhook_seen_ids) > 10000:
-                    augestel_webhook_seen_ids.clear()
-
-                from ivasms_scraper import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
+                from otp_utils import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
                 from bot import format_otp_message, create_keyboard
                 from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
                 from telegram import Bot
                 from telegram.constants import ParseMode
+                from otp_dedup import is_duplicate_and_claim, get_dedup_key, claim_earnings_once
 
                 phone_cc, phone_flag = get_country_from_phone(phone)
                 otp = extract_otp(raw_message)
@@ -1202,13 +1020,38 @@ def augestel_webhook():
                 if platform == "SMS":
                     platform, p_emoji = detect_platform(raw_message)
 
+                # Cari akun pemilik nomor
+                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
+
+                # 1. Deduplikasi Multi-Proses: Cek apakah OTP ini sudah pernah dikirim ke Telegram (misal oleh bot.py poller)
+                dedup_k = get_dedup_key(phone, otp, raw_message)
+                is_duplicate = is_duplicate_and_claim(phone, otp, raw_message, source="Augestel Webhook")
+
+                # 2. Catat ke revenue & earnings store (Hanya 1x per event OTP, terlindung deduplikasi)
+                if claim_earnings_once(dedup_k):
+                    record_earnings_sms(
+                        account_idx=matched_acc_idx,
+                        account_email=matched_acc_email,
+                        rate_val=rate_val,
+                        country_cc=phone_cc,
+                        country_flag=phone_flag,
+                        platform=platform,
+                        phone=phone
+                    )
+
+                if is_duplicate:
+                    logger.info(f"🛡️ [Augestel Webhook] Duplicate OTP skipped for {phone} (otp={otp}) - already sent to Telegram")
+                    return
+
                 try:
                     rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.0120"
                 except Exception:
                     rev_str = "$0.0120"
 
-                # Cari akun pemilik nomor
-                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
+                unique_hash = hashlib.sha256(
+                    f"{phone}|{received_at}|{source_sender}|{raw_message}".encode("utf-8")
+                ).hexdigest()[:16]
+                sms_id = f"aug_{unique_hash}"
 
                 sms_entry = {
                     "id": sms_id,
@@ -1229,17 +1072,6 @@ def augestel_webhook():
                 }
 
                 augestel_webhook_status["last_sms"] = sms_entry
-
-                # Catat ke revenue & earnings store
-                record_earnings_sms(
-                    account_idx=matched_acc_idx,
-                    account_email=matched_acc_email,
-                    rate_val=rate_val,
-                    country_cc=phone_cc,
-                    country_flag=phone_flag,
-                    platform=platform,
-                    phone=phone
-                )
 
                 msg_text = format_otp_message(sms_entry)
                 keyboard = create_keyboard(sms_entry, FILE_LINK, CHANNEL_LINK, otp_text=otp)
@@ -1273,11 +1105,7 @@ def augestel_webhook():
                 daily_usd = float(ev_data.get("earnings", 0.0) or ev_data.get("amount", 0.0) or 0.0)
                 daily_sms = int(ev_data.get("sms_count", 0) or 0)
                 logger.info(f"💰 [Augestel Webhook] Daily Earnings Summary received: ${daily_usd:.4f} ({daily_sms} SMS)")
-                d = load_augestel_earnings()
-                d["yesterday_revenue_usd"] = daily_usd
-                if daily_sms > 0:
-                    d["yesterday_sms"] = daily_sms
-                save_augestel_earnings(d)
+                record_webhook_daily_summary(daily_usd, daily_sms)
                 log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 💰 [Augestel Webhook] Daily Earnings Summary: ${daily_usd:.4f} ({daily_sms} SMS)\n"
                 log_path = os.path.join(BASE_DIR, "bot.log")
                 try:
@@ -1317,12 +1145,45 @@ def augestel_webhook():
 @app.route("/api/augestel/earnings")
 @login_required
 def api_augestel_earnings():
-    """Mengembalikan data analitik pendapatan & konversi cuan Augestel"""
-    data = load_augestel_earnings()
+    """Mengembalikan data analitik pendapatan Augestel (Mendukung Versi REST API & Versi Webhook)"""
+    mode = request.args.get("mode", "api").strip().lower()
+    api_data = load_api_earnings()
+    webhook_data = load_webhook_earnings()
+    sync_status = get_sync_state()
+
+    active_data = webhook_data if mode == "webhook" else api_data
+
     return jsonify({
         "success": True,
-        "data": data,
+        "mode": mode,
+        "data": active_data,
+        "api_data": api_data,
+        "webhook_data": webhook_data,
+        "sync_status": sync_status,
         "exchange_rate": USD_TO_IDR_RATE
+    })
+
+
+@app.route("/api/augestel/earnings/sync", methods=["POST"])
+@login_required
+def api_augestel_earnings_sync():
+    """Memicu sinkronisasi manual ke REST API resmi Augestel untuk seluruh 32 akun"""
+    started = trigger_background_api_sync()
+    return jsonify({
+        "success": True,
+        "started": started,
+        "message": "Sinkronisasi analitik pendapatan dari API Augestel sedang berjalan di latar belakang..." if started else "Sinkronisasi sedang berlangsung, mohon tunggu sebentar.",
+        "is_syncing": True
+    })
+
+
+@app.route("/api/augestel/earnings/sync-status")
+@login_required
+def api_augestel_earnings_sync_status():
+    """Cek progress live sinkronisasi API Augestel"""
+    return jsonify({
+        "success": True,
+        "sync_status": get_sync_state()
     })
 
 
@@ -1349,7 +1210,7 @@ def api_augestel_webhook_simulate():
     if not custom_msg:
         custom_msg = f"Kode verifikasi {platform} Anda adalah: {otp[:3]}-{otp[3:] if len(otp)>3 else otp}. Jangan bagikan kode ini kepada siapapun."
 
-    from ivasms_scraper import get_country_from_phone, mask_phone_number, detect_platform
+    from otp_utils import get_country_from_phone, mask_phone_number, detect_platform
     from bot import format_otp_message, create_keyboard
     from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
     from telegram import Bot
@@ -1453,9 +1314,11 @@ def api_augestel_webhooks_status():
     except Exception:
         pass
 
+    curr_tunnel = get_current_tunnel_url()
     return jsonify({
         "success": True,
-        "webhook_url": augestel_webhook_status["url"],
+        "webhook_url": f"{curr_tunnel}/api/augestel/webhook",
+        "tunnel_url": curr_tunnel,
         "total_received": augestel_webhook_status["total_received"],
         "last_received": augestel_webhook_status["last_received"],
         "last_event": augestel_webhook_status["last_event"],
@@ -1463,6 +1326,19 @@ def api_augestel_webhooks_status():
         "recent_history": augestel_webhook_history[:10],
         "guardian_enabled": guardian_active,
         "guardian_accounts": guardian_status,
+    })
+
+
+@app.route("/api/tunnel/info", methods=["GET"])
+def api_tunnel_info():
+    """Mengembalikan URL terowongan publik (Cloudflare Tunnel atau Ngrok) saat ini"""
+    curr_tunnel = get_current_tunnel_url()
+    is_cf = "trycloudflare.com" in curr_tunnel or "cloudflare" in curr_tunnel
+    return jsonify({
+        "success": True,
+        "tunnel_url": curr_tunnel,
+        "provider": "Cloudflare Tunnel (Unlimited 24/7)" if is_cf else "Ngrok",
+        "webhook_url": f"{curr_tunnel}/api/augestel/webhook"
     })
 
 
@@ -1498,8 +1374,6 @@ def api_augestel_accounts_auto_setup():
         return jsonify({"success": False, "message": "Browser pool tidak berjalan"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
-
-
 
 
 
@@ -1736,22 +1610,8 @@ def api_bot_status():
 @app.route("/api/ivasms/check", methods=["POST"])
 @login_required
 def api_ivasms_check():
-    """Check IVASMS connection (all or specific account)"""
-    try:
-        data = request.json or {}
-        target_idx = data.get("index")
-        if target_idx is not None:
-            try:
-                target_idx = int(target_idx)
-            except Exception:
-                target_idx = None
-
-        loop = asyncio.new_event_loop()
-        result = loop.run_until_complete(check_ivasms_connection(target_index=target_idx))
-        loop.close()
-        return jsonify({"success": True, "status": result})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
+    """Check IVASMS connection (Platform dinonaktifkan)"""
+    return jsonify({"success": True, "status": {"connected": False, "accounts": []}})
 
 
 @app.route("/api/auto-add/start", methods=["POST"])
@@ -2634,6 +2494,78 @@ def api_numbers_delete_all():
         return jsonify({"success": False, "message": f"Gagal menghapus semua nomor: {e}"})
 
 
+@app.route("/api/numbers/delete-selected", methods=["POST"])
+@login_required
+def api_numbers_delete_selected():
+    """Hapus / return daftar nomor yang dipilih user dari cache & database lokal."""
+    data = request.json or {}
+    raw_acc = str(data.get("account_index", "augestel_all")).strip().lower()
+    selected_numbers = data.get("numbers", [])
+    if not selected_numbers:
+        return jsonify({"success": False, "message": "Tidak ada nomor yang dipilih."}), 400
+
+    target_set = set(str(n).strip() for n in selected_numbers if str(n).strip())
+    if not target_set:
+        return jsonify({"success": False, "message": "Daftar nomor terpilih kosong."}), 400
+
+    try:
+        deleted_count = 0
+        from numbers_service import get_augestel_accounts, _NUMBERS_CACHE
+        aug_accounts = get_augestel_accounts()
+        total_accounts = len(aug_accounts)
+
+        # Loop update file cache per akun (1..total)
+        for i in range(1, total_accounts + 1):
+            cache_file = os.path.join(BASE_DIR, f"augestel_numbers_cache_{i}.json")
+            if os.path.exists(cache_file):
+                try:
+                    with open(cache_file, "r", encoding="utf-8") as f:
+                        c_data = json.load(f)
+                    nums = c_data.get("numbers", [])
+                    new_nums = [item for item in nums if str(item.get("number", "")).strip() not in target_set]
+                    diff = len(nums) - len(new_nums)
+                    if diff > 0:
+                        deleted_count += diff
+                        c_data["numbers"] = new_nums
+                        c_data["count"] = len(new_nums)
+                        c_data["total"] = len(new_nums)
+                        c_data["cached_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        with open(cache_file, "w", encoding="utf-8") as f:
+                            json.dump(c_data, f, indent=2)
+                        _NUMBERS_CACHE.pop(f"augestel_{i}", None)
+                except Exception as ex:
+                    logger.warning(f"Error update cache {cache_file}: {ex}")
+
+        # Update cache agregasi gabungan jika ada
+        all_cache = os.path.join(BASE_DIR, "augestel_numbers_cache.json")
+        if os.path.exists(all_cache):
+            try:
+                with open(all_cache, "r", encoding="utf-8") as f:
+                    c_all = json.load(f)
+                nums = c_all.get("numbers", [])
+                new_nums = [item for item in nums if str(item.get("number", "")).strip() not in target_set]
+                c_all["numbers"] = new_nums
+                c_all["count"] = len(new_nums)
+                c_all["total"] = len(new_nums)
+                c_all["cached_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open(all_cache, "w", encoding="utf-8") as f:
+                    json.dump(c_all, f, indent=2)
+                _NUMBERS_CACHE.pop("augestel_all", None)
+            except Exception as ex:
+                logger.warning(f"Error update all_cache: {ex}")
+
+        logger.info(f"🗑️ Berhasil menghapus {len(target_set)} nomor terpilih dari cache Augestel.")
+        return jsonify({
+            "success": True,
+            "message": f"Berhasil menghapus/return {len(target_set)} nomor terpilih dari daftar!",
+            "deleted_count": len(target_set)
+        })
+    except Exception as e:
+        logger.error(f"Error in api_numbers_delete_selected: {e}")
+        return jsonify({"success": False, "message": f"Gagal menghapus nomor terpilih: {e}"}), 500
+
+
+
 @app.route("/api/augestel/pool/status", methods=["GET"])
 @login_required
 def api_augestel_pool_status():
@@ -2855,14 +2787,12 @@ def api_accounts_bulk_import():
 @login_required
 def api_numbers_list():
     """Fetch numbers list and count for selected account or all accounts"""
-    raw_idx = str(request.args.get("account_index", "1")).strip().lower()
+    raw_idx = str(request.args.get("account_index", "augestel_all")).strip().lower()
     force_refresh = request.args.get("refresh", "0") in ["1", "true", "True"]
-    if raw_idx == "all":
-        acc_arg = "all"
-    elif raw_idx.startswith("aug"):
-        acc_arg = raw_idx
+    if raw_idx in ["all", "1", ""] or not raw_idx.startswith("aug"):
+        acc_arg = "augestel_all"
     else:
-        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
+        acc_arg = raw_idx
 
     try:
         from numbers_service import fetch_account_numbers
@@ -2877,13 +2807,11 @@ def api_numbers_list():
 @login_required
 def api_numbers_export_excel():
     """Export numbers to Excel .xlsx format for selected account or all accounts"""
-    raw_idx = str(request.args.get("account_index", "1")).strip().lower()
-    if raw_idx == "all":
-        acc_arg = "all"
-    elif raw_idx.startswith("aug"):
-        acc_arg = raw_idx
+    raw_idx = str(request.args.get("account_index", "augestel_all")).strip().lower()
+    if raw_idx in ["all", "1", ""] or not raw_idx.startswith("aug"):
+        acc_arg = "augestel_all"
     else:
-        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
+        acc_arg = raw_idx
 
     try:
         from numbers_service import fetch_account_numbers, generate_numbers_excel
@@ -2897,16 +2825,13 @@ def api_numbers_export_excel():
         excel_buf = generate_numbers_excel(numbers_list, email=email)
 
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        if acc_arg == "all":
-            filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
-        elif acc_arg in ["augestel", "augestel_all", "aug_all"]:
+        if acc_arg in ["augestel", "augestel_all", "aug_all", "all"]:
             filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
         elif str(acc_arg).startswith("aug"):
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else str(acc_arg)
             filename = f"augestel_numbers_{clean_email_tag}_{date_str}.xlsx"
         else:
-            clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
-            filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.xlsx"
+            filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.xlsx"
 
         return send_file(
             excel_buf,
@@ -2923,13 +2848,11 @@ def api_numbers_export_excel():
 @login_required
 def api_numbers_export_txt():
     """Export numbers to plain text (nomor saja per baris) for selected account or all accounts"""
-    raw_idx = str(request.args.get("account_index", "1")).strip().lower()
-    if raw_idx == "all":
-        acc_arg = "all"
-    elif raw_idx.startswith("aug"):
-        acc_arg = raw_idx
+    raw_idx = str(request.args.get("account_index", "augestel_all")).strip().lower()
+    if raw_idx in ["all", "1", ""] or not raw_idx.startswith("aug"):
+        acc_arg = "augestel_all"
     else:
-        acc_arg = int(raw_idx) if raw_idx.isdigit() else 1
+        acc_arg = raw_idx
 
     try:
         from numbers_service import fetch_account_numbers, generate_numbers_txt
@@ -2943,16 +2866,13 @@ def api_numbers_export_txt():
         txt_content = generate_numbers_txt(numbers_list)
 
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        if acc_arg == "all":
-            filename = f"ivasms_numbers_ALL_ACCOUNTS_{date_str}.txt"
-        elif acc_arg in ["augestel", "augestel_all", "aug_all"]:
+        if acc_arg in ["augestel", "augestel_all", "aug_all", "all"]:
             filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.txt"
         elif str(acc_arg).startswith("aug"):
             clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else str(acc_arg)
             filename = f"augestel_numbers_{clean_email_tag}_{date_str}.txt"
         else:
-            clean_email_tag = re.sub(r'[^a-zA-Z0-9]', '_', email.split('@')[0]) if '@' in email else f"acc_{acc_arg}"
-            filename = f"ivasms_numbers_{clean_email_tag}_{date_str}.txt"
+            filename = f"augestel_numbers_ALL_ACCOUNTS_{date_str}.txt"
 
         return Response(
             txt_content,
@@ -2968,13 +2888,139 @@ def api_numbers_export_txt():
 @login_required
 def api_numbers_send_telegram():
     """Mengirim file TXT nomor Augestel ke Pemilik Bot Telegram secara manual dari dashboard"""
+    data = request.json or {}
+    raw_acc = str(data.get("account_index", "")).strip().lower()
     try:
-        from telegram_file_sender import export_and_send_augestel_numbers_txt
-        res = export_and_send_augestel_numbers_txt(force=True, trigger_reason="Manual dari Web Dashboard")
-        return jsonify(res)
+        from telegram_file_sender import export_and_send_augestel_numbers_txt, send_telegram_document, get_owner_chat_id, get_fallback_chat_id
+        if not raw_acc or raw_acc in ["augestel_all", "aug_all", "all"]:
+            res = export_and_send_augestel_numbers_txt(force=True, trigger_reason="Manual dari Web Dashboard")
+            return jsonify(res)
+
+        from numbers_service import fetch_account_numbers
+        res_data = asyncio.run(fetch_account_numbers(account_index=raw_acc, force_refresh=False))
+        numbers = res_data.get("numbers", [])
+        if not numbers:
+            return jsonify({"success": False, "message": "Tidak ada nomor pada akun terpilih untuk dikirim!"}), 400
+
+        lines = [str(it.get("number", "")).strip() for it in numbers if str(it.get("number", "")).strip()]
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_dir = os.path.join(BASE_DIR, "exports")
+        os.makedirs(export_dir, exist_ok=True)
+        acc_tag = res_data.get("email", raw_acc).replace(" ", "_")
+        acc_tag = re.sub(r'[^a-zA-Z0-9_#]', '', acc_tag)
+        file_name = f"augestel_numbers_{acc_tag}_{date_str}.txt"
+        file_path = os.path.join(export_dir, file_name)
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+
+        owner_id = (get_owner_chat_id() or get_fallback_chat_id() or "").strip()
+        if not owner_id:
+            return jsonify({"success": False, "message": "Chat ID Telegram belum diatur!"}), 400
+
+        caption = (
+            f"📱 <b>FILE NOMOR AUGESTEL ({res_data.get('email', raw_acc)})</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━\n"
+            f"🔢 <b>Total Nomor:</b> {len(lines):,} nomor\n"
+            f"🕒 <b>Waktu Ekspor:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')} WIB\n"
+            f"ℹ️ <i>Dikirim manual dari Web Dashboard</i>"
+        )
+        send_res = send_telegram_document(owner_id, file_path, caption)
+        send_res["total_numbers"] = len(lines)
+        return jsonify(send_res)
     except Exception as e:
         logger.error(f"Error in api_numbers_send_telegram: {e}")
         return jsonify({"success": False, "message": f"Gagal kirim ke Telegram: {e}"}), 500
+
+
+@app.route("/api/numbers/export-selected/excel", methods=["POST"])
+@login_required
+def api_numbers_export_selected_excel():
+    """Export daftar nomor terpilih (selected) ke Excel (.xlsx)"""
+    data = request.json or {}
+    numbers_list = data.get("numbers", [])
+    if not numbers_list:
+        return jsonify({"success": False, "message": "Tidak ada nomor terpilih untuk diekspor"}), 400
+
+    try:
+        from numbers_service import generate_numbers_excel
+        excel_buf = generate_numbers_excel(numbers_list, email="Pilihan Terpilih (Selected)")
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"augestel_selected_{len(numbers_list)}_nomor_{date_str}.xlsx"
+
+        return send_file(
+            excel_buf,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error in api_numbers_export_selected_excel: {e}")
+        return jsonify({"success": False, "message": f"Gagal export Excel nomor terpilih: {e}"}), 500
+
+
+@app.route("/api/numbers/send-telegram-selected", methods=["POST"])
+@login_required
+def api_numbers_send_telegram_selected():
+    """Kirim file .txt berisi nomor-nomor terpilih langsung ke chat Telegram Pemilik"""
+    data = request.json or {}
+    numbers_list = data.get("numbers", [])
+    if not numbers_list:
+        return jsonify({"success": False, "message": "Tidak ada nomor terpilih untuk dikirim"}), 400
+
+    try:
+        import config as _cfg
+        owner_id = str(getattr(_cfg, "OWNER_CHAT_ID", "")).strip() or str(getattr(_cfg, "GROUP_CHAT_ID", "")).strip()
+        if not owner_id:
+            return jsonify({"success": False, "message": "OWNER_CHAT_ID belum diatur pada config.py!"}), 400
+
+        lines = []
+        for it in numbers_list:
+            if isinstance(it, dict):
+                n = str(it.get("number", "")).strip()
+            else:
+                n = str(it).strip()
+            if n:
+                lines.append(n)
+
+        if not lines:
+            return jsonify({"success": False, "message": "Daftar nomor terpilih kosong."}), 400
+
+        txt_content = "\n".join(lines)
+        date_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_dir = os.path.join(BASE_DIR, "exports")
+        os.makedirs(export_dir, exist_ok=True)
+        file_path = os.path.join(export_dir, f"augestel_selected_{len(lines)}_nomor_{date_str}.txt")
+
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(txt_content)
+
+        caption = (
+            f"📱 <b>Augestel Numbers (Pilihan Manual)</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"✨ <b>Jumlah Nomor:</b> <code>{len(lines):,}</code> nomor terpilih\n"
+            f"📅 <b>Waktu Export:</b> <code>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</code>\n"
+            f"🎯 <b>Format:</b> Text File (.txt - 1 nomor per baris)\n"
+            f"━━━━━━━━━━━━━━━━━━"
+        )
+
+        from telegram_file_sender import send_telegram_document
+        res = send_telegram_document(owner_id, file_path, caption=caption)
+        if res.get("success"):
+            return jsonify({
+                "success": True,
+                "message": f"File TXT berisi {len(lines)} nomor terpilih berhasil dikirim ke Telegram!",
+                "total_numbers": len(lines)
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": f"Gagal kirim ke Telegram: {res.get('message', 'Unknown error')}"
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error in api_numbers_send_telegram_selected: {e}")
+        return jsonify({"success": False, "message": f"Gagal mengirim ke Telegram: {e}"}), 500
+
 
 
 # ────────────────────────────────────────────
@@ -2989,7 +3035,7 @@ if __name__ == "__main__":
     print(f"  👤 Login: {ADMIN_USER} / {ADMIN_PASS}")
     print("=" * 55)
 
-    # Inisialisasi Augestel Browser Pool (7 Akun Standby 24/7 di RAM)
+    # Inisialisasi Augestel Browser Pool (Standby 24/7 di RAM)
     try:
         from augestel_browser_pool import get_browser_pool
         import threading
@@ -2997,6 +3043,18 @@ if __name__ == "__main__":
         threading.Thread(target=pool.start_pool_sync, daemon=True, name="AugestelPoolStarter").start()
     except Exception as e_pool:
         logger.warning(f"Gagal auto-start browser pool: {e_pool}")
+
+    # Periodic API Revenue Sync (Setiap 20 menit sync otomatis ke API Augestel)
+    def _periodic_api_sync_worker():
+        time.sleep(15)
+        while True:
+            try:
+                trigger_background_api_sync()
+            except Exception as e_sync:
+                logger.debug(f"Periodic API sync error: {e_sync}")
+            time.sleep(1200)
+
+    threading.Thread(target=_periodic_api_sync_worker, daemon=True, name="AugestelApiSyncWorker").start()
 
     app.run(host="0.0.0.0", port=5000, debug=False)
 

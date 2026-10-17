@@ -47,28 +47,16 @@
                 <i class="fas fa-envelope"></i>
                 <span>SMS Log</span>
             </a>
-            <a href="/accounts" class="nav-item {% if page == 'accounts' %}active{% endif %}" data-page="accounts">
-                <i class="fas fa-users-cog"></i>
-                <span>Akun IVASMS</span>
-            </a>
-            <a href="/augestel-accounts" class="nav-item {% if page == 'augestel-accounts' %}active{% endif %}" data-page="augestel-accounts">
+            <a href="/accounts" class="nav-item {% if page == 'accounts' or page == 'accounts-augestel' or page == 'augestel-accounts' %}active{% endif %}" data-page="accounts-augestel">
                 <i class="fas fa-satellite-dish" style="color: #a78bfa;"></i>
-                <span>Akun Augestel</span>
+                <span>Kelola Akun Augestel</span>
             </a>
-            <a href="/auto-add" class="nav-item {% if page == 'auto-add' %}active{% endif %}" data-page="auto-add">
-                <i class="fas fa-robot"></i>
-                <span>Auto-Add IVASMS</span>
-            </a>
-            <a href="/auto-add-augestel" class="nav-item {% if page == 'auto-add-augestel' %}active{% endif %}" data-page="auto-add-augestel">
+            <a href="/auto-add" class="nav-item {% if page == 'auto-add' or page == 'auto-add-augestel' %}active{% endif %}" data-page="auto-add-augestel">
                 <i class="fas fa-magic" style="color: #38bdf8;"></i>
                 <span>Auto-Add Augestel</span>
             </a>
-            <a href="/numbers" class="nav-item {% if page == 'numbers' %}active{% endif %}" data-page="numbers">
-                <i class="fas fa-phone-alt"></i>
-                <span>My Numbers IVASMS</span>
-            </a>
-            <a href="/numbers-augestel" class="nav-item {% if page == 'numbers-augestel' %}active{% endif %}" data-page="numbers-augestel">
-                <i class="fas fa-satellite-dish" style="color: #a78bfa;"></i>
+            <a href="/numbers" class="nav-item {% if page == 'numbers' or page == 'numbers-augestel' %}active{% endif %}" data-page="numbers-augestel">
+                <i class="fas fa-phone-alt" style="color: #a78bfa;"></i>
                 <span>My Numbers Augestel</span>
             </a>
             <a href="/bot-control" class="nav-item {% if page == 'bot-control' %}active{% endif %}" data-page="bot-control">
@@ -112,12 +100,9 @@
                 <h1 class="page-title" id="pageTitle">
                     {% if page == 'dashboard' %}Dashboard
                     {% elif page == 'sms-log' %}SMS Log
-                    {% elif page == 'accounts' %}Kelola Akun IVASMS
-                    {% elif page == 'augestel-accounts' %}Kelola Akun Augestel
-                    {% elif page == 'auto-add' %}Auto-Add Numbers (IVASMS)
-                    {% elif page == 'auto-add-augestel' %}Auto-Add Numbers (Augestel)
-                    {% elif page == 'numbers' %}My Numbers IVASMS (Export)
-                    {% elif page == 'numbers-augestel' %}My Numbers Augestel (Export)
+                    {% elif page == 'accounts' or page == 'accounts-augestel' or page == 'augestel-accounts' %}Kelola Akun Augestel
+                    {% elif page == 'auto-add' or page == 'auto-add-augestel' %}Auto-Add Numbers (Augestel)
+                    {% elif page == 'numbers' or page == 'numbers-augestel' %}My Numbers Augestel (Export)
                     {% elif page == 'bot-control' %}Bot Control
                     {% elif page == 'settings' %}Settings
                     {% endif %}
@@ -163,14 +148,6 @@
                             <span class="stat-label">Bot Status</span>
                         </div>
                         <div class="stat-badge" id="statBotBadge">-</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon green"><i class="fas fa-plug"></i></div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="statIvasms">-</span>
-                            <span class="stat-label">IVASMS Connection</span>
-                        </div>
-                        <div class="stat-badge" id="statIvasmsBadge">-</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon purple" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;"><i class="fas fa-satellite-dish"></i></div>
@@ -241,50 +218,120 @@
                     </div>
                 </div>
 
-                <!-- 💰 AUGESTEL REVENUE & DAILY EARNINGS (FITUR 2) -->
+                <!-- 💰 AUGESTEL REVENUE & DAILY EARNINGS (FITUR 2 - DUAL MODE: REST API & REAL-TIME WEBHOOK) -->
                 <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(6, 78, 59, 0.12)); border: 1px solid rgba(16, 185, 129, 0.25);">
-                    <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                        <h2><i class="fas fa-coins" style="color: #10b981;"></i> Augestel Revenue & Daily Earnings Analytics</h2>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span class="badge badge-success"><i class="fas fa-check-circle"></i> Auto-Synced via Webhook</span>
-                            <button class="btn btn-secondary btn-sm" onclick="loadEarningsAnalytics()" title="Refresh Data Cuan"><i class="fas fa-sync-alt"></i> Refresh</button>
+                    <div class="card-header" style="justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <h2><i class="fas fa-coins" style="color: #10b981;"></i> Augestel Revenue & Daily Earnings Analytics</h2>
+                            <!-- Dual Mode Switcher -->
+                            <div style="display: inline-flex; background: rgba(0,0,0,0.45); border-radius: 8px; padding: 3px; border: 1px solid rgba(255,255,255,0.12);">
+                                <button type="button" id="btnModeApi" onclick="setEarningsMode('api')" style="border-radius: 6px; padding: 5px 12px; font-weight: 700; font-size: 0.8rem; background: var(--accent); color: #fff; border: none; cursor: pointer; transition: all 0.2s;">
+                                    <i class="fas fa-bolt"></i> Versi REST API (Official)
+                                </button>
+                                <button type="button" id="btnModeWebhook" onclick="setEarningsMode('webhook')" style="border-radius: 6px; padding: 5px 12px; font-weight: 600; font-size: 0.8rem; background: transparent; color: var(--text-muted); border: none; cursor: pointer; transition: all 0.2s;">
+                                    <i class="fas fa-satellite-dish"></i> Versi Webhook (Real-Time)
+                                </button>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                            <span class="badge badge-success" id="earnEngineBadge"><i class="fas fa-bolt"></i> Official Augestel REST API</span>
+                            <span class="badge badge-info" id="earnLastSyncBadge" style="font-size: 0.76rem;"><i class="fas fa-clock"></i> Sync: Memuat...</span>
+                            <span class="badge badge-warning" id="earnSyncingBadge" style="display: none; font-size: 0.76rem;"><i class="fas fa-spinner fa-spin"></i> Syncing API (<span id="earnSyncProgress">0%</span>)...</span>
+                            <button class="btn btn-primary btn-sm" id="btnSyncEarningsApi" onclick="triggerApiEarningsSync()" title="Ambil Data Pendapatan Langsung dari REST API Augestel (32 Akun)"><i class="fas fa-cloud-download-alt"></i> Sync API Sekarang</button>
+                            <button class="btn btn-secondary btn-sm" onclick="loadEarningsAnalytics()" title="Refresh Tampilan"><i class="fas fa-sync-alt"></i> Refresh</button>
                         </div>
                     </div>
                     <div class="card-body">
                         <!-- Revenue Highlight Cards -->
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 20px;">
-                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Payout (Akumulasi)</div>
+                            <div style="background: rgba(0, 0, 0, 0.35); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;" id="earnCardTitleTotal">Total Payout (Akumulasi API)</div>
                                 <div style="font-size: 1.6rem; font-weight: 800; color: #10b981; margin: 4px 0;" id="earnTotalUsd">$0.0000</div>
                                 <div style="font-size: 0.85rem; font-weight: 600; color: #38bdf8;" id="earnTotalIdr">≈ Rp 0</div>
                             </div>
-                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(56, 189, 248, 0.2);">
+                            <div style="background: rgba(0, 0, 0, 0.35); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(56, 189, 248, 0.25);">
                                 <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Hari Ini (Today Payout)</div>
                                 <div style="font-size: 1.6rem; font-weight: 800; color: #38bdf8; margin: 4px 0;" id="earnTodayUsd">$0.0000</div>
                                 <div style="font-size: 0.85rem; color: var(--text-muted);"><span id="earnTodaySms" style="color: #10b981; font-weight: 700;">0</span> OTP Masuk Hari Ini</div>
                             </div>
-                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(167, 139, 250, 0.2);">
+                            <div style="background: rgba(0, 0, 0, 0.35); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(167, 139, 250, 0.25);">
                                 <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Kemarin (Yesterday Final)</div>
                                 <div style="font-size: 1.6rem; font-weight: 800; color: #a78bfa; margin: 4px 0;" id="earnYesterdayUsd">$0.0000</div>
                                 <div style="font-size: 0.85rem; color: var(--text-muted);"><span id="earnYesterdaySms" style="font-weight: 700;">0</span> OTP Kemarin</div>
                             </div>
-                            <div style="background: rgba(0, 0, 0, 0.3); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(245, 158, 11, 0.2);">
-                                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total SMS Webhook</div>
+                            <div style="background: rgba(0, 0, 0, 0.35); border-radius: var(--radius-sm); padding: 14px 18px; border: 1px solid rgba(245, 158, 11, 0.25);">
+                                <div style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total SMS (Semua Akun)</div>
                                 <div style="font-size: 1.6rem; font-weight: 800; color: #f59e0b; margin: 4px 0;" id="earnTotalSms">0</div>
-                                <div style="font-size: 0.85rem; color: var(--text-muted);">Avg. Rate: <b style="color: #10b981;">~$0.0150</b> / OTP</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">Avg. Rate: <b style="color: #10b981;" id="earnAvgRate">~$0.0160</b> / OTP</div>
                             </div>
                         </div>
 
-                        <!-- Per Account Breakdown -->
-                        <div style="background: rgba(0, 0, 0, 0.2); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
+                        <!-- Navigation Tabs for Analytics -->
+                        <div style="display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <button class="btn btn-sm" id="btnTabEarnAcc" onclick="switchEarningsTab('accounts')" style="background: rgba(124, 92, 252, 0.25); color: #fff; border: 1px solid var(--accent);"><i class="fas fa-users-cog"></i> Rincian 32 Akun (<span id="earnAccCount">32</span>)</button>
+                            <button class="btn btn-sm" id="btnTabEarnDaily" onclick="switchEarningsTab('daily')" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border);"><i class="fas fa-calendar-alt"></i> Riwayat Harian (Daily Breakdown)</button>
+                            <button class="btn btn-sm" id="btnTabEarnNums" onclick="switchEarningsTab('numbers')" style="background: rgba(255, 255, 255, 0.05); color: var(--text-muted); border: 1px solid var(--border);"><i class="fas fa-star" style="color: #f59e0b;"></i> Nomor Paling Cuan (Top Numbers)</button>
+                        </div>
+
+                        <!-- View 1: Per Account Breakdown -->
+                        <div id="earnViewAccounts" style="background: rgba(0, 0, 0, 0.2); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                                 <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);"><i class="fas fa-users-cog" style="color: #a78bfa;"></i> Rincian Cuan & Traffic per Akun Augestel</h4>
-                                <small class="text-muted" id="earnTotalAccountsBadge">Total 16 Akun Terdaftar (Standby RAM 24/7)</small>
+                                <small class="text-muted" id="earnTotalAccountsBadge">Total 32 Akun Terdaftar (Data Resmi REST API)</small>
                             </div>
-                            <div id="earnAccountsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
-                                <div class="text-muted" style="font-size: 0.82rem;"><i class="fas fa-circle-notch fa-spin"></i> Memuat data pendapatan per akun...</div>
+                            <div id="earnAccountsList" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;">
+                                <div class="text-muted" style="font-size: 0.82rem;"><i class="fas fa-circle-notch fa-spin"></i> Memuat data pendapatan per akun dari API...</div>
                             </div>
                         </div>
+
+                        <!-- View 2: Daily Breakdown Table -->
+                        <div id="earnViewDaily" style="display: none; background: rgba(0, 0, 0, 0.2); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);"><i class="fas fa-calendar-alt" style="color: #38bdf8;"></i> Riwayat Pendapatan Harian (Official Daily Breakdown)</h4>
+                                <small class="text-muted">Diambil langsung dari server Augestel</small>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.8rem; color: var(--text-muted);">
+                                            <th style="padding: 8px 12px;">Tanggal (Periode UTC)</th>
+                                            <th style="padding: 8px 12px; text-align: center;">Total SMS Delivered</th>
+                                            <th style="padding: 8px 12px; text-align: right;">Pendapatan USD</th>
+                                            <th style="padding: 8px 12px; text-align: right;">Estimasi Rupiah (IDR)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="earnDailyTableBody">
+                                        <tr><td colspan="4" style="text-align: center; padding: 15px;" class="text-muted">Memuat riwayat harian...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- View 3: Top Numbers Table -->
+                        <div id="earnViewNumbers" style="display: none; background: rgba(0, 0, 0, 0.2); border-radius: var(--radius-sm); padding: 16px; border: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                                <h4 style="font-size: 0.88rem; font-weight: 700; color: var(--text-main);"><i class="fas fa-trophy" style="color: #f59e0b;"></i> Top 20 Nomor Paling Cuan (Highest Traffic & Earnings)</h4>
+                                <small class="text-muted">Akumulasi seluruh 32 akun</small>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left; font-size: 0.8rem; color: var(--text-muted);">
+                                            <th style="padding: 8px 12px;">#</th>
+                                            <th style="padding: 8px 12px;">Nomor Telepon</th>
+                                            <th style="padding: 8px 12px;">Range / Provider</th>
+                                            <th style="padding: 8px 12px;">Akun Pemilik</th>
+                                            <th style="padding: 8px 12px; text-align: center;">SMS Masuk</th>
+                                            <th style="padding: 8px 12px; text-align: right;">Total Cuan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="earnNumbersTableBody">
+                                        <tr><td colspan="6" style="text-align: center; padding: 15px;" class="text-muted">Memuat data nomor ter-cuan...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -316,7 +363,7 @@
                                         <a href="https://t.me/dimsongfile" target="_blank" class="tg-action-btn" id="prevBtnFile">
                                             📁 FILE ↗
                                         </a>
-                                        <a href="https://t.me/dimsongotp" target="_blank" class="tg-action-btn" id="prevBtnChannel">
+                                        <a href="https://t.me/dimsongdiskusi" target="_blank" class="tg-action-btn" id="prevBtnChannel">
                                             🔔 CHANNEL ↗
                                         </a>
                                     </div>
@@ -392,99 +439,7 @@
                         <div class="pagination" id="smsPagination"></div>
                     </div>
                 </div>
-            {% elif page == 'accounts' %}
-            <!-- ═══════════════ KELOLA AKUN IVASMS ═══════════════ -->
-            <div class="page-content" id="accountsPage">
-                <div class="grid-2">
-                    <!-- Form Tambah / Edit Akun -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-user-plus" style="color: var(--accent);"></i> Tambah / Edit Akun IVASMS</h2>
-                            <span class="badge badge-info">Multi-Account</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 20px;">
-                                Daftarkan akun IVASMS untuk memonitor traffic SMS secara simultan. Bot akan menjalankan sesi polling otomatis untuk semua akun yang aktif.
-                            </p>
-
-                            <input type="hidden" id="accEditIndex" value="">
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                                <span id="accFormModeTitle" style="font-weight: 600; color: var(--accent);">
-                                    <i class="fas fa-plus-circle"></i> Tambah Akun Baru
-                                </span>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="resetAccForm()" id="btnCancelEdit" style="display: none;">
-                                    Batal Edit
-                                </button>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Email Akun IVASMS</label>
-                                <input type="email" id="accInputEmail" class="form-input" placeholder="contoh@domain.com">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Password Akun IVASMS</label>
-                                <div class="input-group">
-                                    <input type="password" id="accInputPassword" class="form-input" placeholder="••••••••">
-                                    <button class="input-addon" type="button" onclick="toggleAccPasswordVisibility()">
-                                        <i class="fas fa-eye" id="accPwdIcon"></i>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div style="display: flex; gap: 10px; margin-top: 24px;">
-                                <button class="btn btn-primary" onclick="saveAccountFromMenu()" style="flex: 1;" id="btnSaveAcc">
-                                    <i class="fas fa-plus"></i> Simpan Akun
-                                </button>
-                                <button class="btn btn-secondary" onclick="resetAccForm()">
-                                    <i class="fas fa-undo"></i> Reset
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Status Daftar Akun -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-list-ul"></i> Daftar Akun Terdaftar</h2>
-                            <button class="btn-sm" onclick="loadAccountsList()"><i class="fas fa-sync-alt"></i> Refresh</button>
-                        </div>
-                        <div class="card-body">
-                            <div class="account-cards-list" id="accountsListContainer" style="display: flex; flex-direction: column; gap: 14px;">
-                                <!-- Dinamis dirender oleh JS -->
-                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat akun...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bulk Import Card -->
-                    <div class="card" style="margin-top: 24px; grid-column: span 2;">
-                        <div class="card-header">
-                            <h2><i class="fas fa-file-import" style="color: var(--primary);"></i> Import Akun Massal (Bulk Import)</h2>
-                            <span class="badge badge-success">High Scale 100+</span>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 12px;">
-                                Masukkan daftar akun dengan format <code>email:password</code> per baris (mendukung pemisah <code>:</code>, <code>,</code>, atau <code>|</code>).
-                            </p>
-                            <div class="form-group">
-                                <textarea id="accBulkInput" class="form-input mono" rows="5" placeholder="user1@example.com:password123&#10;user2@example.com:password456&#10;user3@example.com:password789"></textarea>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px;">
-                                <div class="text-muted" style="font-size: 0.8rem;" id="bulkImportHint">
-                                    Mendukung puluhan hingga ratusan akun sekaligus.
-                                </div>
-                                <button class="btn btn-primary" onclick="submitBulkAccounts()" id="btnSubmitBulk">
-                                    <i class="fas fa-upload"></i> Proses Import Massal
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {% elif page == 'augestel-accounts' %}
+            {% elif page == 'accounts' or page == 'augestel-accounts' or page == 'accounts-augestel' %}
             <!-- ═══════════════ AKUN AUGESTEL ═══════════════ -->
             <div class="page-content" id="augestelAccountsPage">
                 <div class="grid-2">
@@ -498,7 +453,7 @@
                             <div style="display: flex; flex-direction: column; gap: 12px;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                                     <div style="flex: 1; min-width: 280px;">
-                                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">Public Webhook Endpoint URL (Ngrok Tunnel):</div>
+                                        <div style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">Public Webhook Endpoint URL (Cloudflare Tunnel 24/7):</div>
                                         <div class="input-group">
                                             <input type="text" id="webhookUrlDisplay" class="form-input mono" value="https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook" readonly style="font-size: 0.85rem; background: rgba(0,0,0,0.2);">
                                             <button class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()" title="Salin URL Webhook" style="border-radius: 0 var(--radius-sm) var(--radius-sm) 0;">
@@ -524,7 +479,7 @@
                                     </div>
                                     <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
                                         <div style="font-size: 0.78rem; color: var(--text-muted);">Status Tunnel Publik</div>
-                                        <div style="font-size: 0.95rem; font-weight: 600; color: #38bdf8;" id="whTunnelStatus">🟢 Ngrok Online (24/7)</div>
+                                        <div style="font-size: 0.95rem; font-weight: 600; color: #38bdf8;" id="whTunnelStatus">🟢 Cloudflare Tunnel (24/7)</div>
                                     </div>
                                     <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.05);">
                                         <div style="font-size: 0.78rem; color: var(--text-muted);">Webhook Guardian (Auto-ON)</div>
@@ -603,112 +558,7 @@
                 </div>
             </div>
 
-            {% elif page == 'auto-add' %}
-            <!-- ═══════════════ AUTO-ADD NUMBERS ═══════════════ -->
-            <div class="page-content" id="autoAddPage">
-                <div class="grid-2">
-                    <!-- Control Panel -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-plus-circle"></i> Auto-Add Configuration</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-group">
-                                <label><i class="fas fa-user-circle"></i> Gunakan Akun IVASMS</label>
-                                <select id="addAccountSelect" class="form-input" style="font-weight: 500;">
-                                    <option value="1">Memuat daftar akun...</option>
-                                </select>
-                                <small class="form-hint">Pilih akun tertentu atau pilih semua akun sekaligus untuk auto-add massal.</small>
-                            </div>
-                            <div class="form-group">
-                                <label>Range Name</label>
-                                <input type="text" id="addRangeName" class="form-input" placeholder="e.g. GERMANY, RUSSIA, UZBEKISTAN">
-                                <small class="form-hint">Partial match, case-insensitive. "RUSSIA" matches RUSSIA 1, RUSSIA 2, etc.</small>
-                            </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Max Add (0 = All)</label>
-                                    <input type="number" id="addMaxAdd" class="form-input" value="10" min="0">
-                                </div>
-                                <div class="form-group">
-                                    <label>Delay (detik)</label>
-                                    <input type="number" id="addDelay" class="form-input" value="60" min="5">
-                                </div>
-                                <div class="form-group">
-                                    <label><i class="fas fa-bolt" style="color: var(--accent);"></i> Parallel Workers</label>
-                                    <input type="number" id="addWorkers" class="form-input" value="4" min="1" max="36">
-                                </div>
-                            </div>
-                            <small class="form-hint" style="margin-top: -10px; margin-bottom: 16px; display: block;">
-                                ⚡ Mode VPS High Performance: 4 - 16 browser workers berjalan paralel secara simultan.
-                            </small>
-                            <div class="btn-group">
-                                <button class="btn btn-primary" id="btnStartAdd" onclick="startAutoAdd()">
-                                    <i class="fas fa-play"></i> Start Auto-Add
-                                </button>
-                                <button class="btn btn-danger" id="btnStopAdd" onclick="stopAutoAdd()" style="display:none">
-                                    <i class="fas fa-stop"></i> Stop
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Status Panel -->
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><i class="fas fa-chart-bar"></i> Progress</h2>
-                            <div class="status-badge" id="autoAddStatus">Idle</div>
-                        </div>
-                        <div class="card-body">
-                            <div id="addRunningAccountInfo" style="display: none; padding: 9px 12px; margin-bottom: 14px; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 8px; font-size: 0.82rem; color: var(--text);">
-                                <i class="fas fa-user-check" style="color: var(--primary); margin-right: 6px;"></i>
-                                <span id="addRunningAccountText">Akun Aktif</span>
-                            </div>
-
-                            <div class="progress-stats">
-                                <div class="progress-stat">
-                                    <div class="progress-stat-icon green"><i class="fas fa-check"></i></div>
-                                    <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="addStatAdded">0</span>
-                                        <span class="progress-stat-label">Added</span>
-                                    </div>
-                                </div>
-                                <div class="progress-stat">
-                                    <div class="progress-stat-icon red"><i class="fas fa-times"></i></div>
-                                    <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="addStatFailed">0</span>
-                                        <span class="progress-stat-label">Failed</span>
-                                    </div>
-                                </div>
-                                <div class="progress-stat">
-                                    <div class="progress-stat-icon yellow"><i class="fas fa-forward"></i></div>
-                                    <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="addStatSkipped">0</span>
-                                        <span class="progress-stat-label">Skipped</span>
-                                    </div>
-                                </div>
-                                <div class="progress-stat">
-                                    <div class="progress-stat-icon purple"><i class="fas fa-database"></i></div>
-                                    <div class="progress-stat-info">
-                                        <span class="progress-stat-value" id="addStatTotal">0</span>
-                                        <span class="progress-stat-label">Found</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="progress-bar-container">
-                                <div class="progress-bar" id="addProgressBar" style="width: 0%"></div>
-                            </div>
-
-                            <div class="last-message" id="addLastMessage">
-                                <i class="fas fa-info-circle"></i> Belum ada aktivitas
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {% elif page == 'auto-add-augestel' %}
+            {% elif page == 'auto-add' or page == 'auto-add-augestel' %}
             <!-- ═══════════════ AUTO-ADD AUGESTEL ═══════════════ -->
             <div class="page-content" id="autoAddAugestelPage">
                 <div class="grid-2">
@@ -857,110 +707,7 @@
                 </div>
             </div>
 
-            {% elif page == 'numbers' %}
-            <!-- ═══════════════ MY NUMBERS IVASMS (EXPORT) ═══════════════ -->
-            <div class="page-content" id="numbersPage">
-                <!-- Top Action Header & Stats -->
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 24px;">
-                    <div class="stat-card">
-                        <div class="stat-icon green"><i class="fas fa-sim-card"></i></div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="numStatTotal">...</span>
-                            <span class="stat-label">Total Nomor di IVASMS</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon purple"><i class="fas fa-user-circle"></i></div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="numStatAccount" style="font-size: 1.15rem; word-break: break-all;">-</span>
-                            <span class="stat-label">Akun IVASMS Aktif</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon yellow"><i class="fas fa-history"></i></div>
-                        <div class="stat-info">
-                            <span class="stat-value" id="numStatLastCheck" style="font-size: 1.15rem;">-</span>
-                            <span class="stat-label">Terakhir Diperiksa</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Breakdown per account (jika pilih semua akun) -->
-                <div id="numAccountsBreakdown" class="accounts-breakdown-grid" style="display: none; margin-bottom: 24px;"></div>
-
-                <!-- Main Numbers Card -->
-                <div class="card">
-                    <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
-                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                            <h2><i class="fas fa-list-ol" style="color: var(--accent-light);"></i> Daftar Nomor IVASMS (My Numbers)</h2>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun IVASMS:</label>
-                                <select id="numAccountSelect" class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: auto; min-width: 200px;" onchange="loadNumbersData(false)">
-                                    <option value="1">Akun #1 (Loading...)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Action Buttons -->
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                            <button class="btn btn-secondary btn-sm" id="btnRefreshNumbers" onclick="loadNumbersData(true)" title="Periksa Ulang ke Portal">
-                                <i class="fas fa-sync-alt"></i> Deteksi Ulang
-                            </button>
-                            <button class="btn btn-sm" id="btnExportExcel" onclick="downloadNumbersExport('excel')" style="background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);">
-                                <i class="fas fa-file-excel"></i> Export Excel (.xlsx)
-                            </button>
-                            <button class="btn btn-sm" id="btnExportTxt" onclick="downloadNumbersExport('txt')" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: white; border: none; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);">
-                                <i class="fas fa-file-alt"></i> Export TXT (Nomor Saja)
-                            </button>
-                            <button class="btn btn-danger btn-sm" id="btnDeleteAllNumbers" onclick="deleteAllNumbersCurrentAccount()" style="box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);" title="Hapus / Kembalikan Semua Nomor Akun Terpilih ke Sistem">
-                                <i class="fas fa-trash-alt"></i> Delete All Numbers
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="card-body">
-                        <!-- Search & Filter Bar -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-                            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 260px; max-width: 450px;">
-                                <div class="input-group" style="width: 100%;">
-                                    <input type="text" id="numSearchInput" class="form-input" placeholder="Cari nomor, range, atau akun..." oninput="filterNumbersTable()">
-                                    <span class="input-addon"><i class="fas fa-search"></i></span>
-                                </div>
-                            </div>
-                            <div class="text-muted" style="font-size: 0.85rem;" id="numCountSummary">
-                                Memuat data nomor...
-                            </div>
-                        </div>
-
-                        <!-- Table Wrapper -->
-                        <div class="table-responsive" style="max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
-                            <table class="data-table">
-                                <thead style="position: sticky; top: 0; z-index: 10; background: #0e0e22; border-bottom: 2px solid var(--border);">
-                                    <tr>
-                                        <th style="width: 60px; text-align: center;">No</th>
-                                        <th id="thAccountCol" style="display: none; text-align: center; width: 110px;">Akun</th>
-                                        <th>Phone Number</th>
-                                        <th>Range Name</th>
-                                        <th>Rates (A2P)</th>
-                                        <th>Limit by Range</th>
-                                        <th>SID/Range Limit</th>
-                                        <th>SID→DID Limit</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="numbersTableBody">
-                                    <tr>
-                                        <td colspan="8" class="text-center" style="padding: 30px;">
-                                            <i class="fas fa-circle-notch fa-spin"></i> Sedang mendeteksi nomor dari ivasms.com...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {% elif page == 'numbers-augestel' %}
+            {% elif page == 'numbers' or page == 'numbers-augestel' %}
             <!-- ═══════════════ MY NUMBERS AUGESTEL (EXPORT) ═══════════════ -->
             <div class="page-content" id="numbersAugestelPage">
                 <!-- Top Action Header & Stats -->
@@ -996,11 +743,56 @@
                     <div class="card-header" style="flex-wrap: wrap; gap: 14px;">
                         <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
                             <h2><i class="fas fa-satellite-dish" style="color: #a78bfa;"></i> Daftar Nomor Augestel IPRN</h2>
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Pilih Akun Augestel:</label>
-                                <select id="augNumAccountSelect" class="form-input" style="padding: 6px 12px; font-size: 0.85rem; width: auto; min-width: 220px;" onchange="loadAugestelNumbersData(true)">
-                                    <option value="augestel_all">Memuat Akun Augestel...</option>
-                                </select>
+                            <!-- Multi-Select Akun Augestel -->
+                            <div class="aug-account-ms-wrapper" style="position: relative; display: inline-flex; align-items: center; gap: 8px;">
+                                <label style="font-size: 0.85rem; color: var(--text-muted); margin: 0; white-space: nowrap;"><i class="fas fa-users-cog" style="color: #a78bfa; margin-right: 4px;"></i> Pilih Akun:</label>
+                                
+                                <button type="button" id="augAccMultiBtn" class="form-input" onclick="toggleAugAccountDropdown(event)" style="display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px; font-size: 0.85rem; min-width: 250px; cursor: pointer; background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(139, 92, 246, 0.4); border-radius: 8px; color: #fff;">
+                                    <span id="augAccMultiLabel" style="display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px;">
+                                        <i class="fas fa-bolt" style="color: #a78bfa;"></i> <span>Memuat Akun...</span>
+                                    </span>
+                                    <span style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                        <span id="augAccMultiBadge" class="badge" style="background: rgba(139, 92, 246, 0.25); color: #c4b5fd; font-size: 0.72rem; padding: 2px 7px;">Semua</span>
+                                        <i class="fas fa-chevron-down" style="font-size: 0.72rem; color: #94a3b8; transition: transform 0.2s;" id="augAccMultiChevron"></i>
+                                    </span>
+                                </button>
+
+                                <!-- Dropdown Panel Multi-Select -->
+                                <div id="augAccMultiDropdown" class="aug-acc-dropdown-menu" style="display: none; position: absolute; top: calc(100% + 6px); left: 75px; min-width: 340px; max-width: 440px; background: #0b0f19; border: 1px solid rgba(139, 92, 246, 0.5); border-radius: 10px; box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75), 0 0 18px rgba(139, 92, 246, 0.25); z-index: 1000; padding: 12px; backdrop-filter: blur(14px);">
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
+                                        <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #a78bfa;"><i class="fas fa-check-square"></i> Multi-Select Akun</span>
+                                        <div style="display: flex; gap: 6px;">
+                                            <button type="button" class="btn btn-sm" onclick="selectAugAllAccounts(true)" style="padding: 3px 8px; font-size: 0.72rem; background: rgba(139, 92, 246, 0.25); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4);">
+                                                <i class="fas fa-check-double"></i> Semua
+                                            </button>
+                                            <button type="button" class="btn btn-sm" onclick="selectAugAllAccounts(false)" style="padding: 3px 8px; font-size: 0.72rem; background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3);">
+                                                <i class="fas fa-times"></i> Kosongkan
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Search input -->
+                                    <div style="margin-bottom: 8px; position: relative;">
+                                        <input type="text" id="augAccSearchInput" class="form-input" placeholder="Cari akun (email / nomor #)..." oninput="filterAugAccountOptions()" style="width: 100%; padding: 5px 28px 5px 10px; font-size: 0.8rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 6px; color: #e2e8f0;">
+                                        <i class="fas fa-search" style="position: absolute; right: 10px; top: 8px; font-size: 0.75rem; color: #64748b;"></i>
+                                    </div>
+
+                                    <!-- Account Checkbox List -->
+                                    <div id="augAccCheckboxList" style="max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; padding-right: 4px;">
+                                        <div style="padding: 10px; text-align: center; color: #94a3b8; font-size: 0.8rem;"><i class="fas fa-circle-notch fa-spin"></i> Memuat akun...</div>
+                                    </div>
+
+                                    <!-- Footer apply/count -->
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+                                        <span id="augAccSelectedCountText" style="font-size: 0.75rem; color: #94a3b8;">- akun terpilih</span>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="applyAugAccountSelection()" style="padding: 4px 14px; font-size: 0.75rem; background: linear-gradient(135deg, #7c3aed, #8b5cf6); border: none; border-radius: 6px; color: #fff; font-weight: 600; box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);">
+                                            <i class="fas fa-check"></i> Terapkan Filter
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Hidden input for backwards-compatibility -->
+                                <input type="hidden" id="augNumAccountSelect" value="augestel_all">
                             </div>
                             <!-- Live Browser Pool Standby Status Badge -->
                             <div id="augPoolStatusBadge" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; padding: 5px 12px; border-radius: 8px; background: rgba(59, 130, 246, 0.12); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25);" title="Browser Daemon Standby di RAM untuk Return All & Auto Add instan">
@@ -1043,12 +835,50 @@
                             </div>
                         </div>
 
+                        <!-- ══ MULTI-SELECT FLOATING ACTION TOOLBAR ══ -->
+                        <div id="augSelectedToolbar" class="aug-selected-toolbar" style="display: none; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; margin-bottom: 14px; border-radius: 12px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.28), rgba(91, 33, 182, 0.2)); border: 1px solid rgba(167, 139, 250, 0.4); box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25); backdrop-filter: blur(12px); flex-wrap: wrap; animation: fadeIn 0.25s ease;">
+                            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                <div style="display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: #fff; font-size: 0.95rem;">
+                                    <i class="fas fa-check-circle" style="color: #a78bfa; font-size: 1.15rem;"></i>
+                                    <span><span id="augSelectedCountText" style="color: #c4b5fd; font-size: 1.15rem; font-weight: 800;">0</span> Nomor Dipilih</span>
+                                </div>
+                                <div style="display: flex; gap: 6px;">
+                                    <button type="button" class="btn btn-xs" onclick="selectAllFilteredAugNumbers()" style="background: rgba(139, 92, 246, 0.35); color: #f3e8ff; border: 1px solid rgba(167, 139, 250, 0.45); font-weight: 600;" title="Pilih semua nomor yang sedang ditampilkan di tabel">
+                                        <i class="fas fa-check-double"></i> Pilih Semua (<span id="augTotalVisibleCount">0</span>)
+                                    </button>
+                                    <button type="button" class="btn btn-xs" onclick="clearAugNumberSelection()" style="background: rgba(255, 255, 255, 0.1); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.15);" title="Batalkan seluruh pilihan nomor">
+                                        <i class="fas fa-times"></i> Batal Pilih
+                                    </button>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                <button type="button" class="btn btn-sm" onclick="copySelectedAugNumbers()" style="background: rgba(255, 255, 255, 0.12); color: #fff; border: 1px solid rgba(255, 255, 255, 0.25); font-weight: 600;" title="Salin seluruh nomor terpilih ke clipboard (1 nomor per baris)">
+                                    <i class="fas fa-copy" style="color: #67e8f9;"></i> Salin (<span class="aug-sel-num-count">0</span>)
+                                </button>
+                                <button type="button" class="btn btn-sm" onclick="exportSelectedAugNumbersTxt()" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: #fff; border: none; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35); font-weight: 600;" title="Download file .txt berisi nomor terpilih saja">
+                                    <i class="fas fa-file-alt"></i> TXT Terpilih
+                                </button>
+                                <button type="button" class="btn btn-sm" onclick="exportSelectedAugNumbersExcel()" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff; border: none; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35); font-weight: 600;" title="Download file Excel .xlsx berisi data lengkap nomor terpilih">
+                                    <i class="fas fa-file-excel"></i> Excel Terpilih
+                                </button>
+                                <button type="button" class="btn btn-sm" onclick="sendSelectedAugNumbersTelegram()" style="background: linear-gradient(135deg, #0284c7, #38bdf8); color: #fff; border: none; box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35); font-weight: 600;" title="Kirim file .txt nomor terpilih langsung ke bot Telegram pemilik">
+                                    <i class="fab fa-telegram-plane"></i> Kirim ke TG
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteSelectedAugNumbers()" style="box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35); font-weight: 600;" title="Hapus / Return nomor terpilih langsung dari sistem">
+                                    <i class="fas fa-trash-alt"></i> Return Terpilih (<span class="aug-sel-num-count">0</span>)
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Table Wrapper -->
                         <div class="table-responsive" style="max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
                             <table class="data-table">
                                 <thead style="position: sticky; top: 0; z-index: 10; background: #0e0e22; border-bottom: 2px solid var(--border);">
                                     <tr>
-                                        <th style="width: 60px; text-align: center;">No</th>
+                                        <th style="width: 44px; text-align: center;">
+                                            <input type="checkbox" id="augSelectAllCheckbox" onchange="toggleSelectAllAugNumbers(this)" title="Pilih Semua / Batal Pilih" style="cursor: pointer; width: 17px; height: 17px; accent-color: #8b5cf6; vertical-align: middle;">
+                                        </th>
+                                        <th style="width: 55px; text-align: center;">No</th>
                                         <th id="thAugAccountCol" style="display: none; text-align: center; width: 140px;">Akun Augestel</th>
                                         <th>Phone Number</th>
                                         <th>Range / Operator</th>
@@ -1104,9 +934,6 @@
                                 <button class="btn-sm" onclick="checkAugestelConnection()" id="btnCheckAugestel">
                                     <i class="fas fa-satellite-dish"></i> Cek Augestel
                                 </button>
-                                <button class="btn-sm" onclick="checkIvasms()" id="btnCheckIvasms">
-                                    <i class="fas fa-sync-alt"></i> Cek IVASMS
-                                </button>
                             </div>
                         </div>
                         <div class="card-body">
@@ -1132,28 +959,9 @@
                                 </div>
                             </div>
 
-                            <!-- List status per akun Augestel -->
-                            <div id="augAccountsStatusList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px;">
+                                <!-- List status per akun Augestel -->
+                            <div id="augAccountsStatusList" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 0;">
                                 <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat status akun Augestel...</div>
-                            </div>
-
-                            <!-- Overall IVASMS indicator -->
-                            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--border);">
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <div class="bot-icon online" id="ivasmsIcon" style="width: 36px; height: 36px; font-size: 1rem; margin: 0;">
-                                        <i class="fas fa-globe"></i>
-                                    </div>
-                                    <div>
-                                        <b id="ivasmsStatusText" style="font-size: 0.95rem; color: var(--text);">IVASMS Multi-Account</b>
-                                        <div id="ivasmsStatusDesc" class="text-muted" style="font-size: 0.78rem;">Status semua akun terpantau</div>
-                                    </div>
-                                </div>
-                                <span class="badge badge-info" id="ivasmsAccCountBadge">2 Akun</span>
-                            </div>
-
-                            <!-- List status per akun IVASMS -->
-                            <div id="ivasmsAccountsStatusList" style="display: flex; flex-direction: column; gap: 10px;">
-                                <div class="loading-spinner"><i class="fas fa-circle-notch fa-spin"></i> Memuat status akun...</div>
                             </div>
                         </div>
                     </div>
@@ -1217,14 +1025,14 @@
                                 </div>
                             </div>
 
-                            <!-- IVASMS Shortcut Section -->
+                            <!-- Augestel Shortcut Section -->
                             <div class="settings-section">
-                                <h3><i class="fas fa-users-cog"></i> IVASMS Accounts</h3>
+                                <h3><i class="fas fa-satellite-dish" style="color: #a78bfa;"></i> Akun Augestel</h3>
                                 <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 14px;">
-                                    Pengelolaan akun IVASMS (Akun 1 & Akun 2) sekarang dikelola secara khusus di menu terpisah <b>Akun IVASMS</b>.
+                                    Seluruh akun Augestel, status Webhook, dan Live Browser Pool dapat dikelola di menu <b>Kelola Akun Augestel</b>.
                                 </p>
                                 <a href="/accounts" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 8px;">
-                                    <i class="fas fa-external-link-alt"></i> Buka Menu Akun IVASMS
+                                    <i class="fas fa-external-link-alt"></i> Buka Menu Akun Augestel
                                 </a>
                             </div>
 
@@ -1238,7 +1046,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Channel Link</label>
-                                    <input type="text" id="cfgChannelLink" class="form-input" placeholder="https://t.me/dimsongotp">
+                                    <input type="text" id="cfgChannelLink" class="form-input" placeholder="https://t.me/dimsongdiskusi">
                                     <small class="form-hint">Tautan untuk tombol <b>🔔 CHANNEL ↗</b></small>
                                 </div>
                                 <div class="form-group">

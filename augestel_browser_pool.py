@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -29,6 +30,30 @@ if not logger.handlers:
     handler.setFormatter(logging.Formatter("%(asctime)s │ %(levelname)-8s │ [AugPool] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
+
+
+def cleanup_profile_locks_and_orphans(user_data_dir: str):
+    """Membersihkan lock files dan membunuh proses Chromium orphan yang mengunci folder profile tertentu."""
+    prof_folder = os.path.basename(user_data_dir)
+    if sys.platform == "win32":
+        try:
+            cmd = (
+                f'Get-CimInstance Win32_Process | '
+                f'Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*{prof_folder}*" }} | '
+                f'ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}'
+            )
+            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, timeout=10)
+        except Exception as e_proc:
+            logger.debug(f"Process cleanup debug ({prof_folder}): {e_proc}")
+
+    for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
+        lk_path = os.path.join(user_data_dir, lk)
+        if os.path.exists(lk_path):
+            try:
+                os.remove(lk_path)
+            except Exception:
+                pass
+
 
 
 class AugestelBrowserPool:
@@ -50,13 +75,30 @@ class AugestelBrowserPool:
         self.pages = {}     # {account_idx: Page}
         self.status = {}    # {account_idx: {'email': str, 'logged_in': bool, 'last_check': str, 'message': str}}
         self.webhook_guardian_status = {}  # {account_idx: {'email': str, 'is_delivering': bool, 'is_active': bool, 'is_paused': bool, 'auto_recovered_count': int, ...}}
-        self.webhook_url = "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook"
+        self._webhook_url = "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook"
         self.webhook_guardian_enabled = True
         self.auto_add_running = False
         self.auto_add_stop_flag = False
         self.is_running = False
         self.accounts = self._load_accounts()
         self.thread.start()
+
+    @property
+    def webhook_url(self) -> str:
+        tf = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tunnel_url.txt")
+        if os.path.exists(tf):
+            try:
+                with open(tf, "r", encoding="utf-8") as f:
+                    u = f.read().strip()
+                    if u.startswith("http"):
+                        return f"{u}/api/augestel/webhook"
+            except Exception:
+                pass
+        return getattr(self, "_webhook_url", "https://bonnet-grinning-naming.ngrok-free.dev/api/augestel/webhook")
+
+    @webhook_url.setter
+    def webhook_url(self, val: str):
+        self._webhook_url = val
 
     def _load_accounts(self) -> list:
         acc_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "augestel_accounts.json")
@@ -105,28 +147,41 @@ class AugestelBrowserPool:
 
     async def _init_single_account(self, idx: int, email: str, password: str):
         user_data_dir = os.path.abspath(f"browser_profile_augestel_{idx}")
-        # Bersihkan lock file usang jika ada
-        for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
-            lk_path = os.path.join(user_data_dir, lk)
-            if os.path.exists(lk_path):
-                try:
-                    os.remove(lk_path)
-                except Exception:
-                    pass
+        cleanup_profile_locks_and_orphans(user_data_dir)
 
         logger.info(f"🌐 [Akun #{idx} | {email}] Meluncurkan persistent context browser...")
 
-        context = await self.playwright.chromium.launch_persistent_context(
-            user_data_dir=user_data_dir,
-            channel="msedge",
-            headless=False,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-gpu",
-                "--window-position=-2000,-2000",
-            ]
-        )
+        try:
+            context = await self.playwright.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
+                channel="msedge",
+                headless=False,
+                args=[
+                    "--disable-blink-features=AutomationControlled",
+                    "--no-sandbox",
+                    "--disable-gpu",
+                    "--window-position=-2000,-2000",
+                ]
+            )
+        except Exception as e:
+            if "processsingleton" in str(e).lower() or "lock" in str(e).lower():
+                logger.warning(f"⚠️ [Akun #{idx}] Lock terdeteksi pada profil ({e}). Menghapus lock & mencoba ulang...")
+                cleanup_profile_locks_and_orphans(user_data_dir)
+                await asyncio.sleep(2)
+                context = await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=user_data_dir,
+                    channel="msedge",
+                    headless=False,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-gpu",
+                        "--window-position=-2000,-2000",
+                    ]
+                )
+            else:
+                raise e
+
         page = context.pages[0] if context.pages else await context.new_page()
 
         self.contexts[idx] = context
@@ -832,8 +887,13 @@ class AugestelBrowserPool:
             if url_input:
                 await url_input.fill(webhook_url)
 
-            # 2. Centang checkbox is_active dan message.received
+            # 2. Centang checkbox is_active dan message.received serta hapus _method=DELETE jika ada
             await page.evaluate("""() => {
+                const form = document.querySelector('#webhookUrl')?.closest('form');
+                if (form) {
+                    const delInput = form.querySelector('input[name="_method"]');
+                    if (delInput) delInput.remove();
+                }
                 const cb = document.querySelector('input[type="checkbox"][name="is_active"]');
                 if (cb && !cb.checked) {
                     cb.checked = true;
@@ -855,15 +915,14 @@ class AugestelBrowserPool:
             if save_btn:
                 btn_name = (await save_btn.inner_text()).strip()
                 logger.info(f"Mengklik tombol webhook: '{btn_name}'...")
-                await save_btn.click()
                 try:
-                    await page.wait_for_load_state("domcontentloaded", timeout=15000)
-                except Exception:
-                    pass
+                    async with page.expect_navigation(wait_until="domcontentloaded", timeout=25000):
+                        await save_btn.click()
+                except Exception as e_nav:
+                    logger.debug(f"Navigation wait debug ({btn_name}): {e_nav}")
+                    await asyncio.sleep(4)
             else:
                 logger.warning(f"Tombol Save/Update endpoint tidak ditemukan untuk Akun #{idx}")
-
-
 
             await asyncio.sleep(2)
 
@@ -878,14 +937,16 @@ class AugestelBrowserPool:
             except Exception:
                 pass
 
-            # Kembalikan tab ke halaman client numbers agar siap standby untuk Return All & Heartbeat
-            try:
-                await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000)
-            except Exception:
-                pass
-
             ok = bool(saved_val == webhook_url and is_active)
             logger.info(f"🎉 [Akun #{idx} | {email}] Webhook status: is_active={is_active}, url={saved_val}, ok={ok}")
+
+            # Kembalikan tab ke halaman client numbers hanya jika sudah sukses
+            if ok:
+                try:
+                    await page.goto("https://augestel.com/Switchfy/client/numbers", wait_until="domcontentloaded", timeout=20000)
+                except Exception:
+                    pass
+
             return {"success": ok, "is_active": is_active, "url": saved_val, "email": email, "screenshot": ss_path}
         except Exception as e:
             logger.error(f"❌ [Akun #{idx}] Error setup webhook: {e}")

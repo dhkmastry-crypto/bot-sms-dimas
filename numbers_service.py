@@ -225,13 +225,31 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     acc_str = str(account_param).strip().lower()
     is_all = acc_str in ["augestel", "augestel_all", "aug_all", "all"]
 
-    target_idx = None
-    if not is_all:
+    target_indices = []
+    if not is_all and ("," in acc_str or acc_str.startswith("[") or "aug_" in acc_str or "augestel_" in acc_str):
+        parts = acc_str.replace("[", "").replace("]", "").replace('"', "").replace("'", "").split(",")
+        for p in parts:
+            clean_p = re.sub(r'[^0-9]', '', p.strip())
+            if clean_p and clean_p.isdigit():
+                iv = int(clean_p)
+                if 1 <= iv <= len(accounts) and iv not in target_indices:
+                    target_indices.append(iv)
+    elif not is_all:
         clean_num = re.sub(r'[^0-9]', '', acc_str)
-        if clean_num:
-            target_idx = int(clean_num)
-        else:
-            is_all = True
+        if clean_num and clean_num.isdigit():
+            iv = int(clean_num)
+            if 1 <= iv <= len(accounts):
+                target_indices = [iv]
+
+    target_idx = None
+    if not target_indices or len(target_indices) >= len(accounts):
+        is_all = True
+    elif len(target_indices) == 1:
+        target_idx = target_indices[0]
+        is_all = False
+    else:
+        is_all = False
+        target_idx = None
 
     from augestel_client import AugestelClient
     now_ts = datetime.now()
@@ -341,9 +359,11 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
             return {"success": False, "message": f"Gagal fetch Augestel #{target_idx}: {e}"}
 
     # ──────────────────────────────────────────
-    # 2. ALL AUGESTEL ACCOUNTS FETCH
+    # 2. ALL / MULTI AUGESTEL ACCOUNTS FETCH
     # ──────────────────────────────────────────
-    cache_key = "augestel_all"
+    is_subset = not is_all and target_indices and len(target_indices) > 1
+    selected_account_list = target_indices if is_subset else list(range(1, len(accounts) + 1))
+    cache_key = f"augestel_multi_{'_'.join(map(str, sorted(target_indices)))}" if is_subset else "augestel_all"
     disk_cache_path = os.path.join(os.path.dirname(__file__), "augestel_numbers_cache.json")
 
     # In-memory / disk cache check (60s TTL untuk performa instan)
@@ -356,7 +376,7 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         except Exception:
             pass
 
-    if not force_refresh and os.path.exists(disk_cache_path):
+    if not is_subset and not force_refresh and os.path.exists(disk_cache_path):
         try:
             with open(disk_cache_path, "r", encoding="utf-8") as f:
                 disk_data = json.load(f)
@@ -367,18 +387,19 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         except Exception:
             pass
 
-    # Ambil data seluruh akun secara paralel (<0.5 detik total)
+    # Ambil data akun terpilih secara paralel (<0.5 detik total)
     async def _fetch_single_aug(idx):
         return await fetch_augestel_account_numbers(account_param=f"augestel_{idx}", force_refresh=force_refresh, max_rows=max_rows)
 
-    tasks = [_fetch_single_aug(i) for i in range(1, len(accounts) + 1)]
+    tasks = [_fetch_single_aug(i) for i in selected_account_list]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
     all_combined = []
     breakdown = []
     total_portal_sum = 0
 
-    for i, res in enumerate(results, 1):
+    for i_order, res in enumerate(results):
+        i = selected_account_list[i_order]
         acc = accounts[i - 1]
         em = acc.get("email", "")
         if isinstance(res, dict) and res.get("success"):
@@ -423,10 +444,17 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
     for idx, item in enumerate(all_combined, 1):
         item["id"] = str(idx)
 
+    if is_subset:
+        acc_tag = f"aug_multi_{'_'.join(map(str, sorted(target_indices)))}"
+        email_tag = f"Augestel ({len(target_indices)} Akun Terpilih: #{', #'.join(map(str, sorted(target_indices)))})"
+    else:
+        acc_tag = "augestel_all"
+        email_tag = f"Semua Akun Augestel ({len(breakdown)} Akun Aktif)"
+
     result = {
         "success": True,
-        "account_index": "augestel_all",
-        "email": f"Semua Akun Augestel ({len(breakdown)} Akun Aktif)",
+        "account_index": acc_tag,
+        "email": email_tag,
         "total": total_portal_sum,
         "count": len(all_combined),
         "numbers": all_combined,
@@ -434,11 +462,12 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
         "cached_at": now_ts.strftime("%Y-%m-%d %H:%M:%S")
     }
     _NUMBERS_CACHE[cache_key] = result
-    try:
-        with open(disk_cache_path, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2)
-    except Exception:
-        pass
+    if not is_subset:
+        try:
+            with open(disk_cache_path, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+        except Exception:
+            pass
 
     # Otomatis simpan & kirim file TXT ke Pemilik jika ada nomor terdeteksi
     if len(all_combined) > 0:
@@ -459,20 +488,12 @@ async def fetch_augestel_account_numbers(account_param: str = "augestel", force_
 
 async def fetch_account_numbers(account_index = 1, force_refresh: bool = False, max_rows: int = 5000) -> dict:
     """
-    Fetch semua nomor dari https://www.ivasms.com/portal/numbers untuk akun tertentu,
-    atau 'all' untuk semua akun IVASMS, atau 'augestel' / 'augestel_all' untuk portal Augestel.
+    Fetch semua nomor Augestel IPRN untuk akun tertentu atau 'augestel_all'.
     """
     acc_str = str(account_index).strip().lower()
-    if acc_str == "all":
-        return await fetch_all_accounts_numbers(force_refresh=force_refresh, max_rows=max_rows)
-
     if acc_str.startswith("aug"):
         return await fetch_augestel_account_numbers(account_param=acc_str, force_refresh=force_refresh, max_rows=max_rows)
-
-    try:
-        account_index = int(account_index)
-    except Exception:
-        account_index = 1
+    return await fetch_augestel_account_numbers(account_param="augestel_all", force_refresh=force_refresh, max_rows=max_rows)
 
     accounts = get_accounts()
     if not accounts:
@@ -939,38 +960,31 @@ async def delete_all_account_numbers(account_index=1) -> dict:
                     pass
 
             return res
+        elif "," in acc_str:
+            # Multi-account return untuk akun-akun Augestel terpilih
+            parts = acc_str.split(",")
+            succ = 0
+            details = []
+            for p in parts:
+                clean_p = re.sub(r"[^\d]", "", p.strip())
+                if clean_p and clean_p.isdigit():
+                    t_idx = int(clean_p)
+                    if 1 <= t_idx <= len(aug_accounts):
+                        r = await return_all_augestel_portal(t_idx)
+                        if r.get("success"):
+                            succ += 1
+                            details.append(f"Akun #{t_idx}: OK")
+                        else:
+                            details.append(f"Akun #{t_idx}: {r.get('message', 'Gagal')}")
+            return {
+                "success": succ > 0,
+                "message": f"Selesai return nomor untuk {succ} akun Augestel terpilih! ({', '.join(details)})"
+            }
         else:
             # Single account
             clean_idx = re.sub(r"[^\d]", "", acc_str)
             target_idx = int(clean_idx) if clean_idx else 1
             return await return_all_augestel_portal(target_idx)
 
-    # IVASMS accounts
-    accounts = get_accounts()
-    if not accounts:
-        return {"success": False, "message": "Tidak ada akun IVASMS terdaftar!"}
-
-    if acc_str == "all":
-        succ = 0
-        details = []
-        for i in range(1, len(accounts) + 1):
-            r = await _delete_ivasms_single_account(i, accounts[i - 1])
-            if r.get("success"):
-                succ += 1
-                details.append(f"Akun #{i}: OK")
-            else:
-                details.append(f"Akun #{i}: {r.get('message', 'Gagal')}")
-        return {
-            "success": succ > 0,
-            "message": f"Selesai hapus nomor untuk {succ}/{len(accounts)} akun IVASMS! ({', '.join(details)})"
-        }
-
-    try:
-        acc_idx = int(account_index)
-    except Exception:
-        acc_idx = 1
-
-    if acc_idx < 1 or acc_idx > len(accounts):
-        return {"success": False, "message": f"Akun #{acc_idx} tidak ditemukan!"}
-
-    return await _delete_ivasms_single_account(acc_idx, accounts[acc_idx - 1])
+    # Fallback to Augestel return all
+    return await return_all_augestel_portal_all()
