@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.48,
-  "total_revenue_idr": 40300,
-  "total_sms": 155,
+  "total_revenue_usd": 2.496,
+  "total_revenue_idr": 40560,
+  "total_sms": 156,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 2.128,
-  "today_sms": 133,
+  "today_revenue_usd": 2.144,
+  "today_sms": 134,
   "yesterday_revenue_usd": 0.336,
   "yesterday_sms": 21,
   "by_account": {
@@ -244,9 +244,9 @@
     },
     "7": {
       "email": "beras.capakor@gmail.com",
-      "sms": 12,
-      "usd": 0.192,
-      "idr": 3120,
+      "sms": 13,
+      "usd": 0.208,
+      "idr": 3380,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1036,6 +1036,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 06:26:12",
+      "account": "Akun #7",
+      "phone": "265881728943",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 06:16:13",
       "account": "Akun #29",
       "phone": "243850260672",
@@ -1266,17 +1274,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 02:34:15",
-      "account": "Akun #1",
-      "phone": "265881801385",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-18 06:20:26",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 32
+  "total_accounts_synced": 32,
+  "last_event_time": null
 }
