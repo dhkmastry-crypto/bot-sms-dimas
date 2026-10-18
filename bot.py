@@ -844,12 +844,37 @@ def main():
     # ──── Build & Run Application ────
     logger.info("🔧 Building application...")
 
+    from telegram.request import HTTPXRequest
+    from telegram.error import NetworkError, TimedOut, RetryAfter
+
+    custom_request = HTTPXRequest(
+        connection_pool_size=16,
+        connect_timeout=20.0,
+        read_timeout=30.0,
+        write_timeout=20.0,
+        pool_timeout=15.0,
+    )
+
     app = (
         Application.builder()
         .token(BOT_TOKEN)
+        .request(custom_request)
         .post_init(post_init)
         .build()
     )
+
+    async def on_telegram_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Menangani gangguan jaringan sementara dari server Telegram tanpa crash / log berlebih."""
+        err = context.error
+        if isinstance(err, (NetworkError, TimedOut)):
+            logger.warning(f"⚠️ [Telegram Network] Gangguan sementara ke api.telegram.org ({err}). Bot otomatis melakukan auto-retry...")
+            return
+        if isinstance(err, RetryAfter):
+            logger.warning(f"⏳ [Telegram Rate Limit] Flood control: Menunggu {err.retry_after}s...")
+            return
+        logger.error(f"Telegram Exception: {err}", exc_info=err)
+
+    app.add_error_handler(on_telegram_error)
 
     # Register command handlers (khusus owner)
     app.add_handler(CommandHandler("start", cmd_start))
