@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.04,
-  "total_revenue_idr": 49400,
-  "total_sms": 190,
+  "total_revenue_usd": 3.056,
+  "total_revenue_idr": 49660,
+  "total_sms": 191,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.472,
-  "today_sms": 92,
+  "today_revenue_usd": 1.488,
+  "today_sms": 93,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -34,9 +34,9 @@
     },
     "saputradimas0878@gmail.com": {
       "email": "saputradimas0878@gmail.com",
-      "sms": 17,
-      "usd": 0.272,
-      "idr": 4420
+      "sms": 18,
+      "usd": 0.288,
+      "idr": 4680
     },
     "beras.capakor@gmail.com": {
       "email": "beras.capakor@gmail.com",
@@ -167,6 +167,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 11:57:13",
+      "account": "saputradimas0878@gmail.com",
+      "phone": "265881586820",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 11:44:17",
       "account": "sms_d98388f2@monemail.fr.nf",
@@ -398,17 +406,9 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 08:16:13",
-      "account": "acc_3f68900f@jetable.fr.nf",
-      "phone": "243898925358",
-      "platform": "WhatsApp",
-      "flag": "🇨🇩",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 11:44:17",
+  "last_event_time": "2026-10-18 11:57:13",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
