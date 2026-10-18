@@ -1,1 +1,0 @@
-Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Id, ProcessName, @{Name="CPU_Seconds";Expression={[math]::Round($_.CPU, 1)}}, @{Name="RAM_MB";Expression={[math]::Round($_.WorkingSet64 / 1MB, 1)}} | Format-Table -AutoSize
