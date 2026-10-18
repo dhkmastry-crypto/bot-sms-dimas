@@ -80,6 +80,7 @@ class AugestelBrowserPool:
         self.auto_add_running = False
         self.auto_add_stop_flag = False
         self.is_running = False
+        self.desktop_mode_accounts = set()  # Akun yang sedang dibuka di layar desktop VPS oleh user (kebal auto-kill)
         self.accounts = self._load_accounts()
         self.thread.start()
 
@@ -117,6 +118,18 @@ class AugestelBrowserPool:
     def run_coro(self, coro, timeout=180):
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)
         return future.result(timeout=timeout)
+
+    def mark_desktop_mode(self, idx: int, active: bool = True):
+        """Menandai apakah akun tertentu sedang dibuka di layar desktop VPS secara interaktif."""
+        if active:
+            self.desktop_mode_accounts.add(idx)
+            logger.info(f"🖥️ [Desktop Mode] Akun #{idx} ditandai AKTIF di layar desktop (auto-kill dimatikan).")
+        else:
+            self.desktop_mode_accounts.discard(idx)
+            logger.info(f"🖥️ [Desktop Mode] Akun #{idx} dilepas dari layar desktop.")
+
+    def is_in_desktop_mode(self, idx: int) -> bool:
+        return idx in self.desktop_mode_accounts
 
     # ──────────────────────────────────────────
     # ASYNC CORE METHODS (RUN IN DAEMON THREAD)
@@ -296,6 +309,9 @@ class AugestelBrowserPool:
                     acc = self.accounts[idx - 1]
                     email = acc.get("email", "")
                     pwd = acc.get("password", "")
+
+                    if self.is_in_desktop_mode(idx):
+                        continue
 
                     try:
                         page = self.pages.get(idx)
