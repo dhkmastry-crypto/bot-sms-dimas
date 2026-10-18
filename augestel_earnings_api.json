@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.968,
-  "total_revenue_idr": 64480,
-  "total_sms": 248,
+  "total_revenue_usd": 4.0,
+  "total_revenue_idr": 65000,
+  "total_sms": 250,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.456,
-  "today_sms": 91,
+  "today_revenue_usd": 1.488,
+  "today_sms": 93,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -661,9 +661,9 @@
     },
     "18": {
       "email": "nnkk6516@gmail.com",
-      "sms": 5,
-      "usd": 0.08,
-      "idr": 1300,
+      "sms": 6,
+      "usd": 0.096,
+      "idr": 1560,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1102,9 +1102,9 @@
     },
     "33": {
       "email": "tele_69a65f83@courriel.fr.nf",
-      "sms": 2,
-      "usd": 0.032,
-      "idr": 520,
+      "sms": 3,
+      "usd": 0.048,
+      "idr": 780,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1406,6 +1406,22 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 21:48:13",
+      "account": "Akun #33",
+      "phone": "94713779612",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 21:48:12",
+      "account": "Akun #18",
+      "phone": "265881530305",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 21:47:14",
       "account": "Akun #34",
       "phone": "94713980413",
@@ -1625,22 +1641,6 @@
       "time": "2026-10-18 18:30:14",
       "account": "Akun #1",
       "phone": "265881723483",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 18:29:13",
-      "account": "Akun #1",
-      "phone": "265881362314",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 18:25:12",
-      "account": "Akun #1",
-      "phone": "265881842092",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
