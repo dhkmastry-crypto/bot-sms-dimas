@@ -1090,11 +1090,6 @@ def augestel_webhook():
                 received_at = str(ev_data.get("received_at", "")).strip()
                 rate_val = ev_data.get("rate", 0.0)
 
-                from otp_utils import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
-                from bot import format_otp_message, create_keyboard
-                from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
-                from otp_dedup import is_duplicate_and_claim, get_dedup_key, claim_earnings_once
-
                 phone_cc, phone_flag = get_country_from_phone(phone)
                 otp = extract_otp(raw_message)
                 platform, p_emoji = detect_platform(source_sender)
@@ -3390,5 +3385,5 @@ if __name__ == "__main__":
 
     threading.Thread(target=_periodic_api_sync_worker, daemon=True, name="AugestelApiSyncWorker").start()
 
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
 
