@@ -871,6 +871,7 @@ async function deleteAllNumbersCurrentAccount() {
 // ────────────────────────────────────────────
 
 let allAugestelNumbersList = [];
+let currentAugAccountEmail = '';
 
 async function initAugestelNumbersPage() {
     await loadAugestelNumbersAccountOptions();
@@ -1128,7 +1129,7 @@ async function loadAugestelNumbersData(forceRefresh = false) {
     if (tbody) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="${isMultiple ? 8 : 7}" class="text-center" style="padding: 30px;">
+                <td colspan="${isMultiple ? 9 : 8}" class="text-center" style="padding: 30px;">
                     <i class="fas fa-circle-notch fa-spin" style="font-size: 1.5rem; color: #8b5cf6;"></i>
                     <div style="margin-top: 10px; font-weight: 500;">
                         ${isMultiple ? 'Memuat dan mendeteksi nomor dari akun-akun Augestel terpilih...' : (forceRefresh ? 'Menghubungkan ke API Augestel dan mendeteksi nomor realtime...' : 'Memuat data nomor akun Augestel...')}
@@ -1146,7 +1147,7 @@ async function loadAugestelNumbersData(forceRefresh = false) {
         if (!data.success) {
             showToast(data.message || 'Gagal mengambil nomor dari portal Augestel', 'error');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="${isMultiple ? 8 : 7}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${isMultiple ? 9 : 8}" class="text-center text-danger" style="padding: 24px;"><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(data.message || 'Gagal memuat nomor')}</td></tr>`;
             }
             if (statTotal) statTotal.textContent = '0';
             if (breakdownEl) breakdownEl.style.display = 'none';
@@ -1155,6 +1156,7 @@ async function loadAugestelNumbersData(forceRefresh = false) {
 
         allAugestelNumbersList = data.numbers || [];
         const total = data.total || allAugestelNumbersList.length;
+        currentAugAccountEmail = data.email || '';
 
         if (statTotal) statTotal.textContent = total.toLocaleString('id-ID');
         if (statAcc) {
@@ -1230,7 +1232,7 @@ async function loadAugestelNumbersData(forceRefresh = false) {
     } catch (e) {
         showToast(`Error: ${e.message}`, 'error');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="${isMultiple ? 8 : 7}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${isMultiple ? 9 : 8}" class="text-center text-danger" style="padding: 24px;">Error: ${escapeHtml(e.message)}</td></tr>`;
         }
     } finally {
         if (btnRef) {
@@ -1255,14 +1257,15 @@ function renderAugestelNumbersTable(list, isAll = false) {
     if (!tbody) return;
 
     if (!list || list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isAll ? 8 : 7}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor Augestel yang ditemukan.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${isAll ? 9 : 8}" class="text-center text-muted" style="padding: 24px;">Tidak ada nomor Augestel yang ditemukan.</td></tr>`;
         updateAugSelectionUI();
         return;
     }
 
     tbody.innerHTML = list.map((item, idx) => {
         const isChecked = selectedAugNumbers.has(String(item.number));
-        const accCol = isAll ? `<td style="text-align: center;"><span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; font-size:0.75rem;" title="${escapeHtml(item.account_email || '')}"><i class="fas fa-user"></i> ${item.account_index ? item.account_index.replace('aug_', '#') : '#1'}</span></td>` : '';
+        const itemEmail = item.account_email || currentAugAccountEmail || '-';
+        const accCol = isAll ? `<td style="text-align: center;"><span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c4b5fd; font-size:0.75rem;" title="${escapeHtml(itemEmail)}"><i class="fas fa-user"></i> ${item.account_index ? item.account_index.replace('aug_', '#') : '#1'}</span></td>` : '';
         return `
             <tr id="augRow_${idx}" class="${isChecked ? 'selected-aug-row' : ''}" onclick="handleAugRowClick(event, ${idx})" style="cursor: pointer;">
                 <td style="text-align: center;" onclick="event.stopPropagation()">
@@ -1270,6 +1273,12 @@ function renderAugestelNumbersTable(list, isAll = false) {
                 </td>
                 <td class="text-muted mono" style="font-size: 0.82rem; text-align: center;">${idx + 1}</td>
                 ${accCol}
+                <td style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(itemEmail)}">
+                    <span class="mono" style="font-size: 0.78rem; color: #cbd5e1; display: inline-flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-envelope" style="font-size: 0.72rem; color: #a78bfa; opacity: 0.85;"></i>
+                        <span>${escapeHtml(itemEmail)}</span>
+                    </span>
+                </td>
                 <td class="selectable mono" style="font-weight: 600; color: #a78bfa;" title="Klik untuk salin satu nomor" onclick="event.stopPropagation(); copyText('${escapeHtml(item.number)}')">
                     <i class="fas fa-phone-alt" style="font-size: 0.72rem; opacity: 0.65; margin-right: 6px;"></i>
                     <span>${escapeHtml(item.number)}</span>
