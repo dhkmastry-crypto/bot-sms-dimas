@@ -156,26 +156,37 @@ def format_otp_message(sms_data: dict) -> str:
     return f"{line1}\n{line2}"
 
 
+_cfg_file_cache = ""
+_cfg_channel_cache = ""
+_cfg_mtime_cache = 0
+
+def _get_dynamic_links(file_link: str = "", channel_link: str = "") -> tuple:
+    global _cfg_file_cache, _cfg_channel_cache, _cfg_mtime_cache
+    try:
+        cfg_path = os.path.join(DIR_PATH, "config.py")
+        if os.path.exists(cfg_path):
+            mt = os.path.getmtime(cfg_path)
+            if mt != _cfg_mtime_cache:
+                import importlib
+                import config as _cfg
+                importlib.reload(_cfg)
+                _cfg_file_cache = getattr(_cfg, "FILE_LINK", "") or getattr(_cfg, "NUMBER_LINK", "")
+                _cfg_channel_cache = getattr(_cfg, "CHANNEL_LINK", "") or getattr(_cfg, "GROUP_LINK", "")
+                _cfg_mtime_cache = mt
+    except Exception:
+        pass
+    f_link = (_cfg_file_cache or file_link or FILE_LINK or NUMBER_LINK or "").strip()
+    c_link = (_cfg_channel_cache or channel_link or CHANNEL_LINK or GROUP_LINK or "").strip()
+    return f_link, c_link
+
+
 def create_keyboard(sms_data: dict, file_link: str = "", channel_link: str = "", otp_text: str = "") -> InlineKeyboardMarkup:
     """
     Buat inline keyboard persis screenshot:
     [           🔑 758-347            ]  <-- copy button (highlighted)
     [ 📁 FILE ↗ ]   [ 🔔 CHANNEL ↗ ]
     """
-    # Selalu baca konfigurasi terbaru dari config.py secara dinamis
-    cfg_file = ""
-    cfg_channel = ""
-    try:
-        import importlib
-        import config as _cfg
-        importlib.reload(_cfg)
-        cfg_file = getattr(_cfg, "FILE_LINK", "") or getattr(_cfg, "NUMBER_LINK", "")
-        cfg_channel = getattr(_cfg, "CHANNEL_LINK", "") or getattr(_cfg, "GROUP_LINK", "")
-    except Exception:
-        pass
-
-    f_link = (cfg_file or file_link or FILE_LINK or NUMBER_LINK or "").strip()
-    c_link = (cfg_channel or channel_link or CHANNEL_LINK or GROUP_LINK or "").strip()
+    f_link, c_link = _get_dynamic_links(file_link, channel_link)
 
     def ensure_url(url: str) -> str:
         if not url:
