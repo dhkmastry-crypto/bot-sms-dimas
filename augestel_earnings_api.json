@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.792,
-  "total_revenue_idr": 61620,
-  "total_sms": 237,
+  "total_revenue_usd": 3.808,
+  "total_revenue_idr": 61880,
+  "total_sms": 238,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.28,
-  "today_sms": 80,
+  "today_revenue_usd": 1.296,
+  "today_sms": 81,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -499,9 +499,9 @@
     },
     "14": {
       "email": "dimsongkang@gmail.com",
-      "sms": 5,
-      "usd": 0.08,
-      "idr": 1300,
+      "sms": 6,
+      "usd": 0.096,
+      "idr": 1560,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1370,6 +1370,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 19:56:11",
+      "account": "Akun #14",
+      "phone": "243893564487",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 19:54:34",
       "account": "Akun #17",
       "phone": "265881385368",
@@ -1597,14 +1605,6 @@
       "time": "2026-10-18 16:28:12",
       "account": "Akun #1",
       "phone": "265881724209",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 16:26:12",
-      "account": "Akun #1",
-      "phone": "265881308525",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
