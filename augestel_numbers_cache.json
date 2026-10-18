@@ -1,7 +1,7 @@
 {
   "success": true,
   "account_index": "augestel_all",
-  "email": "Semua Akun Augestel (36 Akun Aktif)",
+  "email": "Semua Akun Augestel (35 Akun Aktif)",
   "total": 82750,
   "count": 82750,
   "numbers": [
@@ -910431,12 +910431,7 @@
       "account_index": 35,
       "email": "iprn_61c2edb5@moncourrier.fr.nf",
       "total": 0
-    },
-    {
-      "account_index": 36,
-      "email": "dim_795fd98d@jetable.fr.nf",
-      "total": 0
     }
   ],
-  "cached_at": "2026-10-18 14:32:09"
+  "cached_at": "2026-10-18 14:58:20"
 }
