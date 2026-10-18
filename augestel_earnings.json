@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.904,
-  "total_revenue_idr": 63440,
-  "total_sms": 244,
+  "total_revenue_usd": 3.92,
+  "total_revenue_idr": 63700,
+  "total_sms": 245,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.392,
-  "today_sms": 87,
+  "today_revenue_usd": 1.408,
+  "today_sms": 88,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -1117,9 +1117,9 @@
     },
     "34": {
       "email": "user_16ec95f2@moncourrier.fr.nf",
-      "sms": 4,
-      "usd": 0.064,
-      "idr": 1040,
+      "sms": 5,
+      "usd": 0.08,
+      "idr": 1300,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1388,6 +1388,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 21:27:13",
+      "account": "Akun #34",
+      "phone": "94713224958",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 21:14:11",
       "account": "Akun #35",
       "phone": "94713414204",
@@ -1615,14 +1623,6 @@
       "time": "2026-10-18 18:17:11",
       "account": "Akun #1",
       "phone": "265881340378",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 18:03:12",
-      "account": "Akun #1",
-      "phone": "265881810776",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016

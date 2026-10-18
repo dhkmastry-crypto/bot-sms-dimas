@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.776,
-  "total_revenue_idr": 61360,
-  "total_sms": 236,
+  "total_revenue_usd": 3.792,
+  "total_revenue_idr": 61620,
+  "total_sms": 237,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 2.208,
-  "today_sms": 138,
+  "today_revenue_usd": 2.224,
+  "today_sms": 139,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -178,9 +178,9 @@
     },
     "Akun #34": {
       "email": "Akun #34",
-      "sms": 1,
-      "usd": 0.016,
-      "idr": 260
+      "sms": 2,
+      "usd": 0.032,
+      "idr": 520
     },
     "Akun #22": {
       "email": "Akun #22",
@@ -227,6 +227,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 21:27:13",
+      "account": "Akun #34",
+      "phone": "94713224958",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 21:14:11",
       "account": "Akun #35",
@@ -458,17 +466,9 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 18:17:11",
-      "account": "Akun #1",
-      "phone": "265881340378",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 21:14:11",
+  "last_event_time": "2026-10-18 21:27:13",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
