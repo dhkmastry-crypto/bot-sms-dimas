@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.528,
-  "total_revenue_idr": 41080,
-  "total_sms": 158,
+  "total_revenue_usd": 2.544,
+  "total_revenue_idr": 41340,
+  "total_sms": 159,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 0.96,
-  "today_sms": 60,
+  "today_revenue_usd": 0.976,
+  "today_sms": 61,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -121,6 +121,12 @@
       "sms": 1,
       "usd": 0.016,
       "idr": 260
+    },
+    "sms_d98388f2@monemail.fr.nf": {
+      "email": "sms_d98388f2@monemail.fr.nf",
+      "sms": 1,
+      "usd": 0.016,
+      "idr": 260
     }
   },
   "by_country": {
@@ -143,6 +149,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 08:01:14",
+      "account": "sms_d98388f2@monemail.fr.nf",
+      "phone": "243898831147",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 07:16:13",
       "account": "acc_3f68900f@jetable.fr.nf",
@@ -374,17 +388,9 @@
       "otp": "191352",
       "country": "MW",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 03:03:17",
-      "account": "songkanjut@gmail.com",
-      "platform": "WhatsApp",
-      "otp": "189522",
-      "country": "MW",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 07:16:13",
+  "last_event_time": "2026-10-18 08:01:14",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
