@@ -1573,6 +1573,29 @@ def api_augestel_webhooks_setup_all():
     })
 
 
+@app.route("/api/augestel/internal-disable-number-events", methods=["GET", "POST"])
+def api_augestel_internal_disable_number_events():
+    """Trigger update webhook seluruh akun untuk menonaktifkan number.assigned & number.removed via live pool"""
+    from augestel_browser_pool import get_browser_pool
+    pool = get_browser_pool()
+    if not pool:
+        return jsonify({"success": False, "message": "No pool instance"})
+    
+    target_url = getattr(pool, "webhook_url", "https://dimsong.online/api/augestel/webhook")
+    
+    def _worker():
+        logger.info("🚀 [Internal] Menjalankan update webhook semua akun untuk mematikan number.assigned & number.removed...")
+        try:
+            res = pool.setup_all_webhooks_sync(target_url)
+            logger.info(f"🎉 [Internal] Hasil update webhook semua akun: {res}")
+        except Exception as e:
+            logger.error(f"❌ [Internal] Error update webhook: {e}")
+            
+    threading.Thread(target=_worker, daemon=True).start()
+    return jsonify({"success": True, "message": "Proses update webhook semua akun telah dimulai di background pool!"})
+
+
+
 @app.route("/api/bot/status")
 @login_required
 def api_bot_status():
