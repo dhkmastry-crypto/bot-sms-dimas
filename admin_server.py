@@ -949,7 +949,7 @@ _phone_map_lock = threading.Lock()
 _phone_map_last_refresh = 0
 
 def refresh_phone_account_map(force=False):
-    """Memetakan seluruh nomor telepon dari 32 akun ke RAM agar lookup 0.0001ms (tanpa baca disk)."""
+    """Memetakan seluruh nomor telepon dari seluruh akun ke RAM agar lookup 0.0001ms (tanpa baca disk)."""
     global _phone_account_map, _phone_map_last_refresh
     now = time.time()
     if not force and (now - _phone_map_last_refresh < 300) and _phone_account_map:
@@ -966,18 +966,23 @@ def refresh_phone_account_map(force=False):
                         acc_emails[i] = a.get("email", f"Akun #{i}")
 
             new_map = {}
-            for idx in range(1, 33):
-                c_path = os.path.join(BASE_DIR, f"augestel_numbers_cache_{idx}.json")
-                if os.path.exists(c_path):
-                    try:
-                        with open(c_path, "r", encoding="utf-8") as cf:
-                            c_data = json.load(cf)
-                            for n in c_data.get("numbers", []):
-                                cp = re.sub(r'[\s\+\-]', '', str(n))
-                                if cp:
-                                    new_map[cp] = (idx, acc_emails.get(idx, f"Akun #{idx}"))
-                    except Exception:
-                        pass
+            import glob
+            c_files = glob.glob(os.path.join(BASE_DIR, "augestel_numbers_cache_*.json"))
+            for c_path in c_files:
+                m = re.search(r'augestel_numbers_cache_(\d+)\.json', c_path)
+                if not m:
+                    continue
+                idx = int(m.group(1))
+                try:
+                    with open(c_path, "r", encoding="utf-8") as cf:
+                        c_data = json.load(cf)
+                        for n in c_data.get("numbers", []):
+                            raw_num = n.get("number") or n.get("phone") or "" if isinstance(n, dict) else str(n)
+                            cp = re.sub(r'[\s\+\-]', '', str(raw_num))
+                            if cp:
+                                new_map[cp] = (idx, f"Akun #{idx}")
+                except Exception:
+                    pass
             _phone_account_map = new_map
             _phone_map_last_refresh = now
             logger.info(f"⚡ [Turbo Engine] Pre-cached {len(new_map)} nomor Augestel di RAM (Lookup akun instant 0ms).")
