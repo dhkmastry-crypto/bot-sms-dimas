@@ -1238,6 +1238,77 @@
         </div>
     </div>
 
+    <!-- Modal Buka di Layar Desktop VPS (Augestel Browser) -->
+    <div class="modal-overlay" id="augDesktopModal" style="display: none;">
+        <div class="modal-card" style="max-width: 560px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-desktop" style="color: #6366f1;"></i> <span id="desktopModalTitle">Layar Browser Akun</span></h3>
+                <button class="modal-close" onclick="closeAugDesktopModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span id="desktopModalBadge" class="badge badge-success" style="font-size: 0.8rem; padding: 4px 10px;">
+                            <i class="fas fa-check-circle"></i> Jendela Aktif di Monitor VPS
+                        </span>
+                        <span class="text-muted mono" style="font-size: 0.75rem;" id="desktopModalPos">Posisi: (100, 80) • 1280x850</span>
+                    </div>
+                    <div style="font-size: 0.88rem; color: var(--text);">
+                        Jendela <b>Microsoft Edge</b> untuk akun ini telah diluncurkan di layar monitor VPS desktop Anda.
+                    </div>
+                </div>
+
+                <!-- Credential Quick Copy Box -->
+                <div style="background: var(--card-bg, #1e293b); border: 1px solid var(--border-color, #334155); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 8px;">
+                        <i class="fas fa-key"></i> Kredensial Login Akun
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-size: 0.85rem;"><i class="fas fa-envelope text-muted"></i> <span id="desktopModalEmail" class="mono font-bold">-</span></span>
+                        <button class="btn btn-sm btn-secondary" onclick="copyDesktopModalField('email')" title="Salin Email">
+                            <i class="fas fa-copy"></i> Salin Email
+                        </button>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.85rem;"><i class="fas fa-lock text-muted"></i> <span id="desktopModalPassword" class="mono font-bold">••••••••</span></span>
+                        <button class="btn btn-sm btn-secondary" onclick="copyDesktopModalField('password')" title="Salin Password">
+                            <i class="fas fa-copy"></i> Salin Password
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Petunjuk Langkah -->
+                <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 14px; background: rgba(255, 255, 255, 0.03); padding: 10px 12px; border-radius: 6px;">
+                    <b>Petunjuk Penggunaan:</b>
+                    <ol style="margin: 4px 0 0 16px; padding: 0;">
+                        <li>Lihat ke layar monitor / RDP VPS Anda, jendela Microsoft Edge akan otomatis terbuka di depan.</li>
+                        <li>Jika muncul halaman login, masukkan password dan <b>centang [x] Remember me</b>.</li>
+                        <li>Hubungkan puzzle slider captcha dengan mouse, lalu klik <b>Sign In</b>.</li>
+                        <li>Setelah berhasil login ke portal numbers, klik tombol <b>🔄 Sinkronkan Sesi</b> di bawah.</li>
+                    </ol>
+                </div>
+
+                <div id="desktopModalStatusBox" style="display: none; padding: 10px; border-radius: 6px; font-size: 0.85rem; margin-top: 10px;"></div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn btn-danger btn-sm" onclick="closeAugestelDesktopWindowAction()" title="Tutup jendela Edge desktop">
+                        <i class="fas fa-window-close"></i> Tutup Edge
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="focusAugestelDesktopWindowAction()" title="Fokuskan kembali jendela ke depan monitor">
+                        <i class="fas fa-external-link-alt"></i> Fokuskan Layar
+                    </button>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn btn-secondary" onclick="closeAugDesktopModal()">Tutup Dialog</button>
+                    <button class="btn btn-success" id="btnSyncDesktopSession" onclick="syncAugestelDesktopSessionAction()" style="background: linear-gradient(135deg, #10b981, #059669); font-weight: 600;">
+                        <i class="fas fa-sync-alt"></i> Sinkronkan Sesi & Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast-container" id="toastContainer"></div>
 

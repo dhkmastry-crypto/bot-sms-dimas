@@ -2713,7 +2713,19 @@ async function loadAugestelAccountsList() {
     }
 }
 
+let currentDesktopModalAccount = null;
+
 async function showAugestelWindow(idx) {
+    let email = '';
+    let password = '';
+    if (typeof currentAugestelAccounts !== 'undefined' && currentAugestelAccounts && currentAugestelAccounts[idx - 1]) {
+        email = currentAugestelAccounts[idx - 1].email || '';
+        password = currentAugestelAccounts[idx - 1].password || '';
+    }
+
+    // Buka modal interaktif terlebih dahulu agar user mendapat respon visual langsung
+    openAugDesktopModal(idx, email, password);
+
     showToast(`🖥️ Membuka jendela browser Akun #${idx} di layar desktop VPS...`, 'info');
     try {
         const res = await fetch(`/api/augestel/pool/show/${idx}`, {
@@ -2723,11 +2735,146 @@ async function showAugestelWindow(idx) {
         const data = await res.json();
         if (data.success) {
             showToast(`✅ ${data.message}`, 'success');
+            if (data.email) email = data.email;
+            if (data.password) password = data.password;
+            openAugDesktopModal(idx, email, password, data.message);
         } else {
             showToast(`⚠️ ${data.message}`, 'warning');
+            const statusBox = document.getElementById('desktopModalStatusBox');
+            if (statusBox) {
+                statusBox.className = 'text-warning';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(234, 179, 8, 0.1)';
+                statusBox.innerHTML = `⚠️ ${escapeHtml(data.message)}`;
+            }
         }
     } catch (e) {
         showToast(`❌ Error: ${e.message}`, 'error');
+    }
+}
+
+function openAugDesktopModal(idx, email, password, statusMsg) {
+    currentDesktopModalAccount = { idx, email, password };
+    const modal = document.getElementById('augDesktopModal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('desktopModalTitle');
+    if (titleEl) titleEl.textContent = `Layar Browser Akun #${idx}`;
+
+    const emailEl = document.getElementById('desktopModalEmail');
+    if (emailEl) emailEl.textContent = email || `Akun #${idx}`;
+
+    const pwdEl = document.getElementById('desktopModalPassword');
+    if (pwdEl) pwdEl.textContent = password || '(tersimpan)';
+
+    const statusBox = document.getElementById('desktopModalStatusBox');
+    if (statusBox) {
+        if (statusMsg) {
+            statusBox.className = 'text-success';
+            statusBox.style.display = 'block';
+            statusBox.style.background = 'rgba(16, 185, 129, 0.1)';
+            statusBox.innerHTML = `✅ ${escapeHtml(statusMsg)}`;
+        } else {
+            statusBox.style.display = 'none';
+        }
+    }
+
+    modal.style.display = 'flex';
+}
+
+function closeAugDesktopModal() {
+    const modal = document.getElementById('augDesktopModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function copyDesktopModalField(field) {
+    if (!currentDesktopModalAccount) return;
+    const text = field === 'email' ? currentDesktopModalAccount.email : currentDesktopModalAccount.password;
+    if (!text) {
+        showToast('Kredensial kosong!', 'warning');
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`📋 ${field === 'email' ? 'Email' : 'Password'} berhasil disalin ke clipboard!`, 'success');
+        }).catch(() => {
+            prompt(`Salin ${field}:`, text);
+        });
+    } else {
+        prompt(`Salin ${field}:`, text);
+    }
+}
+
+async function focusAugestelDesktopWindowAction() {
+    if (!currentDesktopModalAccount) return;
+    const idx = currentDesktopModalAccount.idx;
+    showToast(`🖥️ Memfokuskan jendela Akun #${idx} ke depan layar...`, 'info');
+    try {
+        const res = await fetch(`/api/augestel/pool/show/${idx}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        showToast(data.message, data.success ? 'success' : 'warning');
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+    }
+}
+
+async function closeAugestelDesktopWindowAction() {
+    if (!currentDesktopModalAccount) return;
+    const idx = currentDesktopModalAccount.idx;
+    showToast(`Menutup jendela desktop Akun #${idx}...`, 'info');
+    try {
+        const res = await fetch(`/api/augestel/pool/close-desktop/${idx}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        showToast(data.message, data.success ? 'success' : 'warning');
+        closeAugDesktopModal();
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+    }
+}
+
+async function syncAugestelDesktopSessionAction() {
+    if (!currentDesktopModalAccount) return;
+    const idx = currentDesktopModalAccount.idx;
+    const btn = document.getElementById('btnSyncDesktopSession');
+    if (btn) btn.disabled = true;
+    showToast(`🔄 Memeriksa & menyinkronkan sesi Akun #${idx}...`, 'info');
+
+    try {
+        const res = await fetch(`/api/augestel/pool/sync-session/${idx}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success && data.logged_in) {
+            showToast(`🎉 ${data.message}`, 'success');
+            const statusBox = document.getElementById('desktopModalStatusBox');
+            if (statusBox) {
+                statusBox.className = 'text-success';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                statusBox.innerHTML = `🎉 <b>Login Terverifikasi!</b> Cookie sesi aktif & bot telah disinkronkan.`;
+            }
+            if (typeof loadAugestelAccounts === 'function') loadAugestelAccounts();
+        } else {
+            showToast(`⚠️ ${data.message}`, 'warning');
+            const statusBox = document.getElementById('desktopModalStatusBox');
+            if (statusBox) {
+                statusBox.className = 'text-warning';
+                statusBox.style.display = 'block';
+                statusBox.style.background = 'rgba(234, 179, 8, 0.15)';
+                statusBox.innerHTML = `⚠️ ${escapeHtml(data.message)}`;
+            }
+        }
+    } catch (e) {
+        showToast(`Error: ${e.message}`, 'error');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
