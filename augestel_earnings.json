@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.256,
-  "total_revenue_idr": 69160,
-  "total_sms": 266,
+  "total_revenue_usd": 4.272,
+  "total_revenue_idr": 69420,
+  "total_sms": 267,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.744,
-  "today_sms": 109,
+  "today_revenue_usd": 1.76,
+  "today_sms": 110,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -733,9 +733,9 @@
     },
     "20": {
       "email": "tefroittessaheu-7248@yopmail.com",
-      "sms": 5,
-      "usd": 0.08,
-      "idr": 1300,
+      "sms": 6,
+      "usd": 0.096,
+      "idr": 1560,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1448,6 +1448,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 01:20:12",
+      "account": "Akun #20",
+      "phone": "265881818528",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 00:09:11",
       "account": "Akun #35",
       "phone": "94713194485",
@@ -1678,17 +1686,10 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 19:54:34",
-      "account": "Akun #17",
-      "phone": "265881385368",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 01:03:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
