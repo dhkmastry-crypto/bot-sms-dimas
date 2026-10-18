@@ -1062,6 +1062,10 @@ def augestel_webhook():
     event_type = payload.get("event") or event_header or "unknown"
     data = payload.get("data") or {}
 
+    # Fitur number.assigned dan number.removed dimatikan sesuai permintaan user:
+    if event_type in ["number.assigned", "number.removed"]:
+        return jsonify({"success": True, "message": f"Event {event_type} diabaikan (fitur telah dinonaktifkan)"}), 200
+
     augestel_webhook_status["total_received"] += 1
     augestel_webhook_status["last_received"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     augestel_webhook_status["last_event"] = event_type
