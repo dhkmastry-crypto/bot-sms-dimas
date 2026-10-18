@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.112,
-  "total_revenue_idr": 66820,
-  "total_sms": 257,
+  "total_revenue_usd": 4.127,
+  "total_revenue_idr": 67063,
+  "total_sms": 258,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 2.544,
-  "today_sms": 159,
+  "today_revenue_usd": 2.559,
+  "today_sms": 160,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -34,9 +34,9 @@
     },
     "saputradimas0878@gmail.com": {
       "email": "saputradimas0878@gmail.com",
-      "sms": 18,
-      "usd": 0.288,
-      "idr": 4680
+      "sms": 19,
+      "usd": 0.303,
+      "idr": 4923
     },
     "beras.capakor@gmail.com": {
       "email": "beras.capakor@gmail.com",
@@ -239,6 +239,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 23:25:38",
+      "account": "saputradimas0878@gmail.com",
+      "phone": "+263788124006",
+      "platform": "WhatsApp",
+      "flag": "🇿🇼",
+      "rate_usd": 0.015
+    },
     {
       "time": "2026-10-18 23:19:10",
       "account": "Akun #20",
@@ -470,17 +478,9 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 19:39:13",
-      "account": "Akun #35",
-      "phone": "94713925130",
-      "platform": "Apple",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 23:19:10",
+  "last_event_time": "2026-10-18 23:25:38",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
