@@ -82,16 +82,17 @@ from otp_dedup import is_duplicate_and_claim
 # ────────────────────────────────────────────
 #  LOGGING SETUP
 # ────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('bot.log', encoding='utf-8'),
-    ]
-)
 logger = logging.getLogger("OTPBot")
+if not logger.handlers:
+    _sh = logging.StreamHandler(sys.stdout)
+    _fh = logging.FileHandler('bot.log', encoding='utf-8')
+    _fmt = logging.Formatter('%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    _sh.setFormatter(_fmt)
+    _fh.setFormatter(_fmt)
+    logger.addHandler(_sh)
+    logger.addHandler(_fh)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
 
 # Reduce noise from libraries
 logging.getLogger("httpx").setLevel(logging.WARNING)
