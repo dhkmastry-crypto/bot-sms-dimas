@@ -1078,12 +1078,20 @@ def augestel_webhook():
 
                 async def send_tg():
                     bot = Bot(token=BOT_TOKEN)
-                    return await bot.send_message(
-                        chat_id=GROUP_CHAT_ID,
-                        text=msg_text,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=keyboard,
-                    )
+                    for attempt in range(1, 4):
+                        try:
+                            return await bot.send_message(
+                                chat_id=GROUP_CHAT_ID,
+                                text=msg_text,
+                                parse_mode=ParseMode.HTML,
+                                reply_markup=keyboard,
+                            )
+                        except Exception as tg_err:
+                            if attempt < 3:
+                                logger.warning(f"⚠️ [Telegram Webhook Push] Percobaan #{attempt} gagal ({tg_err}). Mencoba ulang dalam 1.5s...")
+                                await asyncio.sleep(1.5)
+                            else:
+                                raise tg_err
 
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
