@@ -42,6 +42,10 @@ from augestel_earnings_service import (
     record_webhook_daily_summary,
     USD_TO_IDR_RATE,
 )
+from otp_utils import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
+from bot import format_otp_message, create_keyboard
+from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
+from otp_dedup import is_duplicate_and_claim, get_dedup_key, claim_earnings_once
 
 # ────────────────────────────────────────────
 #  APP SETUP

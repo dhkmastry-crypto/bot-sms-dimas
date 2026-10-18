@@ -161,7 +161,15 @@ def start_tunnel():
             logger.info(f"🚇 Starting Permanent Cloudflare Tunnel for {CUSTOM_DOMAIN}...")
             try:
                 proc = subprocess.Popen(
-                    [CLOUDFLARED_EXE, "tunnel", "run", "--token", CLOUDFLARE_TOKEN],
+                    [
+                        CLOUDFLARED_EXE, "tunnel", "run",
+                        "--token", CLOUDFLARE_TOKEN,
+                        "--protocol", "quic",
+                        "--edge-ip-version", "auto",
+                        "--proxy-tcp-keepalive", "60s",
+                        "--proxy-keepalive-timeout", "120s",
+                        "--no-chunked-encoding"
+                    ],
                     cwd=DIR_PATH,
                     stdout=log_file,
                     stderr=subprocess.STDOUT,
