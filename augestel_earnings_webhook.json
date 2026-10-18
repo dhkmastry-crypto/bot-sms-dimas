@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.976,
-  "total_revenue_idr": 48360,
-  "total_sms": 186,
+  "total_revenue_usd": 2.992,
+  "total_revenue_idr": 48620,
+  "total_sms": 187,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.408,
-  "today_sms": 88,
+  "today_revenue_usd": 1.424,
+  "today_sms": 89,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -130,9 +130,9 @@
     },
     "tele_7c275315@courriel.fr.nf": {
       "email": "tele_7c275315@courriel.fr.nf",
-      "sms": 1,
-      "usd": 0.016,
-      "idr": 260
+      "sms": 2,
+      "usd": 0.032,
+      "idr": 520
     },
     "sms_ce11e137@yopmail.com": {
       "email": "sms_ce11e137@yopmail.com",
@@ -167,6 +167,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 11:29:17",
+      "account": "tele_7c275315@courriel.fr.nf",
+      "phone": "243898222210",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 11:28:15",
       "account": "acc_3f68900f@jetable.fr.nf",
@@ -398,17 +406,9 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 06:27:13",
-      "account": "dimaseu542@gmail.com",
-      "phone": "265881358647",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 11:28:15",
+  "last_event_time": "2026-10-18 11:29:17",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
