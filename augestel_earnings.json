@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.072,
-  "total_revenue_idr": 49920,
-  "total_sms": 192,
+  "total_revenue_usd": 3.088,
+  "total_revenue_idr": 50180,
+  "total_sms": 193,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 0.56,
-  "today_sms": 35,
+  "today_revenue_usd": 0.576,
+  "today_sms": 36,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -244,9 +244,9 @@
     },
     "7": {
       "email": "beras.capakor@gmail.com",
-      "sms": 13,
-      "usd": 0.208,
-      "idr": 3380,
+      "sms": 14,
+      "usd": 0.224,
+      "idr": 3640,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1156,6 +1156,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 11:36:10",
+      "account": "Akun #7",
+      "phone": "265881370282",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 11:29:17",
       "account": "Akun #26",
       "phone": "243898222210",
@@ -1385,14 +1393,6 @@
       "phone": "243891611860",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 06:27:13",
-      "account": "Akun #15",
-      "phone": "265881358647",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
       "rate_usd": 0.016
     }
   ],
