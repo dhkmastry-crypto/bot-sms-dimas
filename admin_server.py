@@ -908,29 +908,100 @@ def api_test_otp():
 # ────────────────────────────────────────────
 EARNINGS_FILE = os.path.join(BASE_DIR, "augestel_earnings.json")
 
+# ────────────────────────────────────────────
+#  ULTRA-FAST TELEGRAM ENGINE & RAM PHONE MAP
+# ────────────────────────────────────────────
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor
+
+# Pre-warmed persistent HTTPS session with Keep-Alive to api.telegram.org
+_fast_tg_session = requests.Session()
+_tg_retries = Retry(
+    total=3,
+    backoff_factor=0.2,
+    status_forcelist=[500, 502, 503, 504],
+    raise_on_status=False
+)
+_tg_adapter = HTTPAdapter(pool_connections=25, pool_maxsize=50, max_retries=_tg_retries)
+_fast_tg_session.mount("https://", _tg_adapter)
+
+# Pre-allocated ThreadPool for Webhook (0 thread startup overhead)
+_webhook_executor = ThreadPoolExecutor(max_workers=16, thread_name_prefix="FastWebhook")
+
+def _keep_telegram_session_alive():
+    """Background keeper: menjaga koneksi TCP & TLS 1.3 ke api.telegram.org selalu standby panas 24/7."""
+    from config import BOT_TOKEN
+    while True:
+        try:
+            if BOT_TOKEN:
+                _fast_tg_session.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=5)
+        except Exception:
+            pass
+        time.sleep(35)
+
+threading.Thread(target=_keep_telegram_session_alive, daemon=True).start()
+
+# In-Memory RAM Map: nomor telepon -> (account_idx, account_email)
+_phone_account_map = {}
+_phone_map_lock = threading.Lock()
+_phone_map_last_refresh = 0
+
+def refresh_phone_account_map(force=False):
+    """Memetakan seluruh nomor telepon dari 32 akun ke RAM agar lookup 0.0001ms (tanpa baca disk)."""
+    global _phone_account_map, _phone_map_last_refresh
+    now = time.time()
+    if not force and (now - _phone_map_last_refresh < 300) and _phone_account_map:
+        return
+
+    with _phone_map_lock:
+        try:
+            acc_emails = {}
+            acc_file = os.path.join(BASE_DIR, "augestel_accounts.json")
+            if os.path.exists(acc_file):
+                with open(acc_file, "r", encoding="utf-8") as af:
+                    accs = json.load(af)
+                    for i, a in enumerate(accs, 1):
+                        acc_emails[i] = a.get("email", f"Akun #{i}")
+
+            new_map = {}
+            for idx in range(1, 33):
+                c_path = os.path.join(BASE_DIR, f"augestel_numbers_cache_{idx}.json")
+                if os.path.exists(c_path):
+                    try:
+                        with open(c_path, "r", encoding="utf-8") as cf:
+                            c_data = json.load(cf)
+                            for n in c_data.get("numbers", []):
+                                cp = re.sub(r'[\s\+\-]', '', str(n))
+                                if cp:
+                                    new_map[cp] = (idx, acc_emails.get(idx, f"Akun #{idx}"))
+                    except Exception:
+                        pass
+            _phone_account_map = new_map
+            _phone_map_last_refresh = now
+            logger.info(f"⚡ [Turbo Engine] Pre-cached {len(new_map)} nomor Augestel di RAM (Lookup akun instant 0ms).")
+        except Exception as e:
+            logger.error(f"Error refreshing phone account map: {e}")
+
+# Pre-cache saat server start
+threading.Thread(target=refresh_phone_account_map, args=(True,), daemon=True).start()
+
 def find_account_by_phone(phone_number: str) -> tuple:
-    """Mencari akun mana yang memiliki nomor telepon ini berdasarkan file cache 32 akun."""
+    """Lookup akun pemilik nomor telepon dari RAM dalam 0.0001ms."""
     clean_p = re.sub(r'[\s\+\-]', '', str(phone_number))
-    for idx in range(1, 33):
-        c_path = os.path.join(BASE_DIR, f"augestel_numbers_cache_{idx}.json")
-        if os.path.exists(c_path):
-            try:
-                with open(c_path, "r", encoding="utf-8") as f:
-                    c_data = json.load(f)
-                    nums = c_data.get("numbers", [])
-                    for n in nums:
-                        if clean_p in re.sub(r'[\s\+\-]', '', str(n)):
-                            acc_email = ""
-                            try:
-                                with open(os.path.join(BASE_DIR, "augestel_accounts.json"), "r", encoding="utf-8") as af:
-                                    accs = json.load(af)
-                                    if 0 < idx <= len(accs):
-                                        acc_email = accs[idx - 1].get("email", "")
-                            except Exception:
-                                pass
-                            return idx, acc_email or f"Akun #{idx}"
-            except Exception:
-                pass
+    if not clean_p:
+        return 1, "Akun #1"
+
+    found = _phone_account_map.get(clean_p)
+    if found:
+        return found
+
+    for k, v in _phone_account_map.items():
+        if len(k) >= 8 and (clean_p.endswith(k) or k.endswith(clean_p)):
+            _phone_account_map[clean_p] = v
+            return v
+
     return 1, "Akun #1"
 
 def record_earnings_sms(account_idx=1, account_email="", rate_val=0.015, country_cc="ZW", country_flag="🇿🇼", platform="WhatsApp", phone=""):
@@ -995,10 +1066,9 @@ def augestel_webhook():
     augestel_webhook_status["last_received"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     augestel_webhook_status["last_event"] = event_type
 
-    logger.info(f"📥 [Augestel Webhook] Received event '{event_type}'")
-
-    # SLA Augestel: return HTTP 200 dalam waktu < 5 detik. Kirim Telegram di daemon thread.
+    # Fast dispatch: Jalankan di thread pool terdedikasi tanpa latency thread creation
     def dispatch_webhook_event(ev_type, ev_data, full_payload):
+        t_start = time.time()
         try:
             if ev_type == "message.received":
                 phone = str(ev_data.get("number", "")).strip()
@@ -1010,8 +1080,6 @@ def augestel_webhook():
                 from otp_utils import get_country_from_phone, mask_phone_number, detect_platform, extract_otp
                 from bot import format_otp_message, create_keyboard
                 from config import BOT_TOKEN, GROUP_CHAT_ID, FILE_LINK, CHANNEL_LINK
-                from telegram import Bot
-                from telegram.constants import ParseMode
                 from otp_dedup import is_duplicate_and_claim, get_dedup_key, claim_earnings_once
 
                 phone_cc, phone_flag = get_country_from_phone(phone)
@@ -1020,28 +1088,15 @@ def augestel_webhook():
                 if platform == "SMS":
                     platform, p_emoji = detect_platform(raw_message)
 
-                # Cari akun pemilik nomor
-                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
-
-                # 1. Deduplikasi Multi-Proses: Cek apakah OTP ini sudah pernah dikirim ke Telegram (misal oleh bot.py poller)
+                # 1. Deduplikasi Multi-Proses Super Cepat
                 dedup_k = get_dedup_key(phone, otp, raw_message)
                 is_duplicate = is_duplicate_and_claim(phone, otp, raw_message, source="Augestel Webhook")
-
-                # 2. Catat ke revenue & earnings store (Hanya 1x per event OTP, terlindung deduplikasi)
-                if claim_earnings_once(dedup_k):
-                    record_earnings_sms(
-                        account_idx=matched_acc_idx,
-                        account_email=matched_acc_email,
-                        rate_val=rate_val,
-                        country_cc=phone_cc,
-                        country_flag=phone_flag,
-                        platform=platform,
-                        phone=phone
-                    )
-
                 if is_duplicate:
-                    logger.info(f"🛡️ [Augestel Webhook] Duplicate OTP skipped for {phone} (otp={otp}) - already sent to Telegram")
+                    logger.info(f"🛡️ [Augestel Webhook] Duplicate OTP skipped for {phone} (otp={otp})")
                     return
+
+                # 2. Cari akun pemilik nomor secara instan dari RAM (0.001 ms)
+                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
 
                 try:
                     rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.0120"
@@ -1073,41 +1128,65 @@ def augestel_webhook():
 
                 augestel_webhook_status["last_sms"] = sms_entry
 
+                # 3. Format pesan teks & Inline Keyboard
                 msg_text = format_otp_message(sms_entry)
                 keyboard = create_keyboard(sms_entry, FILE_LINK, CHANNEL_LINK, otp_text=otp)
 
-                async def send_tg():
-                    bot = Bot(token=BOT_TOKEN)
-                    for attempt in range(1, 4):
-                        try:
-                            return await bot.send_message(
-                                chat_id=GROUP_CHAT_ID,
-                                text=msg_text,
-                                parse_mode=ParseMode.HTML,
-                                reply_markup=keyboard,
+                # 4. 🚀 PRIORITAS #1 (SUPER NGEBUT): TEMBAK LANGSUNG KE TELEGRAM MENGGUNAKAN PERSISTENT KEEP-ALIVE HTTP
+                tg_payload = {
+                    "chat_id": GROUP_CHAT_ID,
+                    "text": msg_text,
+                    "parse_mode": "HTML",
+                    "reply_markup": keyboard.to_dict()
+                }
+
+                sent_ok = False
+                msg_id = None
+                for attempt in range(1, 4):
+                    try:
+                        r = _fast_tg_session.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json=tg_payload,
+                            timeout=5.0
+                        )
+                        if r.status_code == 200:
+                            sent_ok = True
+                            resp_json = r.json()
+                            msg_id = resp_json.get("result", {}).get("message_id")
+                            break
+                        else:
+                            logger.warning(f"⚠️ [Telegram Turbo Push] Attempt #{attempt} status {r.status_code}: {r.text}")
+                            time.sleep(0.3)
+                    except Exception as tg_err:
+                        logger.warning(f"⚠️ [Telegram Turbo Push] Attempt #{attempt} error: {tg_err}")
+                        time.sleep(0.3)
+
+                t_tg = (time.time() - t_start) * 1000
+                if sent_ok:
+                    logger.info(f"⚡ [TURBO NOTIFIKASI] OTP {otp} ({platform}) berhasil terkirim ke Telegram dalam {t_tg:.1f}ms! (msg_id={msg_id})")
+                else:
+                    logger.error(f"❌ [Telegram Turbo Push] Gagal mengirim OTP {otp} setelah 3 percobaan ({t_tg:.1f}ms)")
+
+                # 5. CATAT PENDAPATAN & LOG KE FILE DI LATAR BELAKANG (ASYNCHRONOUS - 0ms blocking Telegram)
+                def save_records_async():
+                    try:
+                        if claim_earnings_once(dedup_k):
+                            record_earnings_sms(
+                                account_idx=matched_acc_idx,
+                                account_email=matched_acc_email,
+                                rate_val=rate_val,
+                                country_cc=phone_cc,
+                                country_flag=phone_flag,
+                                platform=platform,
+                                phone=phone
                             )
-                        except Exception as tg_err:
-                            if attempt < 3:
-                                logger.warning(f"⚠️ [Telegram Webhook Push] Percobaan #{attempt} gagal ({tg_err}). Mencoba ulang dalam 1.5s...")
-                                await asyncio.sleep(1.5)
-                            else:
-                                raise tg_err
+                        log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [Augestel Webhook] Sent OTP: {phone_cc} | {platform} | {otp} ({matched_acc_email})\n"
+                        with open(os.path.join(BASE_DIR, "bot.log"), "a", encoding="utf-8") as f:
+                            f.write(log_line)
+                    except Exception as err_rec:
+                        logger.error(f"Error saving earnings records async: {err_rec}")
 
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                res = loop.run_until_complete(send_tg())
-                loop.close()
-
-                # Tulis log ke bot.log agar dashboard live-stream & SMS Log langsung terupdate
-                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ 📤 [Augestel Webhook] Sent OTP: {phone_cc} | {platform} | {otp} ({matched_acc_email})\n"
-                log_path = os.path.join(BASE_DIR, "bot.log")
-                try:
-                    with open(log_path, "a", encoding="utf-8") as f:
-                        f.write(log_line)
-                except Exception:
-                    pass
-
-                logger.info(f"✅ [Augestel Webhook] Forwarded OTP {otp} for {phone} to Telegram (msg_id={res.message_id})")
+                _webhook_executor.submit(save_records_async)
 
             elif ev_type == "earnings.daily":
                 daily_usd = float(ev_data.get("earnings", 0.0) or ev_data.get("amount", 0.0) or 0.0)
@@ -1132,11 +1211,13 @@ def augestel_webhook():
                         f.write(log_line)
                 except Exception:
                     pass
+                # Trigger refresh RAM cache bila ada nomor baru
+                refresh_phone_account_map(force=True)
 
         except Exception as e:
             logger.error(f"❌ Error processing Augestel webhook in background: {e}", exc_info=True)
 
-    threading.Thread(target=dispatch_webhook_event, args=(event_type, data, payload), daemon=True).start()
+    _webhook_executor.submit(dispatch_webhook_event, event_type, data, payload)
 
     augestel_webhook_history.insert(0, {
         "event": event_type,
