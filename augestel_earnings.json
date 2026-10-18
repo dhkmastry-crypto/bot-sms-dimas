@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.464,
-  "total_revenue_idr": 72540,
-  "total_sms": 279,
+  "total_revenue_usd": 4.48,
+  "total_revenue_idr": 72800,
+  "total_sms": 280,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.952,
-  "today_sms": 122,
+  "today_revenue_usd": 1.968,
+  "today_sms": 123,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -706,9 +706,9 @@
     },
     "19": {
       "email": "jangsuk771@gmail.com",
-      "sms": 4,
-      "usd": 0.064,
-      "idr": 1040,
+      "sms": 5,
+      "usd": 0.08,
+      "idr": 1300,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1454,6 +1454,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 02:49:10",
+      "account": "Akun #19",
+      "phone": "265881109634",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 02:46:12",
       "account": "Akun #11",
       "phone": "243893773194",
@@ -1681,14 +1689,6 @@
       "time": "2026-10-18 21:51:13",
       "account": "Akun #33",
       "phone": "94713764753",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 21:48:13",
-      "account": "Akun #33",
-      "phone": "94713779612",
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
