@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.928,
-  "total_revenue_idr": 47580,
-  "total_sms": 183,
+  "total_revenue_usd": 2.944,
+  "total_revenue_idr": 47840,
+  "total_sms": 184,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 0.416,
-  "today_sms": 26,
+  "today_revenue_usd": 0.432,
+  "today_sms": 27,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -785,9 +785,9 @@
     },
     "28": {
       "email": "iprn_7536b3d4@jetable.fr.nf",
-      "sms": 3,
-      "usd": 0.048,
-      "idr": 780,
+      "sms": 4,
+      "usd": 0.064,
+      "idr": 1040,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1143,6 +1143,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 10:30:15",
+      "account": "Akun #28",
+      "phone": "243891948731",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 10:11:23",
       "account": "Akun #4",
       "phone": "265881854697",
@@ -1373,17 +1381,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 05:27:13",
-      "account": "Akun #16",
-      "phone": "265881448517",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-18 10:20:27",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 32
+  "total_accounts_synced": 32,
+  "last_event_time": null
 }
