@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.688,
-  "total_revenue_idr": 43680,
-  "total_sms": 168,
+  "total_revenue_usd": 2.72,
+  "total_revenue_idr": 44200,
+  "total_sms": 170,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.12,
-  "today_sms": 70,
+  "today_revenue_usd": 1.152,
+  "today_sms": 72,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -142,9 +142,9 @@
     },
     "nnkk6516@gmail.com": {
       "email": "nnkk6516@gmail.com",
-      "sms": 1,
-      "usd": 0.016,
-      "idr": 260
+      "sms": 3,
+      "usd": 0.048,
+      "idr": 780
     }
   },
   "by_country": {
@@ -167,6 +167,22 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 09:36:12",
+      "account": "nnkk6516@gmail.com",
+      "phone": "243894667495",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-18 09:36:12",
+      "account": "nnkk6516@gmail.com",
+      "phone": "243894637491",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 09:29:12",
       "account": "nnkk6516@gmail.com",
@@ -390,25 +406,9 @@
       "otp": "215017",
       "country": "CD",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 03:59:15",
-      "account": "dhkmastry@gmail.com",
-      "platform": "WhatsApp",
-      "otp": "488455",
-      "country": "MW",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 03:56:16",
-      "account": "beras.capakor@gmail.com",
-      "platform": "WhatsApp",
-      "otp": "238281",
-      "country": "MW",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 09:29:12",
+  "last_event_time": "2026-10-18 09:36:12",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
