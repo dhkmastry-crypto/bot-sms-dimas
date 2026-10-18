@@ -4,11 +4,10 @@
 import asyncio
 import json
 import os
-import subprocess
 import sys
-import time
 
-sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+sys.stderr.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
 from playwright.async_api import async_playwright
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,19 +20,7 @@ def load_accounts():
             return json.load(f)
     return []
 
-def cleanup_profile_locks_and_orphans(user_data_dir: str):
-    prof_folder = os.path.basename(user_data_dir)
-    if sys.platform == "win32":
-        try:
-            cmd = (
-                f'Get-CimInstance Win32_Process | '
-                f'Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*{prof_folder}*" }} | '
-                f'ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}'
-            )
-            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, timeout=10)
-        except Exception:
-            pass
-
+def cleanup_profile_locks(user_data_dir: str):
     for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
         lk_path = os.path.join(user_data_dir, lk)
         if os.path.exists(lk_path):
@@ -47,39 +34,26 @@ async def process_account(p, idx: int, account_data: dict):
     email = account_data.get("email", f"acc_{idx}")
     password = account_data.get("password", "")
     
-    print(f"\n─────────────────────────────────────────────────────────────")
-    print(f"👉 [Akun #{idx:02d} / 34] {email}")
-    print(f"─────────────────────────────────────────────────────────────")
+    print(f"\n─────────────────────────────────────────────────────────────", flush=True)
+    print(f"👉 [Akun #{idx:02d} / 34] {email}", flush=True)
+    print(f"─────────────────────────────────────────────────────────────", flush=True)
     
+    cleanup_profile_locks(profile_dir)
     ctx = None
     try:
-        # Launch with auto-retry on ProcessSingleton / lock
-        for attempt in range(3):
-            cleanup_profile_locks_and_orphans(profile_dir)
-            await asyncio.sleep(0.5)
-            try:
-                ctx = await p.chromium.launch_persistent_context(
-                    user_data_dir=profile_dir,
-                    channel="msedge",
-                    headless=False,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-gpu",
-                        "--window-position=-2000,-2000"
-                    ]
-                )
-                break
-            except Exception as launch_err:
-                if ("processsingleton" in str(launch_err).lower() or "lock" in str(launch_err).lower()) and attempt < 2:
-                    print(f"  ⚠️ Lock terdeteksi ({launch_err}). Membersihkan proses & mencoba ulang ({attempt+1}/3)...")
-                    cleanup_profile_locks_and_orphans(profile_dir)
-                    await asyncio.sleep(2)
-                else:
-                    raise launch_err
+        ctx = await p.chromium.launch_persistent_context(
+            user_data_dir=profile_dir,
+            channel="msedge",
+            headless=False,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+                "--disable-gpu",
+                "--window-position=-2000,-2000"
+            ]
+        )
 
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-
         await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
         await asyncio.sleep(2)
         
@@ -87,7 +61,7 @@ async def process_account(p, idx: int, account_data: dict):
         curr_url = page.url
         login_input = await page.query_selector("#loginEmail, input[name='email']")
         if "/login" in curr_url.lower() or login_input:
-            print(f"  🔑 Sesi login habis, login ulang otomatis...")
+            print(f"  🔑 Sesi login habis, login ulang otomatis...", flush=True)
             await page.fill("#loginEmail, input[name='email']", email)
             await page.fill("#loginPassword, input[name='password']", password)
             try:
@@ -119,7 +93,7 @@ async def process_account(p, idx: int, account_data: dict):
             const na = document.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
             const nr = document.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
             const daily = document.querySelector('input[type="checkbox"][name="events[]"][value="earnings.daily"]');
-            const text = document.body.innerText || "";
+            const badges = Array.from(document.querySelectorAll('span, div, b')).map(e => e.innerText.trim());
             return {
                 has_form: Boolean(input),
                 url: input ? input.value : "",
@@ -128,24 +102,24 @@ async def process_account(p, idx: int, account_data: dict):
                 assigned: na ? na.checked : false,
                 removed: nr ? nr.checked : false,
                 daily: daily ? daily.checked : false,
-                is_delivering: text.includes("Delivering") && !text.includes("switched off automatically")
+                is_delivering: badges.includes("Delivering")
             };
         }''')
 
         if not cur_state.get("has_form"):
-            print(f"  ⚠️ Tidak menemukan form webhook (Mungkin belum login atau cooldown). URL: {page.url}")
+            print(f"  ⚠️ Tidak menemukan form webhook (Mungkin belum login atau cooldown). URL: {page.url}", flush=True)
             await ctx.close()
-            cleanup_profile_locks_and_orphans(profile_dir)
+            cleanup_profile_locks(profile_dir)
             return {"idx": idx, "email": email, "success": False, "reason": "No form found"}
 
         # Cek apakah sudah dalam kondisi mati
         if cur_state.get("assigned") is False and cur_state.get("removed") is False and cur_state.get("url") and cur_state.get("is_active"):
-            print(f"  ✅ SUDAH NONAKTIF! number.assigned=False | number.removed=False (URL: {cur_state.get('url')})")
+            print(f"  ✅ SUDAH NONAKTIF! number.assigned=False | number.removed=False (URL: {cur_state.get('url')})", flush=True)
             await ctx.close()
-            cleanup_profile_locks_and_orphans(profile_dir)
+            cleanup_profile_locks(profile_dir)
             return {"idx": idx, "email": email, "success": True, "already_disabled": True}
 
-        print(f"  ⚙️ Mengubah webhook: mematikan number.assigned & number.removed...")
+        print(f"  ⚙️ Mengubah webhook: mematikan number.assigned & number.removed...", flush=True)
         target_url = cur_state.get("url") or DEFAULT_WEBHOOK_URL
         
         # Modifikasi DOM & Submit
@@ -209,7 +183,7 @@ async def process_account(p, idx: int, account_data: dict):
             }}
         }}''')
 
-        print(f"  Submitting form: {sub_res}")
+        print(f"  Submitting form: {sub_res}", flush=True)
         await asyncio.sleep(4)
         try:
             await page.wait_for_load_state("networkidle", timeout=12000)
@@ -223,14 +197,14 @@ async def process_account(p, idx: int, account_data: dict):
             const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
             const input = document.querySelector("#webhookUrl");
             const cb = document.querySelector('input[name="is_active"][type="checkbox"]');
-            const text = document.body.innerText || "";
+            const badges = Array.from(document.querySelectorAll('span, div, b')).map(e => e.innerText.trim());
             return {
                 url: input ? input.value : "",
                 is_active: cb ? cb.checked : false,
                 msg: msg ? msg.checked : false,
                 assigned: na ? na.checked : false,
                 removed: nr ? nr.checked : false,
-                is_delivering: text.includes("Delivering") && !text.includes("switched off automatically")
+                is_delivering: badges.includes("Delivering")
             };
         }''')
 
@@ -240,28 +214,28 @@ async def process_account(p, idx: int, account_data: dict):
                  final_state.get("is_active") is True)
         
         status_icon = "🎉" if is_ok else "⚠️"
-        print(f"  {status_icon} Hasil Akhir: assigned={final_state.get('assigned')} | removed={final_state.get('removed')} | msg={final_state.get('msg')} | delivering={final_state.get('is_delivering')}")
+        print(f"  {status_icon} Hasil Akhir: assigned={final_state.get('assigned')} | removed={final_state.get('removed')} | msg={final_state.get('msg')} | delivering={final_state.get('is_delivering')}", flush=True)
         
         await ctx.close()
-        cleanup_profile_locks_and_orphans(profile_dir)
+        cleanup_profile_locks(profile_dir)
         return {"idx": idx, "email": email, "success": is_ok, "state": final_state}
 
     except Exception as e:
-        print(f"  ❌ Error memproses Akun #{idx}: {e}")
+        print(f"  ❌ Error memproses Akun #{idx}: {e}", flush=True)
         if ctx:
             try:
                 await ctx.close()
             except Exception:
                 pass
-        cleanup_profile_locks_and_orphans(profile_dir)
+        cleanup_profile_locks(profile_dir)
         return {"idx": idx, "email": email, "success": False, "error": str(e)}
 
 async def main():
     accounts = load_accounts()
-    print("=" * 65)
-    print(f"  MEMATIKAN WEBHOOK number.assigned & number.removed")
-    print(f"  Total Akun: {len(accounts)}")
-    print("=" * 65)
+    print("=" * 65, flush=True)
+    print(f"  MEMATIKAN WEBHOOK number.assigned & number.removed", flush=True)
+    print(f"  Total Akun: {len(accounts)}", flush=True)
+    print("=" * 65, flush=True)
     
     results = []
     async with async_playwright() as p:
@@ -271,14 +245,14 @@ async def main():
             results.append(res)
             await asyncio.sleep(1)
 
-    print("\n" + "=" * 65)
-    print("  RINGKASAN HASIL UPDATE SEMUA AKUN")
-    print("=" * 65)
+    print("\n" + "=" * 65, flush=True)
+    print("  RINGKASAN HASIL UPDATE SEMUA AKUN", flush=True)
+    print("=" * 65, flush=True)
     succ_count = sum(1 for r in results if r.get("success"))
-    print(f"Total Sukses: {succ_count} / {len(accounts)}")
+    print(f"Total Sukses: {succ_count} / {len(accounts)}", flush=True)
     for r in results:
         status_str = "SUKSES" if r.get("success") else f"GAGAL ({r.get('reason') or r.get('error')})"
-        print(f"Akun #{r.get('idx', 0):02d} ({r.get('email')}): {status_str}")
+        print(f"Akun #{r.get('idx', 0):02d} ({r.get('email')}): {status_str}", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
