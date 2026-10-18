@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 2.72,
-  "total_revenue_idr": 44200,
-  "total_sms": 170,
+  "total_revenue_usd": 2.736,
+  "total_revenue_idr": 44460,
+  "total_sms": 171,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.152,
-  "today_sms": 72,
+  "today_revenue_usd": 1.168,
+  "today_sms": 73,
   "yesterday_revenue_usd": 0.048,
   "yesterday_sms": 0,
   "by_account": {
@@ -112,9 +112,9 @@
     },
     "acc_3f68900f@jetable.fr.nf": {
       "email": "acc_3f68900f@jetable.fr.nf",
-      "sms": 7,
-      "usd": 0.112,
-      "idr": 1820
+      "sms": 8,
+      "usd": 0.128,
+      "idr": 2080
     },
     "dimaseu542@gmail.com": {
       "email": "dimaseu542@gmail.com",
@@ -167,6 +167,14 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-18 09:38:12",
+      "account": "acc_3f68900f@jetable.fr.nf",
+      "phone": "243898927337",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-18 09:36:12",
       "account": "nnkk6516@gmail.com",
@@ -398,17 +406,9 @@
       "otp": "791410",
       "country": "MW",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 04:05:16",
-      "account": "Akun #1",
-      "platform": "WhatsApp",
-      "otp": "215017",
-      "country": "CD",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-18 09:36:12",
+  "last_event_time": "2026-10-18 09:38:12",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],
