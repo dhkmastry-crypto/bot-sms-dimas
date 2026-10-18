@@ -19,7 +19,7 @@ try:
         else:
             other_procs.append((p.get("ProcessId"), cl[:60]))
     print(f"Augestel msedge processes: {len(augestel_procs)}")
-    print(f"Other msedge processes: {len(other_procs)}")
+    print(f"Other msedge processes: {other_procs}")
     profiles = sorted(list(set(x[1] for x in augestel_procs)))
     print(f"Active profiles: {profiles}")
 except Exception as e:
