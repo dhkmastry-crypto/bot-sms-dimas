@@ -62,6 +62,10 @@ logging.basicConfig(
     format="%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+logging.getLogger("werkzeug").disabled = True
+logging.getLogger("augestel_pool").setLevel(logging.WARNING)
+
 
 # ────────────────────────────────────────────
 #  IN-MEMORY STATE
