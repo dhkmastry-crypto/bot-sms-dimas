@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.352,
-  "total_revenue_idr": 70720,
-  "total_sms": 272,
+  "total_revenue_usd": 4.368,
+  "total_revenue_idr": 70980,
+  "total_sms": 273,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.84,
-  "today_sms": 115,
+  "today_revenue_usd": 1.856,
+  "today_sms": 116,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -439,9 +439,9 @@
     },
     "12": {
       "email": "maskupukupu15@gmail.com",
-      "sms": 7,
-      "usd": 0.112,
-      "idr": 1820,
+      "sms": 8,
+      "usd": 0.128,
+      "idr": 2080,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1454,6 +1454,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 01:56:12",
+      "account": "Akun #12",
+      "phone": "243893826013",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 01:50:11",
       "account": "Akun #9",
       "phone": "243893796175",
@@ -1683,14 +1691,6 @@
       "phone": "265881807040",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 20:40:16",
-      "account": "Akun #13",
-      "phone": "243893489342",
-      "platform": "Facebook",
-      "flag": "🇨🇩",
       "rate_usd": 0.016
     }
   ],
