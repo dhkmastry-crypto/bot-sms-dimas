@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.48,
-  "total_revenue_idr": 72800,
-  "total_sms": 280,
+  "total_revenue_usd": 4.496,
+  "total_revenue_idr": 73060,
+  "total_sms": 281,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.968,
-  "today_sms": 123,
+  "today_revenue_usd": 1.984,
+  "today_sms": 124,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -361,9 +361,9 @@
     },
     "10": {
       "email": "keztokitems@gmail.com",
-      "sms": 6,
-      "usd": 0.096,
-      "idr": 1560,
+      "sms": 7,
+      "usd": 0.112,
+      "idr": 1820,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1454,6 +1454,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 02:52:12",
+      "account": "Akun #10",
+      "phone": "243893574431",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 02:49:10",
       "account": "Akun #19",
       "phone": "265881109634",
@@ -1683,14 +1691,6 @@
       "phone": "265881373359",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 21:51:13",
-      "account": "Akun #33",
-      "phone": "94713764753",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
       "rate_usd": 0.016
     }
   ],
