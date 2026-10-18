@@ -1595,6 +1595,21 @@ def api_augestel_internal_disable_number_events():
     return jsonify({"success": True, "message": "Proses update webhook semua akun telah dimulai di background pool!"})
 
 
+@app.route("/api/augestel/internal-guardian-status", methods=["GET"])
+def api_augestel_internal_guardian_status():
+    from augestel_browser_pool import get_browser_pool
+    pool = get_browser_pool()
+    if not pool:
+        return jsonify({"success": False, "message": "No pool instance"})
+    return jsonify({
+        "success": True,
+        "guardian_enabled": pool.webhook_guardian_enabled,
+        "is_running": pool.is_running,
+        "status": pool.get_webhook_guardian_status()
+    })
+
+
+
 
 @app.route("/api/bot/status")
 @login_required
