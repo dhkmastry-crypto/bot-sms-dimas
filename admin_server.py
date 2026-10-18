@@ -2478,32 +2478,227 @@ def api_augestel_login_single():
         return jsonify({"success": False, "message": f"Gagal memulai login browser: {e}"})
 
 
+def open_augestel_desktop_window(idx: int) -> dict:
+    """
+    Membuka jendela browser Microsoft Edge asli di layar desktop VPS
+    untuk Akun Augestel #{idx} secara interaktif (100% tampak di monitor).
+    """
+    import os
+    import json
+    import subprocess
+    import time
+
+    base_dir = BASE_DIR
+    accounts_file = os.path.join(base_dir, "augestel_accounts.json")
+    accounts = []
+    if os.path.exists(accounts_file):
+        try:
+            with open(accounts_file, "r", encoding="utf-8") as f:
+                accounts = json.load(f)
+        except Exception:
+            pass
+
+    email = ""
+    pwd = ""
+    masked_key = ""
+    if 0 < idx <= len(accounts):
+        acc = accounts[idx - 1]
+        email = acc.get("email", "")
+        pwd = acc.get("password", "")
+        key = acc.get("api_key", "")
+        if key:
+            masked_key = f"{key[:8]}...{key[-4:]}" if len(key) > 12 else key
+
+    user_data_dir = os.path.join(base_dir, f"browser_profile_augestel_{idx}")
+    edge_exe = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+    if not os.path.exists(edge_exe):
+        edge_exe = r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+    if not os.path.exists(edge_exe):
+        edge_exe = "msedge.exe"
+
+    # 1. Inform the browser pool to release the context and mark this account in desktop mode
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool:
+            pool.mark_desktop_mode(idx, active=True)
+            if pool.is_running:
+                pool.close_context_sync(idx)
+    except Exception as e_pool:
+        logger.debug(f"Pool release notice error: {e_pool}")
+
+    # 2. Check if a visible Edge window for this profile is already running
+    # If so, restore and focus it
+    ps_find_focus = f'''
+    $procs = Get-CimInstance Win32_Process | Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*browser_profile_augestel_{idx}*" }}
+    $found = $false
+    foreach ($p in $procs) {{
+        $gp = Get-Process -Id $p.ProcessId -ErrorAction SilentlyContinue
+        if ($gp -and $gp.MainWindowHandle -ne 0) {{
+            Add-Type @"
+              using System;
+              using System.Runtime.InteropServices;
+              public class WinFocus {{
+                [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+                [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+              }}
+"@ -ErrorAction SilentlyContinue
+            [WinFocus]::ShowWindowAsync($gp.MainWindowHandle, 9)
+            [WinFocus]::SetForegroundWindow($gp.MainWindowHandle)
+            $found = $true
+            break
+        }}
+    }}
+    if ($found) {{ "FOCUSED" }} else {{ "NOT_FOUND" }}
+    '''
+    try:
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", ps_find_focus], capture_output=True, text=True, timeout=8)
+        if "FOCUSED" in res.stdout:
+            return {
+                "success": True,
+                "message": f"Jendela Microsoft Edge Akun #{idx} ({email}) sudah terbuka di layar dan berhasil difokuskan ke depan!",
+                "idx": idx,
+                "email": email,
+                "password": pwd,
+                "masked_key": masked_key
+            }
+    except Exception:
+        pass
+
+    # 3. Kill any zombie/offscreen background processes locking this profile
+    cmd_kill = (
+        f'Get-CimInstance Win32_Process | '
+        f'Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*browser_profile_augestel_{idx}*" }} | '
+        f'ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}'
+    )
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", cmd_kill], capture_output=True, timeout=10)
+    except Exception:
+        pass
+
+    # 4. Clean lock files in user_data_dir
+    for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
+        lk_path = os.path.join(user_data_dir, lk)
+        if os.path.exists(lk_path):
+            try:
+                os.remove(lk_path)
+            except Exception:
+                pass
+
+    # 5. Launch native Edge directly on screen (coordinates 100, 80, size 1280x850)
+    target_url = "https://augestel.com/Switchfy/client/numbers"
+    cmd = [
+        "powershell", "-NoProfile", "-Command",
+        f'Start-Process "{edge_exe}" -ArgumentList @('
+        f'\'--user-data-dir="{user_data_dir}"\','
+        f'\'--window-position=100,80\','
+        f'\'--window-size=1280,850\','
+        f'\'--no-first-run\','
+        f'\'--no-default-browser-check\','
+        f'\'{target_url}\''
+        f')'
+    ]
+    try:
+        subprocess.run(cmd, capture_output=True, timeout=10)
+    except Exception as e_launch:
+        return {"success": False, "message": f"Gagal meluncurkan Edge: {e_launch}"}
+
+    # 6. Wait a moment and bring it to foreground
+    time.sleep(2)
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", ps_find_focus], capture_output=True, text=True, timeout=6)
+    except Exception:
+        pass
+
+    return {
+        "success": True,
+        "message": f"Jendela Microsoft Edge Akun #{idx} ({email}) BERHASIL DIBUKA di layar desktop VPS! Silakan klik puzzle / isi password di monitor.",
+        "idx": idx,
+        "email": email,
+        "password": pwd,
+        "masked_key": masked_key
+    }
+
+
+def close_augestel_desktop_window(idx: int) -> dict:
+    """Menutup jendela Microsoft Edge desktop untuk Akun #{idx}."""
+    import subprocess
+    cmd_kill = (
+        f'Get-CimInstance Win32_Process | '
+        f'Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*browser_profile_augestel_{idx}*" }} | '
+        f'ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}'
+    )
+    try:
+        subprocess.run(["powershell", "-NoProfile", "-Command", cmd_kill], capture_output=True, timeout=10)
+    except Exception:
+        pass
+
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool:
+            pool.mark_desktop_mode(idx, active=False)
+    except Exception:
+        pass
+
+    return {"success": True, "message": f"Jendela desktop browser Akun #{idx} telah ditutup."}
+
+
+def sync_augestel_desktop_session(idx: int) -> dict:
+    """Memeriksa status cookies login Akun #{idx} setelah user berinteraksi di layar."""
+    prof_stat = check_augestel_profile_status(idx)
+    conn_res = check_augestel_multi_connection(target_index=idx)
+    is_logged_in = prof_stat.get("cookie_connected", False)
+
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if pool:
+            pool.mark_desktop_mode(idx, active=False)
+    except Exception:
+        pass
+
+    msg = "Sesi berhasil disinkronkan! " + ("Login AKTIF & valid." if is_logged_in else "Belum terdeteksi login aktif (Silakan login di Edge dan centang Remember Me).")
+    return {
+        "success": True,
+        "logged_in": is_logged_in,
+        "profile_status": prof_stat,
+        "connection": conn_res,
+        "message": msg
+    }
+
+
 @app.route("/api/augestel/pool/show/<int:idx>", methods=["GET", "POST"])
 @login_required
 def api_augestel_pool_show(idx):
     """Bring the Edge browser window for account idx to the VPS screen so user can interact with captcha/login"""
     try:
-        from augestel_browser_pool import get_browser_pool
-        pool = get_browser_pool()
-        if pool and pool.is_running:
-            res = pool.show_window_sync(idx)
-            return jsonify(res)
-        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+        res = open_augestel_desktop_window(idx)
+        return jsonify(res)
     except Exception as e:
+        logger.error(f"Error api_augestel_pool_show: {e}")
         return jsonify({"success": False, "message": str(e)})
 
 
 @app.route("/api/augestel/pool/hide/<int:idx>", methods=["GET", "POST"])
+@app.route("/api/augestel/pool/close-desktop/<int:idx>", methods=["GET", "POST"])
 @login_required
 def api_augestel_pool_hide(idx):
-    """Move the Edge browser window for account idx back to offscreen / background"""
+    """Move or close the Edge browser window for account idx"""
     try:
-        from augestel_browser_pool import get_browser_pool
-        pool = get_browser_pool()
-        if pool and pool.is_running:
-            res = pool.hide_window_sync(idx)
-            return jsonify(res)
-        return jsonify({"success": False, "message": "Browser pool Augestel tidak aktif di RAM"})
+        res = close_augestel_desktop_window(idx)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
+
+
+@app.route("/api/augestel/pool/sync-session/<int:idx>", methods=["GET", "POST"])
+@login_required
+def api_augestel_pool_sync_session(idx):
+    """Check and sync the login session for account idx after user finished on desktop"""
+    try:
+        res = sync_augestel_desktop_session(idx)
+        return jsonify(res)
     except Exception as e:
         return jsonify({"success": False, "message": str(e)})
 

@@ -689,6 +689,7 @@ class AugestelBrowserPool:
         return self.run_coro(self.hide_window(idx), timeout=30)
 
     async def close_context(self, idx: int):
+        self.mark_desktop_mode(idx, active=True)
         self.pages.pop(idx, None)
         ctx = self.contexts.pop(idx, None)
         if ctx:
@@ -704,6 +705,7 @@ class AugestelBrowserPool:
         return self.run_coro(self.close_context(idx), timeout=30)
 
     async def reinit_account(self, idx: int):
+        self.mark_desktop_mode(idx, active=False)
         self.accounts = self._load_accounts()
         acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
         email = acc.get("email", "")
@@ -1104,6 +1106,8 @@ class AugestelBrowserPool:
                 for idx, page in list(self.pages.items()):
                     if not self.is_running or not self.webhook_guardian_enabled:
                         break
+                    if self.is_in_desktop_mode(idx):
+                        continue
                     acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
                     email = acc.get("email", "")
 
