@@ -4,7 +4,9 @@
 import asyncio
 import json
 import os
+import subprocess
 import sys
+import time
 
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 from playwright.async_api import async_playwright
@@ -19,7 +21,19 @@ def load_accounts():
             return json.load(f)
     return []
 
-def cleanup_profile_locks(user_data_dir: str):
+def cleanup_profile_locks_and_orphans(user_data_dir: str):
+    prof_folder = os.path.basename(user_data_dir)
+    if sys.platform == "win32":
+        try:
+            cmd = (
+                f'Get-CimInstance Win32_Process | '
+                f'Where-Object {{ $_.Name -eq "msedge.exe" -and $_.CommandLine -like "*{prof_folder}*" }} | '
+                f'ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force }}'
+            )
+            subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, timeout=10)
+        except Exception:
+            pass
+
     for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
         lk_path = os.path.join(user_data_dir, lk)
         if os.path.exists(lk_path):
@@ -33,26 +47,39 @@ async def process_account(p, idx: int, account_data: dict):
     email = account_data.get("email", f"acc_{idx}")
     password = account_data.get("password", "")
     
-    cleanup_profile_locks(profile_dir)
-    
     print(f"\n─────────────────────────────────────────────────────────────")
     print(f"👉 [Akun #{idx:02d} / 34] {email}")
     print(f"─────────────────────────────────────────────────────────────")
     
-    ctx = await p.chromium.launch_persistent_context(
-        user_data_dir=profile_dir,
-        channel="msedge",
-        headless=False,
-        args=[
-            "--disable-blink-features=AutomationControlled",
-            "--no-sandbox",
-            "--disable-gpu",
-            "--window-position=-2000,-2000"
-        ]
-    )
-    page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-    
+    ctx = None
     try:
+        # Launch with auto-retry on ProcessSingleton / lock
+        for attempt in range(3):
+            cleanup_profile_locks_and_orphans(profile_dir)
+            await asyncio.sleep(0.5)
+            try:
+                ctx = await p.chromium.launch_persistent_context(
+                    user_data_dir=profile_dir,
+                    channel="msedge",
+                    headless=False,
+                    args=[
+                        "--disable-blink-features=AutomationControlled",
+                        "--no-sandbox",
+                        "--disable-gpu",
+                        "--window-position=-2000,-2000"
+                    ]
+                )
+                break
+            except Exception as launch_err:
+                if ("processsingleton" in str(launch_err).lower() or "lock" in str(launch_err).lower()) and attempt < 2:
+                    print(f"  ⚠️ Lock terdeteksi ({launch_err}). Membersihkan proses & mencoba ulang ({attempt+1}/3)...")
+                    cleanup_profile_locks_and_orphans(profile_dir)
+                    await asyncio.sleep(2)
+                else:
+                    raise launch_err
+
+        page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+
         await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
         await asyncio.sleep(2)
         
@@ -60,7 +87,7 @@ async def process_account(p, idx: int, account_data: dict):
         curr_url = page.url
         login_input = await page.query_selector("#loginEmail, input[name='email']")
         if "/login" in curr_url.lower() or login_input:
-            print(f"  🔑 Perlu login ulang, mengisi form kredensial...")
+            print(f"  🔑 Sesi login habis, login ulang otomatis...")
             await page.fill("#loginEmail, input[name='email']", email)
             await page.fill("#loginPassword, input[name='password']", password)
             try:
@@ -76,7 +103,6 @@ async def process_account(p, idx: int, account_data: dict):
             else:
                 await page.keyboard.press("Enter")
             
-            # Tunggu redirect
             for _ in range(15):
                 await asyncio.sleep(1)
                 if "/client/" in page.url or "/dashboard" in page.url or "/api/" in page.url:
@@ -85,7 +111,7 @@ async def process_account(p, idx: int, account_data: dict):
             await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=45000)
             await asyncio.sleep(2)
 
-        # Cek status form saat ini
+        # Cek status form webhook saat ini
         cur_state = await page.evaluate('''() => {
             const input = document.querySelector("#webhookUrl");
             const cb = document.querySelector('input[name="is_active"][type="checkbox"]');
@@ -109,12 +135,14 @@ async def process_account(p, idx: int, account_data: dict):
         if not cur_state.get("has_form"):
             print(f"  ⚠️ Tidak menemukan form webhook (Mungkin belum login atau cooldown). URL: {page.url}")
             await ctx.close()
+            cleanup_profile_locks_and_orphans(profile_dir)
             return {"idx": idx, "email": email, "success": False, "reason": "No form found"}
 
         # Cek apakah sudah dalam kondisi mati
         if cur_state.get("assigned") is False and cur_state.get("removed") is False and cur_state.get("url") and cur_state.get("is_active"):
             print(f"  ✅ SUDAH NONAKTIF! number.assigned=False | number.removed=False (URL: {cur_state.get('url')})")
             await ctx.close()
+            cleanup_profile_locks_and_orphans(profile_dir)
             return {"idx": idx, "email": email, "success": True, "already_disabled": True}
 
         print(f"  ⚙️ Mengubah webhook: mematikan number.assigned & number.removed...")
@@ -182,9 +210,9 @@ async def process_account(p, idx: int, account_data: dict):
         }}''')
 
         print(f"  Submitting form: {sub_res}")
-        await asyncio.sleep(5)
+        await asyncio.sleep(4)
         try:
-            await page.wait_for_load_state("networkidle", timeout=15000)
+            await page.wait_for_load_state("networkidle", timeout=12000)
         except Exception:
             pass
 
@@ -215,14 +243,17 @@ async def process_account(p, idx: int, account_data: dict):
         print(f"  {status_icon} Hasil Akhir: assigned={final_state.get('assigned')} | removed={final_state.get('removed')} | msg={final_state.get('msg')} | delivering={final_state.get('is_delivering')}")
         
         await ctx.close()
+        cleanup_profile_locks_and_orphans(profile_dir)
         return {"idx": idx, "email": email, "success": is_ok, "state": final_state}
 
     except Exception as e:
         print(f"  ❌ Error memproses Akun #{idx}: {e}")
-        try:
-            await ctx.close()
-        except Exception:
-            pass
+        if ctx:
+            try:
+                await ctx.close()
+            except Exception:
+                pass
+        cleanup_profile_locks_and_orphans(profile_dir)
         return {"idx": idx, "email": email, "success": False, "error": str(e)}
 
 async def main():
@@ -238,7 +269,7 @@ async def main():
             acc = accounts[idx - 1]
             res = await process_account(p, idx, acc)
             results.append(res)
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1)
 
     print("\n" + "=" * 65)
     print("  RINGKASAN HASIL UPDATE SEMUA AKUN")
