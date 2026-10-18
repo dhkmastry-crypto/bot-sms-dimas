@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.512,
-  "total_revenue_idr": 73320,
-  "total_sms": 282,
+  "total_revenue_usd": 4.528,
+  "total_revenue_idr": 73580,
+  "total_sms": 283,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 2.0,
-  "today_sms": 125,
+  "today_revenue_usd": 2.016,
+  "today_sms": 126,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -628,9 +628,9 @@
     },
     "17": {
       "email": "agusbanget67@gmail.com",
-      "sms": 10,
-      "usd": 0.16,
-      "idr": 2600,
+      "sms": 11,
+      "usd": 0.176,
+      "idr": 2860,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1460,6 +1460,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 03:09:11",
+      "account": "Akun #17",
+      "phone": "265881729393",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 02:54:12",
       "account": "Akun #16",
       "phone": "243893499467",
@@ -1690,17 +1698,10 @@
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 21:58:13",
-      "account": "Akun #35",
-      "phone": "94713680547",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 03:03:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
