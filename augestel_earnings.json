@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.304,
-  "total_revenue_idr": 69940,
-  "total_sms": 269,
+  "total_revenue_usd": 4.336,
+  "total_revenue_idr": 70460,
+  "total_sms": 271,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.792,
-  "today_sms": 112,
+  "today_revenue_usd": 1.824,
+  "today_sms": 114,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -361,9 +361,9 @@
     },
     "10": {
       "email": "keztokitems@gmail.com",
-      "sms": 6,
-      "usd": 0.096,
-      "idr": 1560,
+      "sms": 7,
+      "usd": 0.112,
+      "idr": 1820,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1126,9 +1126,9 @@
     },
     "33": {
       "email": "tele_69a65f83@courriel.fr.nf",
-      "sms": 6,
-      "usd": 0.096,
-      "idr": 1560,
+      "sms": 7,
+      "usd": 0.112,
+      "idr": 1820,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1454,6 +1454,22 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 01:44:52",
+      "account": "Akun #33",
+      "phone": "94713199169",
+      "platform": "Apple",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-19 01:44:51",
+      "account": "Akun #10",
+      "phone": "243893852047",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 01:23:13",
       "account": "Akun #10",
       "phone": "243893977022",
@@ -1676,25 +1692,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 20:08:11",
-      "account": "Akun #22",
-      "phone": "265881370556",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 20:06:13",
-      "account": "Akun #34",
-      "phone": "94713221507",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 01:43:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
