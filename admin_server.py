@@ -2646,7 +2646,7 @@ def close_augestel_desktop_window(idx: int) -> dict:
 
 def sync_augestel_desktop_session(idx: int) -> dict:
     """Memeriksa status cookies login Akun #{idx} setelah user berinteraksi di layar."""
-    prof_stat = check_augestel_profile_status(idx)
+    prof_stat = check_augestel_browser_cookie(idx)
     conn_res = check_augestel_multi_connection(target_index=idx)
     is_logged_in = prof_stat.get("cookie_connected", False)
 
