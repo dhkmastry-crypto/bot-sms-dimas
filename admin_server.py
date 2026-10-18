@@ -1205,19 +1205,6 @@ def augestel_webhook():
                 except Exception:
                     pass
 
-            elif ev_type in ["number.assigned", "number.removed"]:
-                num = ev_data.get("number")
-                rng = ev_data.get("range_name")
-                log_line = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} │ INFO     │ OTPBot │ ℹ️ [Augestel Webhook] {ev_type}: {num} ({rng})\n"
-                log_path = os.path.join(BASE_DIR, "bot.log")
-                try:
-                    with open(log_path, "a", encoding="utf-8") as f:
-                        f.write(log_line)
-                except Exception:
-                    pass
-                # Trigger refresh RAM cache bila ada nomor baru
-                refresh_phone_account_map(force=True)
-
         except Exception as e:
             logger.error(f"❌ Error processing Augestel webhook in background: {e}", exc_info=True)
 
@@ -1514,7 +1501,7 @@ def api_augestel_webhooks_setup_all():
 
         from playwright.sync_api import sync_playwright
         profiles = []
-        for i in range(1, 20):
+        for i in range(1, 35):
             pdir = os.path.join(BASE_DIR, f"browser_profile_augestel_{i}")
             if os.path.exists(pdir):
                 profiles.append(i)
@@ -1543,6 +1530,9 @@ def api_augestel_webhooks_setup_all():
                     url_input = page.wait_for_selector("#webhookUrl", timeout=10000)
                     url_input.fill(webhook_url)
                     
+                    # Hapus _method=DELETE bila ada
+                    page.evaluate('() => { const d = document.querySelector(\'input[name="_method"]\'); if(d) d.remove(); }')
+
                     active_cb = page.query_selector('input[type="checkbox"][name="is_active"]')
                     if active_cb and not active_cb.is_checked():
                         active_cb.check()
@@ -1550,6 +1540,15 @@ def api_augestel_webhooks_setup_all():
                     msg_cb = page.query_selector('input[type="checkbox"][name="events[]"][value="message.received"]')
                     if msg_cb and not msg_cb.is_checked():
                         msg_cb.check()
+
+                    # Matikan number.assigned & number.removed
+                    na_cb = page.query_selector('input[type="checkbox"][name="events[]"][value="number.assigned"]')
+                    if na_cb and na_cb.is_checked():
+                        na_cb.uncheck()
+
+                    nr_cb = page.query_selector('input[type="checkbox"][name="events[]"][value="number.removed"]')
+                    if nr_cb and nr_cb.is_checked():
+                        nr_cb.uncheck()
                         
                     submit_btn = page.query_selector('form[action*="webhook"] button[type="submit"]')
                     if submit_btn:
