@@ -55,6 +55,12 @@
       "api_connected": true,
       "top_numbers": [
         {
+          "number": "265881645183",
+          "range_name": "MALAWI - TELEKOM NETWORK 177",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
           "number": "265881316264",
           "range_name": "MALAWI - TELEKOM NETWORK 171",
           "messages": 1,
@@ -77,12 +83,6 @@
           "range_name": "MALAWI - TELEKOM NETWORK 180",
           "messages": 1,
           "earnings": 0.016
-        },
-        {
-          "number": "265881817179",
-          "range_name": "MALAWI - TELEKOM NETWORK 179",
-          "messages": 1,
-          "earnings": 0.016
         }
       ]
     },
@@ -93,12 +93,6 @@
       "idr": 3380,
       "api_connected": true,
       "top_numbers": [
-        {
-          "number": "265881653149",
-          "range_name": "MALAWI - TELEKOM NETWORK 177",
-          "messages": 1,
-          "earnings": 0.016
-        },
         {
           "number": "265881490460",
           "range_name": "MALAWI - TELEKOM NETWORK 174",
@@ -122,6 +116,12 @@
           "range_name": "MALAWI - TELEKOM NETWORK 171",
           "messages": 1,
           "earnings": 0.016
+        },
+        {
+          "number": "265881577178",
+          "range_name": "MALAWI - TELEKOM NETWORK 175",
+          "messages": 1,
+          "earnings": 0.016
         }
       ]
     },
@@ -139,6 +139,18 @@
           "earnings": 0.032
         },
         {
+          "number": "212661577996",
+          "range_name": "MOROCCO - I A M 87",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881346829",
+          "range_name": "MALAWI - TELEKOM NETWORK 172",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
           "number": "265881808982",
           "range_name": "MALAWI - TELEKOM NETWORK 179",
           "messages": 1,
@@ -147,18 +159,6 @@
         {
           "number": "265881842633",
           "range_name": "MALAWI - TELEKOM NETWORK 180",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881808324",
-          "range_name": "MALAWI - TELEKOM NETWORK 179",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881345719",
-          "range_name": "MALAWI - TELEKOM NETWORK 172",
           "messages": 1,
           "earnings": 0.016
         }
@@ -171,18 +171,6 @@
       "idr": 5200,
       "api_connected": true,
       "top_numbers": [
-        {
-          "number": "265881356190",
-          "range_name": "MALAWI - TELEKOM NETWORK 172",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881310778",
-          "range_name": "MALAWI - TELEKOM NETWORK 171",
-          "messages": 1,
-          "earnings": 0.016
-        },
         {
           "number": "243858897349",
           "range_name": "CONGO (DR) - ORANGE 65",
@@ -200,6 +188,18 @@
           "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 30",
           "messages": 1,
           "earnings": 0.016
+        },
+        {
+          "number": "265881498042",
+          "range_name": "MALAWI - TELEKOM NETWORK 174",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "243808002457",
+          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 27",
+          "messages": 1,
+          "earnings": 0.016
         }
       ]
     },
@@ -210,6 +210,12 @@
       "idr": 1560,
       "api_connected": true,
       "top_numbers": [
+        {
+          "number": "265881544779",
+          "range_name": "MALAWI - TELEKOM NETWORK 93",
+          "messages": 1,
+          "earnings": 0.016
+        },
         {
           "number": "243803091454",
           "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 25",
@@ -233,12 +239,6 @@
           "range_name": "MALAWI - TELEKOM NETWORK 176",
           "messages": 1,
           "earnings": 0.016
-        },
-        {
-          "number": "265881816522",
-          "range_name": "MALAWI - TELEKOM NETWORK 179",
-          "messages": 1,
-          "earnings": 0.016
         }
       ]
     },
@@ -250,24 +250,6 @@
       "api_connected": true,
       "top_numbers": [
         {
-          "number": "265881361907",
-          "range_name": "MALAWI - TELEKOM NETWORK 173",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881596333",
-          "range_name": "MALAWI - TELEKOM NETWORK 176",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881377567",
-          "range_name": "MALAWI - TELEKOM NETWORK 173",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
           "number": "265881591255",
           "range_name": "MALAWI - TELEKOM NETWORK 176",
           "messages": 1,
@@ -276,6 +258,24 @@
         {
           "number": "243853394627",
           "range_name": "CONGO (DR) - ORANGE 66",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881579638",
+          "range_name": "MALAWI - TELEKOM NETWORK 175",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "243853390786",
+          "range_name": "CONGO (DR) - ORANGE 66",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881728943",
+          "range_name": "MALAWI - TELEKOM NETWORK 178",
           "messages": 1,
           "earnings": 0.016
         }
@@ -288,6 +288,12 @@
       "idr": 1560,
       "api_connected": true,
       "top_numbers": [
+        {
+          "number": "265881546152",
+          "range_name": "MALAWI - TELEKOM NETWORK 93",
+          "messages": 1,
+          "earnings": 0.016
+        },
         {
           "number": "265881597370",
           "range_name": "MALAWI - TELEKOM NETWORK 176",
@@ -311,12 +317,6 @@
           "range_name": "MALAWI - TELEKOM NETWORK 176",
           "messages": 1,
           "earnings": 0.016
-        },
-        {
-          "number": "265881598670",
-          "range_name": "MALAWI - TELEKOM NETWORK 176",
-          "messages": 1,
-          "earnings": 0.016
         }
       ]
     },
@@ -328,32 +328,32 @@
       "api_connected": true,
       "top_numbers": [
         {
-          "number": "243853389544",
-          "range_name": "CONGO (DR) - ORANGE 66",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "243853395690",
-          "range_name": "CONGO (DR) - ORANGE 66",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "243853390750",
-          "range_name": "CONGO (DR) - ORANGE 66",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881349424",
-          "range_name": "MALAWI - TELEKOM NETWORK 172",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
           "number": "265881645392",
           "range_name": "MALAWI - TELEKOM NETWORK 177",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881597403",
+          "range_name": "MALAWI - TELEKOM NETWORK 176",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881589091",
+          "range_name": "MALAWI - TELEKOM NETWORK 176",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881364941",
+          "range_name": "MALAWI - TELEKOM NETWORK 173",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881306253",
+          "range_name": "MALAWI - TELEKOM NETWORK 171",
           "messages": 1,
           "earnings": 0.016
         }
@@ -367,12 +367,6 @@
       "api_connected": true,
       "top_numbers": [
         {
-          "number": "243853389101",
-          "range_name": "CONGO (DR) - ORANGE 66",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
           "number": "265881447492",
           "range_name": "MALAWI - TELEKOM NETWORK 132",
           "messages": 1,
@@ -381,6 +375,12 @@
         {
           "number": "265881363201",
           "range_name": "MALAWI - TELEKOM NETWORK 173",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "243853389101",
+          "range_name": "CONGO (DR) - ORANGE 66",
           "messages": 1,
           "earnings": 0.016
         }
@@ -393,6 +393,12 @@
       "idr": 1040,
       "api_connected": true,
       "top_numbers": [
+        {
+          "number": "265881486165",
+          "range_name": "MALAWI - TELEKOM NETWORK 174",
+          "messages": 1,
+          "earnings": 0.016
+        },
         {
           "number": "265881379893",
           "range_name": "MALAWI - TELEKOM NETWORK 173",
@@ -410,12 +416,6 @@
           "range_name": "MALAWI - TELEKOM NETWORK 173",
           "messages": 1,
           "earnings": 0.016
-        },
-        {
-          "number": "265881486165",
-          "range_name": "MALAWI - TELEKOM NETWORK 174",
-          "messages": 1,
-          "earnings": 0.016
         }
       ]
     },
@@ -426,6 +426,12 @@
       "idr": 1560,
       "api_connected": true,
       "top_numbers": [
+        {
+          "number": "265881577149",
+          "range_name": "MALAWI - TELEKOM NETWORK 175",
+          "messages": 1,
+          "earnings": 0.016
+        },
         {
           "number": "265881366636",
           "range_name": "MALAWI - TELEKOM NETWORK 173",
@@ -446,12 +452,6 @@
         },
         {
           "number": "265881365138",
-          "range_name": "MALAWI - TELEKOM NETWORK 173",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881368429",
           "range_name": "MALAWI - TELEKOM NETWORK 173",
           "messages": 1,
           "earnings": 0.016
@@ -565,6 +565,18 @@
       "api_connected": true,
       "top_numbers": [
         {
+          "number": "265881446484",
+          "range_name": "MALAWI - TELEKOM NETWORK 132",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
+          "number": "265881448517",
+          "range_name": "MALAWI - TELEKOM NETWORK 132",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
           "number": "265881490824",
           "range_name": "MALAWI - TELEKOM NETWORK 174",
           "messages": 1,
@@ -579,18 +591,6 @@
         {
           "number": "265881357563",
           "range_name": "MALAWI - TELEKOM NETWORK 172",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881440733",
-          "range_name": "MALAWI - TELEKOM NETWORK 132",
-          "messages": 1,
-          "earnings": 0.016
-        },
-        {
-          "number": "265881446484",
-          "range_name": "MALAWI - TELEKOM NETWORK 132",
           "messages": 1,
           "earnings": 0.016
         }
@@ -741,14 +741,14 @@
       "api_connected": true,
       "top_numbers": [
         {
-          "number": "243891609010",
-          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
+          "number": "243898236780",
+          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
           "messages": 1,
           "earnings": 0.016
         },
         {
-          "number": "243898236780",
-          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
+          "number": "243891609010",
+          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
           "messages": 1,
           "earnings": 0.016
         }
@@ -870,6 +870,12 @@
       "api_connected": true,
       "top_numbers": [
         {
+          "number": "243850288583",
+          "range_name": "CONGO (DR) - ORANGE 80",
+          "messages": 1,
+          "earnings": 0.016
+        },
+        {
           "number": "243894895815",
           "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 191",
           "messages": 1,
@@ -892,12 +898,6 @@
           "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 192",
           "messages": 1,
           "earnings": 0.016
-        },
-        {
-          "number": "243898222870",
-          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
-          "messages": 1,
-          "earnings": 0.016
         }
       ]
     },
@@ -909,14 +909,14 @@
       "api_connected": true,
       "top_numbers": [
         {
-          "number": "243898238552",
-          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
+          "number": "243891604118",
+          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
           "messages": 1,
           "earnings": 0.016
         },
         {
-          "number": "243891604118",
-          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
+          "number": "243898238552",
+          "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
           "messages": 1,
           "earnings": 0.016
         }
@@ -946,11 +946,11 @@
   },
   "daily_breakdown": [
     {
-      "messages": 28,
-      "earnings": 0.448,
-      "delivered": 28,
+      "messages": 32,
+      "earnings": 0.512,
+      "delivered": 32,
       "period": "2026-10-18",
-      "earnings_idr": 7280
+      "earnings_idr": 8320
     },
     {
       "messages": 135,
@@ -990,15 +990,15 @@
       "account": "acc_3f68900f@jetable.fr.nf"
     },
     {
-      "number": "243898238552",
-      "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
+      "number": "243891604118",
+      "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
       "messages": 2,
       "earnings": 0.032,
       "account": "aug_8579d469@monemail.fr.nf"
     },
     {
-      "number": "243891604118",
-      "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 197",
+      "number": "243898238552",
+      "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 194",
       "messages": 2,
       "earnings": 0.032,
       "account": "aug_8579d469@monemail.fr.nf"
@@ -1074,6 +1074,13 @@
       "account": "saputradimas0878@gmail.com"
     },
     {
+      "number": "265881645183",
+      "range_name": "MALAWI - TELEKOM NETWORK 177",
+      "messages": 1,
+      "earnings": 0.016,
+      "account": "Ekiprijipratama03@gmail.com"
+    },
+    {
       "number": "265881316264",
       "range_name": "MALAWI - TELEKOM NETWORK 171",
       "messages": 1,
@@ -1104,13 +1111,6 @@
     {
       "number": "265881817179",
       "range_name": "MALAWI - TELEKOM NETWORK 179",
-      "messages": 1,
-      "earnings": 0.016,
-      "account": "Ekiprijipratama03@gmail.com"
-    },
-    {
-      "number": "243808831253",
-      "range_name": "CONGO, DEMOCRATIC REPUBLIC OF - ORANGE RDC 30",
       "messages": 1,
       "earnings": 0.016,
       "account": "Ekiprijipratama03@gmail.com"
@@ -1396,8 +1396,7 @@
       "rate_usd": 0.016
     }
   ],
-  "last_api_sync": "2026-10-18 11:00:27",
+  "last_api_sync": "2026-10-18 11:20:26",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 32,
-  "last_event_time": null
+  "total_accounts_synced": 32
 }
