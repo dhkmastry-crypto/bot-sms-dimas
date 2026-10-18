@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 3.744,
-  "total_revenue_idr": 60840,
-  "total_sms": 234,
+  "total_revenue_usd": 3.76,
+  "total_revenue_idr": 61100,
+  "total_sms": 235,
   "today_date": "2026-10-18",
-  "today_revenue_usd": 1.232,
-  "today_sms": 77,
+  "today_revenue_usd": 1.248,
+  "today_sms": 78,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -694,9 +694,9 @@
     },
     "19": {
       "email": "jangsuk771@gmail.com",
-      "sms": 3,
-      "usd": 0.048,
-      "idr": 780,
+      "sms": 4,
+      "usd": 0.064,
+      "idr": 1040,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1358,6 +1358,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-18 19:37:12",
+      "account": "Akun #19",
+      "phone": "265881057733",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-18 19:23:35",
       "account": "Akun #20",
       "phone": "265881534713",
@@ -1588,17 +1596,10 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 13:22:17",
-      "account": "Akun #1",
-      "phone": "265881342390",
-      "platform": "WeChat",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-18 19:28:59",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
