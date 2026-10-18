@@ -883,11 +883,20 @@ class AugestelBrowserPool:
 
     async def setup_account_webhook(self, idx: int, webhook_url: str) -> dict:
         """Pasang / aktifkan webhook secara instan via tab yang sedang terbuka di RAM."""
-        if idx not in self.pages:
-            return {"success": False, "message": f"Browser Akun #{idx} belum aktif di pool"}
-        page = self.pages[idx]
         acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
         email = acc.get("email", "")
+        pwd = acc.get("password", "")
+
+        if idx not in self.pages or self.pages[idx].is_closed():
+            logger.info(f"🌐 [Akun #{idx} | {email}] Menginisialisasi context browser pool...")
+            try:
+                await self._init_single_account(idx, email, pwd)
+            except Exception as e_init:
+                return {"success": False, "message": f"Gagal init browser Akun #{idx}: {e_init}", "email": email}
+
+        if idx not in self.pages:
+            return {"success": False, "message": f"Browser Akun #{idx} belum aktif di pool", "email": email}
+        page = self.pages[idx]
 
         try:
             logger.info(f"🌐 [Akun #{idx} | {email}] Mengakses halaman webhook portal...")
@@ -1049,6 +1058,14 @@ class AugestelBrowserPool:
                     const msgCb = whForm.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
                     const msg_received = msgCb ? Boolean(msgCb.hasAttribute('checked') || msgCb.checked) : false;
 
+                    // Checkbox number.assigned (harus false/mati)
+                    const naCb = whForm.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
+                    const num_assigned = naCb ? Boolean(naCb.hasAttribute('checked') || naCb.checked) : false;
+
+                    // Checkbox number.removed (harus false/mati)
+                    const nrCb = whForm.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
+                    const num_removed = nrCb ? Boolean(nrCb.hasAttribute('checked') || nrCb.checked) : false;
+
                     // Cek peringatan otomatis gagal 20 kali (Delivery was switched off automatically)
                     const textLower = text.toLowerCase();
                     const has_auto_failure = text.includes('Delivery was switched off automatically') || 
@@ -1065,7 +1082,9 @@ class AugestelBrowserPool:
                         is_paused: is_paused,
                         is_delivering: is_delivering,
                         url: current_url,
-                        msg_received: msg_received
+                        msg_received: msg_received,
+                        num_assigned: num_assigned,
+                        num_removed: num_removed
                     };
                 } catch (e) {
                     return { ok: false, error: e.toString() };
@@ -1155,13 +1174,17 @@ class AugestelBrowserPool:
                         # 1. is_active mati (False)
                         # 2. is_paused aktif (True / 20 failures)
                         # 3. URL kosong atau berbeda dari target
-                        needs_healing = (not is_active) or is_paused or (curr_url != self.webhook_url)
+                        # 4. number.assigned atau number.removed masih aktif (harus dimatikan per permintaan user)
+                        has_unwanted = bool(res.get("num_assigned") or res.get("num_removed"))
+                        needs_healing = (not is_active) or is_paused or (curr_url != self.webhook_url) or has_unwanted
 
                         if needs_healing:
                             reason = []
                             if not is_active: reason.append("is_active=False (OFF)")
                             if is_paused: reason.append("Portal Status=PAUSED (20 failures)")
                             if curr_url != self.webhook_url: reason.append(f"URL mismatch ({curr_url} != {self.webhook_url})")
+                            if res.get("num_assigned"): reason.append("number.assigned masih AKTIF (dimatikan)")
+                            if res.get("num_removed"): reason.append("number.removed masih AKTIF (dimatikan)")
                             reason_str = ", ".join(reason)
 
                             logger.warning(
