@@ -95,6 +95,20 @@ async def setup_account_webhook(acc_idx: int, account_data: dict):
                     msg.dispatchEvent(new Event('input', { bubbles: true }));
                     msg.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+
+                // Matikan event number.assigned & number.removed
+                const na = document.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
+                if (na && na.checked) {
+                    na.checked = false;
+                    na.dispatchEvent(new Event('input', { bubbles: true }));
+                    na.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                const nr = document.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
+                if (nr && nr.checked) {
+                    nr.checked = false;
+                    nr.dispatchEvent(new Event('input', { bubbles: true }));
+                    nr.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }""")
 
             await asyncio.sleep(0.5)
