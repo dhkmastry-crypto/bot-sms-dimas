@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.976,
-  "total_revenue_idr": 80860,
-  "total_sms": 311,
+  "total_revenue_usd": 4.992,
+  "total_revenue_idr": 81120,
+  "total_sms": 312,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.4,
-  "today_sms": 25,
+  "today_revenue_usd": 0.416,
+  "today_sms": 26,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -634,9 +634,9 @@
     },
     "17": {
       "email": "agusbanget67@gmail.com",
-      "sms": 11,
-      "usd": 0.176,
-      "idr": 2860,
+      "sms": 12,
+      "usd": 0.192,
+      "idr": 3120,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1479,6 +1479,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 15:22:09",
+      "account": "Akun #17",
+      "phone": "265881051340",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 15:19:11",
       "account": "Akun #9",
       "phone": "243893260650",
@@ -1708,14 +1716,6 @@
       "phone": "265881729393",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 02:54:12",
-      "account": "Akun #16",
-      "phone": "243893499467",
-      "platform": "WhatsApp",
-      "flag": "🇨🇩",
       "rate_usd": 0.016
     }
   ],
