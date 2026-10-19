@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.64,
-  "total_revenue_idr": 75400,
-  "total_sms": 290,
+  "total_revenue_usd": 4.656,
+  "total_revenue_idr": 75660,
+  "total_sms": 291,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.064,
-  "today_sms": 4,
+  "today_revenue_usd": 0.08,
+  "today_sms": 5,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -322,9 +322,9 @@
     },
     "9": {
       "email": "malinoo788@gmail.com",
-      "sms": 14,
-      "usd": 0.224,
-      "idr": 3640,
+      "sms": 15,
+      "usd": 0.24,
+      "idr": 3900,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1473,6 +1473,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 08:24:10",
+      "account": "Akun #9",
+      "phone": "243893796175",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 08:19:09",
       "account": "Akun #33",
       "phone": "94713400423",
@@ -1703,17 +1711,10 @@
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 22:28:13",
-      "account": "Akun #17",
-      "phone": "265881393135",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 08:23:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
