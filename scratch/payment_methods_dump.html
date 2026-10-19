@@ -1,0 +1,1559 @@
+<!DOCTYPE html><html lang="en" class="h-full"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ">
+    
+    <title>Payment Methods - Client Panel</title>
+    <link rel="icon" type="image/svg+xml" href="https://augestel.com/augestel-icon.svg">
+    <link rel="alternate icon" href="https://augestel.com/logo.jpeg">
+
+    
+    <link rel="preload" as="style" href="https://augestel.com/build/assets/app-B65pq0Fl.css"><link rel="modulepreload" as="script" href="https://augestel.com/build/assets/app-BmR76E4K.js"><link rel="stylesheet" href="https://augestel.com/build/assets/app-B65pq0Fl.css"><script type="module" src="https://augestel.com/build/assets/app-BmR76E4K.js"></script>    
+    <link rel="preload" as="font" href="https://augestel.com/build/assets/inter-400-normal-C38fXH4l.woff2" type="font/woff2" crossorigin="anonymous">
+<link rel="preload" as="font" href="https://augestel.com/build/assets/inter-500-normal-Cerq10X2.woff2" type="font/woff2" crossorigin="anonymous">
+<link rel="preload" as="font" href="https://augestel.com/build/assets/inter-600-normal-LgqL8muc.woff2" type="font/woff2" crossorigin="anonymous">
+<link rel="preload" as="font" href="https://augestel.com/build/assets/inter-700-normal-Yt3aPRUw.woff2" type="font/woff2" crossorigin="anonymous">
+<link rel="preload" as="font" href="https://augestel.com/build/assets/jetbrains-mono-500-normal-BWZEU5yA.woff2" type="font/woff2" crossorigin="anonymous">
+<link rel="preload" as="font" href="https://augestel.com/build/assets/jetbrains-mono-700-normal-BYuf6tUa.woff2" type="font/woff2" crossorigin="anonymous">
+<style>
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/build/assets/inter-400-normal-C38fXH4l.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/build/assets/inter-400-normal-CyCys3Eg.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/build/assets/inter-500-normal-Cerq10X2.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/build/assets/inter-500-normal-BL9OpVg8.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/build/assets/inter-600-normal-LgqL8muc.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/build/assets/inter-600-normal-CiBQ2DWP.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/build/assets/inter-700-normal-Yt3aPRUw.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/build/assets/inter-700-normal-BLAVimhd.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/build/assets/jetbrains-mono-500-normal-BWZEU5yA.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/build/assets/jetbrains-mono-500-normal-CJOVTJB7.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/build/assets/jetbrains-mono-700-normal-BYuf6tUa.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/build/assets/jetbrains-mono-700-normal-D3wTyLJW.woff") format("woff");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+:root {
+  --font-inter: "Inter";
+  --font-jetbrains-mono: "JetBrains Mono";
+}
+
+.font-inter {
+  font-family: var(--font-inter);
+}
+
+.font-jetbrains-mono {
+  font-family: var(--font-jetbrains-mono);
+}
+</style>
+
+    
+    <script>
+        try {
+            if (localStorage.theme === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+    </script>
+
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script><style>:root{--swal2-outline: 0 0 0 3px rgba(100, 150, 200, 0.5);--swal2-container-padding: 0.625em;--swal2-backdrop: rgba(0, 0, 0, 0.4);--swal2-backdrop-transition: background-color 0.15s;--swal2-width: 32em;--swal2-padding: 0 0 1.25em;--swal2-border: none;--swal2-border-radius: 0.3125rem;--swal2-background: white;--swal2-color: #545454;--swal2-show-animation: swal2-show 0.3s;--swal2-hide-animation: swal2-hide 0.15s forwards;--swal2-icon-zoom: 1;--swal2-title-padding: 0.8em 1em 0;--swal2-html-container-padding: 1em 1.6em 0.3em;--swal2-input-border: 1px solid #d9d9d9;--swal2-input-border-radius: 0.1875em;--swal2-input-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.06), 0 0 0 3px transparent;--swal2-input-background: transparent;--swal2-input-transition: border-color 0.2s, box-shadow 0.2s;--swal2-input-hover-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.06), 0 0 0 3px transparent;--swal2-input-focus-border: 1px solid #b4dbed;--swal2-input-focus-box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.06), 0 0 0 3px rgba(100, 150, 200, 0.5);--swal2-progress-step-background: #add8e6;--swal2-validation-message-background: #f0f0f0;--swal2-validation-message-color: #666;--swal2-footer-border-color: #eee;--swal2-footer-background: transparent;--swal2-footer-color: inherit;--swal2-timer-progress-bar-background: rgba(0, 0, 0, 0.3);--swal2-close-button-position: initial;--swal2-close-button-inset: auto;--swal2-close-button-font-size: 2.5em;--swal2-close-button-color: #ccc;--swal2-close-button-transition: color 0.2s, box-shadow 0.2s;--swal2-close-button-outline: initial;--swal2-close-button-box-shadow: inset 0 0 0 3px transparent;--swal2-close-button-focus-box-shadow: inset var(--swal2-outline);--swal2-close-button-hover-transform: none;--swal2-actions-justify-content: center;--swal2-actions-width: auto;--swal2-actions-margin: 1.25em auto 0;--swal2-actions-padding: 0;--swal2-actions-border-radius: 0;--swal2-actions-background: transparent;--swal2-action-button-transition: background-color 0.2s, box-shadow 0.2s;--swal2-action-button-hover: black 10%;--swal2-action-button-active: black 10%;--swal2-confirm-button-box-shadow: none;--swal2-confirm-button-border-radius: 0.25em;--swal2-confirm-button-background-color: #7066e0;--swal2-confirm-button-color: #fff;--swal2-deny-button-box-shadow: none;--swal2-deny-button-border-radius: 0.25em;--swal2-deny-button-background-color: #dc3741;--swal2-deny-button-color: #fff;--swal2-cancel-button-box-shadow: none;--swal2-cancel-button-border-radius: 0.25em;--swal2-cancel-button-background-color: #6e7881;--swal2-cancel-button-color: #fff;--swal2-toast-show-animation: swal2-toast-show 0.5s;--swal2-toast-hide-animation: swal2-toast-hide 0.1s forwards;--swal2-toast-border: none;--swal2-toast-box-shadow: 0 0 1px hsl(0deg 0% 0% / 0.075), 0 1px 2px hsl(0deg 0% 0% / 0.075), 1px 2px 4px hsl(0deg 0% 0% / 0.075), 1px 3px 8px hsl(0deg 0% 0% / 0.075), 2px 4px 16px hsl(0deg 0% 0% / 0.075)}[data-swal2-theme=dark]{--swal2-dark-theme-black: #19191a;--swal2-dark-theme-white: #e1e1e1;--swal2-background: var(--swal2-dark-theme-black);--swal2-color: var(--swal2-dark-theme-white);--swal2-footer-border-color: #555;--swal2-input-background: color-mix(in srgb, var(--swal2-dark-theme-black), var(--swal2-dark-theme-white) 10%);--swal2-validation-message-background: color-mix( in srgb, var(--swal2-dark-theme-black), var(--swal2-dark-theme-white) 10% );--swal2-validation-message-color: var(--swal2-dark-theme-white);--swal2-timer-progress-bar-background: rgba(255, 255, 255, 0.7)}@media(prefers-color-scheme: dark){[data-swal2-theme=auto]{--swal2-dark-theme-black: #19191a;--swal2-dark-theme-white: #e1e1e1;--swal2-background: var(--swal2-dark-theme-black);--swal2-color: var(--swal2-dark-theme-white);--swal2-footer-border-color: #555;--swal2-input-background: color-mix(in srgb, var(--swal2-dark-theme-black), var(--swal2-dark-theme-white) 10%);--swal2-validation-message-background: color-mix( in srgb, var(--swal2-dark-theme-black), var(--swal2-dark-theme-white) 10% );--swal2-validation-message-color: var(--swal2-dark-theme-white);--swal2-timer-progress-bar-background: rgba(255, 255, 255, 0.7)}}body.swal2-shown:not(.swal2-no-backdrop,.swal2-toast-shown){overflow:hidden}body.swal2-height-auto{height:auto !important}body.swal2-no-backdrop .swal2-container{background-color:rgba(0,0,0,0) !important;pointer-events:none}body.swal2-no-backdrop .swal2-container .swal2-popup{pointer-events:auto}body.swal2-no-backdrop .swal2-container .swal2-modal{box-shadow:0 0 10px var(--swal2-backdrop)}body.swal2-toast-shown .swal2-container{box-sizing:border-box;width:360px;max-width:100%;background-color:rgba(0,0,0,0);pointer-events:none}body.swal2-toast-shown .swal2-container.swal2-top{inset:0 auto auto 50%;transform:translateX(-50%)}body.swal2-toast-shown .swal2-container.swal2-top-end,body.swal2-toast-shown .swal2-container.swal2-top-right{inset:0 0 auto auto}body.swal2-toast-shown .swal2-container.swal2-top-start,body.swal2-toast-shown .swal2-container.swal2-top-left{inset:0 auto auto 0}body.swal2-toast-shown .swal2-container.swal2-center-start,body.swal2-toast-shown .swal2-container.swal2-center-left{inset:50% auto auto 0;transform:translateY(-50%)}body.swal2-toast-shown .swal2-container.swal2-center{inset:50% auto auto 50%;transform:translate(-50%, -50%)}body.swal2-toast-shown .swal2-container.swal2-center-end,body.swal2-toast-shown .swal2-container.swal2-center-right{inset:50% 0 auto auto;transform:translateY(-50%)}body.swal2-toast-shown .swal2-container.swal2-bottom-start,body.swal2-toast-shown .swal2-container.swal2-bottom-left{inset:auto auto 0 0}body.swal2-toast-shown .swal2-container.swal2-bottom{inset:auto auto 0 50%;transform:translateX(-50%)}body.swal2-toast-shown .swal2-container.swal2-bottom-end,body.swal2-toast-shown .swal2-container.swal2-bottom-right{inset:auto 0 0 auto}@media print{body.swal2-shown:not(.swal2-no-backdrop,.swal2-toast-shown){overflow-y:scroll !important}body.swal2-shown:not(.swal2-no-backdrop,.swal2-toast-shown)>[aria-hidden=true]{display:none}body.swal2-shown:not(.swal2-no-backdrop,.swal2-toast-shown) .swal2-container{position:static !important}}div:where(.swal2-container){display:grid;position:fixed;z-index:1060;inset:0;box-sizing:border-box;grid-template-areas:"top-start     top            top-end" "center-start  center         center-end" "bottom-start  bottom-center  bottom-end";grid-template-rows:minmax(min-content, auto) minmax(min-content, auto) minmax(min-content, auto);height:100%;padding:var(--swal2-container-padding);overflow-x:hidden;transition:var(--swal2-backdrop-transition);-webkit-overflow-scrolling:touch}div:where(.swal2-container).swal2-backdrop-show,div:where(.swal2-container).swal2-noanimation{background:var(--swal2-backdrop)}div:where(.swal2-container).swal2-backdrop-hide{background:rgba(0,0,0,0) !important}div:where(.swal2-container).swal2-top-start,div:where(.swal2-container).swal2-center-start,div:where(.swal2-container).swal2-bottom-start{grid-template-columns:minmax(0, 1fr) auto auto}div:where(.swal2-container).swal2-top,div:where(.swal2-container).swal2-center,div:where(.swal2-container).swal2-bottom{grid-template-columns:auto minmax(0, 1fr) auto}div:where(.swal2-container).swal2-top-end,div:where(.swal2-container).swal2-center-end,div:where(.swal2-container).swal2-bottom-end{grid-template-columns:auto auto minmax(0, 1fr)}div:where(.swal2-container).swal2-top-start>.swal2-popup{align-self:start}div:where(.swal2-container).swal2-top>.swal2-popup{grid-column:2;place-self:start center}div:where(.swal2-container).swal2-top-end>.swal2-popup,div:where(.swal2-container).swal2-top-right>.swal2-popup{grid-column:3;place-self:start end}div:where(.swal2-container).swal2-center-start>.swal2-popup,div:where(.swal2-container).swal2-center-left>.swal2-popup{grid-row:2;align-self:center}div:where(.swal2-container).swal2-center>.swal2-popup{grid-column:2;grid-row:2;place-self:center center}div:where(.swal2-container).swal2-center-end>.swal2-popup,div:where(.swal2-container).swal2-center-right>.swal2-popup{grid-column:3;grid-row:2;place-self:center end}div:where(.swal2-container).swal2-bottom-start>.swal2-popup,div:where(.swal2-container).swal2-bottom-left>.swal2-popup{grid-column:1;grid-row:3;align-self:end}div:where(.swal2-container).swal2-bottom>.swal2-popup{grid-column:2;grid-row:3;place-self:end center}div:where(.swal2-container).swal2-bottom-end>.swal2-popup,div:where(.swal2-container).swal2-bottom-right>.swal2-popup{grid-column:3;grid-row:3;place-self:end end}div:where(.swal2-container).swal2-grow-row>.swal2-popup,div:where(.swal2-container).swal2-grow-fullscreen>.swal2-popup{grid-column:1/4;width:100%}div:where(.swal2-container).swal2-grow-column>.swal2-popup,div:where(.swal2-container).swal2-grow-fullscreen>.swal2-popup{grid-row:1/4;align-self:stretch}div:where(.swal2-container).swal2-no-transition{transition:none !important}div:where(.swal2-container)[popover]{width:auto;border:0}div:where(.swal2-container) div:where(.swal2-popup){display:none;position:relative;box-sizing:border-box;grid-template-columns:minmax(0, 100%);width:var(--swal2-width);max-width:100%;padding:var(--swal2-padding);border:var(--swal2-border);border-radius:var(--swal2-border-radius);background:var(--swal2-background);color:var(--swal2-color);font-family:inherit;font-size:1rem}div:where(.swal2-container) div:where(.swal2-popup):focus{outline:none}div:where(.swal2-container) div:where(.swal2-popup).swal2-loading{overflow-y:hidden}div:where(.swal2-container) div:where(.swal2-popup).swal2-draggable{cursor:grab}div:where(.swal2-container) div:where(.swal2-popup).swal2-draggable div:where(.swal2-icon){cursor:grab}div:where(.swal2-container) div:where(.swal2-popup).swal2-dragging{cursor:grabbing}div:where(.swal2-container) div:where(.swal2-popup).swal2-dragging div:where(.swal2-icon){cursor:grabbing}div:where(.swal2-container) h2:where(.swal2-title){position:relative;max-width:100%;margin:0;padding:var(--swal2-title-padding);color:inherit;font-size:1.875em;font-weight:600;text-align:center;text-transform:none;overflow-wrap:break-word;cursor:initial}div:where(.swal2-container) div:where(.swal2-actions){display:flex;z-index:1;box-sizing:border-box;flex-wrap:wrap;align-items:center;justify-content:var(--swal2-actions-justify-content);width:var(--swal2-actions-width);margin:var(--swal2-actions-margin);padding:var(--swal2-actions-padding);border-radius:var(--swal2-actions-border-radius);background:var(--swal2-actions-background)}div:where(.swal2-container) div:where(.swal2-loader){display:none;align-items:center;justify-content:center;width:2.2em;height:2.2em;margin:0 1.875em;animation:swal2-rotate-loading 1.5s linear 0s infinite normal;border-width:.25em;border-style:solid;border-radius:100%;border-color:#2778c4 rgba(0,0,0,0) #2778c4 rgba(0,0,0,0)}div:where(.swal2-container) button:where(.swal2-styled){margin:.3125em;padding:.625em 1.1em;transition:var(--swal2-action-button-transition);border:none;box-shadow:0 0 0 3px rgba(0,0,0,0);font-weight:500}div:where(.swal2-container) button:where(.swal2-styled):not([disabled]){cursor:pointer}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-confirm){border-radius:var(--swal2-confirm-button-border-radius);background:initial;background-color:var(--swal2-confirm-button-background-color);box-shadow:var(--swal2-confirm-button-box-shadow);color:var(--swal2-confirm-button-color);font-size:1em}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-confirm):hover{background-color:color-mix(in srgb, var(--swal2-confirm-button-background-color), var(--swal2-action-button-hover))}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-confirm):active{background-color:color-mix(in srgb, var(--swal2-confirm-button-background-color), var(--swal2-action-button-active))}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-deny){border-radius:var(--swal2-deny-button-border-radius);background:initial;background-color:var(--swal2-deny-button-background-color);box-shadow:var(--swal2-deny-button-box-shadow);color:var(--swal2-deny-button-color);font-size:1em}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-deny):hover{background-color:color-mix(in srgb, var(--swal2-deny-button-background-color), var(--swal2-action-button-hover))}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-deny):active{background-color:color-mix(in srgb, var(--swal2-deny-button-background-color), var(--swal2-action-button-active))}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-cancel){border-radius:var(--swal2-cancel-button-border-radius);background:initial;background-color:var(--swal2-cancel-button-background-color);box-shadow:var(--swal2-cancel-button-box-shadow);color:var(--swal2-cancel-button-color);font-size:1em}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-cancel):hover{background-color:color-mix(in srgb, var(--swal2-cancel-button-background-color), var(--swal2-action-button-hover))}div:where(.swal2-container) button:where(.swal2-styled):where(.swal2-cancel):active{background-color:color-mix(in srgb, var(--swal2-cancel-button-background-color), var(--swal2-action-button-active))}div:where(.swal2-container) button:where(.swal2-styled):focus-visible{outline:none;box-shadow:var(--swal2-action-button-focus-box-shadow)}div:where(.swal2-container) button:where(.swal2-styled)[disabled]:not(.swal2-loading){opacity:.4}div:where(.swal2-container) button:where(.swal2-styled)::-moz-focus-inner{border:0}div:where(.swal2-container) div:where(.swal2-footer){margin:1em 0 0;padding:1em 1em 0;border-top:1px solid var(--swal2-footer-border-color);background:var(--swal2-footer-background);color:var(--swal2-footer-color);font-size:1em;text-align:center;cursor:initial}div:where(.swal2-container) .swal2-timer-progress-bar-container{position:absolute;right:0;bottom:0;left:0;grid-column:auto !important;overflow:hidden;border-bottom-right-radius:var(--swal2-border-radius);border-bottom-left-radius:var(--swal2-border-radius)}div:where(.swal2-container) div:where(.swal2-timer-progress-bar){width:100%;height:.25em;background:var(--swal2-timer-progress-bar-background)}div:where(.swal2-container) img:where(.swal2-image){max-width:100%;margin:2em auto 1em;cursor:initial}div:where(.swal2-container) button:where(.swal2-close){position:var(--swal2-close-button-position);inset:var(--swal2-close-button-inset);z-index:2;align-items:center;justify-content:center;width:1.2em;height:1.2em;margin-top:0;margin-right:0;margin-bottom:-1.2em;padding:0;overflow:hidden;transition:var(--swal2-close-button-transition);border:none;border-radius:var(--swal2-border-radius);outline:var(--swal2-close-button-outline);background:rgba(0,0,0,0);color:var(--swal2-close-button-color);font-family:monospace;font-size:var(--swal2-close-button-font-size);cursor:pointer;justify-self:end}div:where(.swal2-container) button:where(.swal2-close):hover{transform:var(--swal2-close-button-hover-transform);background:rgba(0,0,0,0);color:#f27474}div:where(.swal2-container) button:where(.swal2-close):focus-visible{outline:none;box-shadow:var(--swal2-close-button-focus-box-shadow)}div:where(.swal2-container) button:where(.swal2-close)::-moz-focus-inner{border:0}div:where(.swal2-container) div:where(.swal2-html-container){z-index:1;justify-content:center;margin:0;padding:var(--swal2-html-container-padding);overflow:auto;color:inherit;font-size:1.125em;font-weight:normal;line-height:normal;text-align:center;overflow-wrap:break-word;word-break:break-word;cursor:initial}div:where(.swal2-container) input:where(.swal2-input),div:where(.swal2-container) input:where(.swal2-file),div:where(.swal2-container) textarea:where(.swal2-textarea),div:where(.swal2-container) select:where(.swal2-select),div:where(.swal2-container) div:where(.swal2-radio),div:where(.swal2-container) label:where(.swal2-checkbox){margin:1em 2em 3px}div:where(.swal2-container) input:where(.swal2-input),div:where(.swal2-container) input:where(.swal2-file),div:where(.swal2-container) textarea:where(.swal2-textarea){box-sizing:border-box;width:auto;transition:var(--swal2-input-transition);border:var(--swal2-input-border);border-radius:var(--swal2-input-border-radius);background:var(--swal2-input-background);box-shadow:var(--swal2-input-box-shadow);color:inherit;font-size:1.125em}div:where(.swal2-container) input:where(.swal2-input).swal2-inputerror,div:where(.swal2-container) input:where(.swal2-file).swal2-inputerror,div:where(.swal2-container) textarea:where(.swal2-textarea).swal2-inputerror{border-color:#f27474 !important;box-shadow:0 0 2px #f27474 !important}div:where(.swal2-container) input:where(.swal2-input):hover,div:where(.swal2-container) input:where(.swal2-file):hover,div:where(.swal2-container) textarea:where(.swal2-textarea):hover{box-shadow:var(--swal2-input-hover-box-shadow)}div:where(.swal2-container) input:where(.swal2-input):focus,div:where(.swal2-container) input:where(.swal2-file):focus,div:where(.swal2-container) textarea:where(.swal2-textarea):focus{border:var(--swal2-input-focus-border);outline:none;box-shadow:var(--swal2-input-focus-box-shadow)}div:where(.swal2-container) input:where(.swal2-input)::placeholder,div:where(.swal2-container) input:where(.swal2-file)::placeholder,div:where(.swal2-container) textarea:where(.swal2-textarea)::placeholder{color:#ccc}div:where(.swal2-container) .swal2-range{margin:1em 2em 3px;background:var(--swal2-background)}div:where(.swal2-container) .swal2-range input{width:80%}div:where(.swal2-container) .swal2-range output{width:20%;color:inherit;font-weight:600;text-align:center}div:where(.swal2-container) .swal2-range input,div:where(.swal2-container) .swal2-range output{height:2.625em;padding:0;font-size:1.125em;line-height:2.625em}div:where(.swal2-container) .swal2-input{height:2.625em;padding:0 .75em}div:where(.swal2-container) .swal2-file{width:75%;margin-right:auto;margin-left:auto;background:var(--swal2-input-background);font-size:1.125em}div:where(.swal2-container) .swal2-textarea{height:6.75em;padding:.75em}div:where(.swal2-container) .swal2-select{min-width:50%;max-width:100%;padding:.375em .625em;background:var(--swal2-input-background);color:inherit;font-size:1.125em}div:where(.swal2-container) .swal2-radio,div:where(.swal2-container) .swal2-checkbox{align-items:center;justify-content:center;background:var(--swal2-background);color:inherit}div:where(.swal2-container) .swal2-radio label,div:where(.swal2-container) .swal2-checkbox label{margin:0 .6em;font-size:1.125em}div:where(.swal2-container) .swal2-radio input,div:where(.swal2-container) .swal2-checkbox input{flex-shrink:0;margin:0 .4em}div:where(.swal2-container) label:where(.swal2-input-label){display:flex;justify-content:center;margin:1em auto 0}div:where(.swal2-container) div:where(.swal2-validation-message){align-items:center;justify-content:center;margin:1em 0 0;padding:.625em;overflow:hidden;background:var(--swal2-validation-message-background);color:var(--swal2-validation-message-color);font-size:1em;font-weight:300}div:where(.swal2-container) div:where(.swal2-validation-message)::before{content:"!";display:inline-block;width:1.5em;min-width:1.5em;height:1.5em;margin:0 .625em;border-radius:50%;background-color:#f27474;color:#fff;font-weight:600;line-height:1.5em;text-align:center}div:where(.swal2-container) .swal2-progress-steps{flex-wrap:wrap;align-items:center;max-width:100%;margin:1.25em auto;padding:0;background:rgba(0,0,0,0);font-weight:600}div:where(.swal2-container) .swal2-progress-steps li{display:inline-block;position:relative}div:where(.swal2-container) .swal2-progress-steps .swal2-progress-step{z-index:20;flex-shrink:0;width:2em;height:2em;border-radius:2em;background:#2778c4;color:#fff;line-height:2em;text-align:center}div:where(.swal2-container) .swal2-progress-steps .swal2-progress-step.swal2-active-progress-step{background:#2778c4}div:where(.swal2-container) .swal2-progress-steps .swal2-progress-step.swal2-active-progress-step~.swal2-progress-step{background:var(--swal2-progress-step-background);color:#fff}div:where(.swal2-container) .swal2-progress-steps .swal2-progress-step.swal2-active-progress-step~.swal2-progress-step-line{background:var(--swal2-progress-step-background)}div:where(.swal2-container) .swal2-progress-steps .swal2-progress-step-line{z-index:10;flex-shrink:0;width:2.5em;height:.4em;margin:0 -1px;background:#2778c4}div:where(.swal2-icon){position:relative;box-sizing:content-box;justify-content:center;width:5em;height:5em;margin:2.5em auto .6em;zoom:var(--swal2-icon-zoom);border:.25em solid rgba(0,0,0,0);border-radius:50%;border-color:#000;font-family:inherit;line-height:5em;cursor:default;user-select:none}div:where(.swal2-icon) .swal2-icon-content{display:flex;align-items:center;font-size:3.75em}div:where(.swal2-icon).swal2-error{border-color:#f27474;color:#f27474}div:where(.swal2-icon).swal2-error .swal2-x-mark{position:relative;flex-grow:1}div:where(.swal2-icon).swal2-error [class^=swal2-x-mark-line]{display:block;position:absolute;top:2.3125em;width:2.9375em;height:.3125em;border-radius:.125em;background-color:#f27474}div:where(.swal2-icon).swal2-error [class^=swal2-x-mark-line][class$=left]{left:1.0625em;transform:rotate(45deg)}div:where(.swal2-icon).swal2-error [class^=swal2-x-mark-line][class$=right]{right:1em;transform:rotate(-45deg)}div:where(.swal2-icon).swal2-error.swal2-icon-show{animation:swal2-animate-error-icon .5s}div:where(.swal2-icon).swal2-error.swal2-icon-show .swal2-x-mark{animation:swal2-animate-error-x-mark .5s}div:where(.swal2-icon).swal2-warning{border-color:#f8bb86;color:#f8bb86}div:where(.swal2-icon).swal2-warning.swal2-icon-show{animation:swal2-animate-error-icon .5s}div:where(.swal2-icon).swal2-warning.swal2-icon-show .swal2-icon-content{animation:swal2-animate-i-mark .5s}div:where(.swal2-icon).swal2-info{border-color:#3fc3ee;color:#3fc3ee}div:where(.swal2-icon).swal2-info.swal2-icon-show{animation:swal2-animate-error-icon .5s}div:where(.swal2-icon).swal2-info.swal2-icon-show .swal2-icon-content{animation:swal2-animate-i-mark .8s}div:where(.swal2-icon).swal2-question{border-color:#87adbd;color:#87adbd}div:where(.swal2-icon).swal2-question.swal2-icon-show{animation:swal2-animate-error-icon .5s}div:where(.swal2-icon).swal2-question.swal2-icon-show .swal2-icon-content{animation:swal2-animate-question-mark .8s}div:where(.swal2-icon).swal2-success{border-color:#a5dc86;color:#a5dc86}div:where(.swal2-icon).swal2-success [class^=swal2-success-circular-line]{position:absolute;width:3.75em;height:7.5em;border-radius:50%}div:where(.swal2-icon).swal2-success [class^=swal2-success-circular-line][class$=left]{top:-0.4375em;left:-2.0635em;transform:rotate(-45deg);transform-origin:3.75em 3.75em;border-radius:7.5em 0 0 7.5em}div:where(.swal2-icon).swal2-success [class^=swal2-success-circular-line][class$=right]{top:-0.6875em;left:1.875em;transform:rotate(-45deg);transform-origin:0 3.75em;border-radius:0 7.5em 7.5em 0}div:where(.swal2-icon).swal2-success .swal2-success-ring{position:absolute;z-index:2;top:-0.25em;left:-0.25em;box-sizing:content-box;width:100%;height:100%;border:.25em solid rgba(165,220,134,.3);border-radius:50%}div:where(.swal2-icon).swal2-success .swal2-success-fix{position:absolute;z-index:1;top:.5em;left:1.625em;width:.4375em;height:5.625em;transform:rotate(-45deg)}div:where(.swal2-icon).swal2-success [class^=swal2-success-line]{display:block;position:absolute;z-index:2;height:.3125em;border-radius:.125em;background-color:#a5dc86}div:where(.swal2-icon).swal2-success [class^=swal2-success-line][class$=tip]{top:2.875em;left:.8125em;width:1.5625em;transform:rotate(45deg)}div:where(.swal2-icon).swal2-success [class^=swal2-success-line][class$=long]{top:2.375em;right:.5em;width:2.9375em;transform:rotate(-45deg)}div:where(.swal2-icon).swal2-success.swal2-icon-show .swal2-success-line-tip{animation:swal2-animate-success-line-tip .75s}div:where(.swal2-icon).swal2-success.swal2-icon-show .swal2-success-line-long{animation:swal2-animate-success-line-long .75s}div:where(.swal2-icon).swal2-success.swal2-icon-show .swal2-success-circular-line-right{animation:swal2-rotate-success-circular-line 4.25s ease-in}[class^=swal2]{-webkit-tap-highlight-color:rgba(0,0,0,0)}.swal2-show{animation:var(--swal2-show-animation)}.swal2-hide{animation:var(--swal2-hide-animation)}.swal2-noanimation{transition:none}.swal2-scrollbar-measure{position:absolute;top:-9999px;width:50px;height:50px;overflow:scroll}.swal2-rtl .swal2-close{margin-right:initial;margin-left:0}.swal2-rtl .swal2-timer-progress-bar{right:0;left:auto}.swal2-toast{box-sizing:border-box;grid-column:1/4 !important;grid-row:1/4 !important;grid-template-columns:min-content auto min-content;padding:1em;overflow-y:hidden;border:var(--swal2-toast-border);background:var(--swal2-background);box-shadow:var(--swal2-toast-box-shadow);pointer-events:auto}.swal2-toast>*{grid-column:2}.swal2-toast h2:where(.swal2-title){margin:.5em 1em;padding:0;font-size:1em;text-align:initial}.swal2-toast .swal2-loading{justify-content:center}.swal2-toast input:where(.swal2-input){height:2em;margin:.5em;font-size:1em}.swal2-toast .swal2-validation-message{font-size:1em}.swal2-toast div:where(.swal2-footer){margin:.5em 0 0;padding:.5em 0 0;font-size:.8em}.swal2-toast button:where(.swal2-close){grid-column:3/3;grid-row:1/99;align-self:center;width:.8em;height:.8em;margin:0;font-size:2em}.swal2-toast div:where(.swal2-html-container){margin:.5em 1em;padding:0;overflow:initial;font-size:1em;text-align:initial}.swal2-toast div:where(.swal2-html-container):empty{padding:0}.swal2-toast .swal2-loader{grid-column:1;grid-row:1/99;align-self:center;width:2em;height:2em;margin:.25em}.swal2-toast .swal2-icon{grid-column:1;grid-row:1/99;align-self:center;width:2em;min-width:2em;height:2em;margin:0 .5em 0 0}.swal2-toast .swal2-icon .swal2-icon-content{display:flex;align-items:center;font-size:1.8em;font-weight:bold}.swal2-toast .swal2-icon.swal2-success .swal2-success-ring{width:2em;height:2em}.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line]{top:.875em;width:1.375em}.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line][class$=left]{left:.3125em}.swal2-toast .swal2-icon.swal2-error [class^=swal2-x-mark-line][class$=right]{right:.3125em}.swal2-toast div:where(.swal2-actions){justify-content:flex-start;height:auto;margin:0;margin-top:.5em;padding:0 .5em}.swal2-toast button:where(.swal2-styled){margin:.25em .5em;padding:.4em .6em;font-size:1em}.swal2-toast .swal2-success{border-color:#a5dc86}.swal2-toast .swal2-success [class^=swal2-success-circular-line]{position:absolute;width:1.6em;height:3em;border-radius:50%}.swal2-toast .swal2-success [class^=swal2-success-circular-line][class$=left]{top:-0.8em;left:-0.5em;transform:rotate(-45deg);transform-origin:2em 2em;border-radius:4em 0 0 4em}.swal2-toast .swal2-success [class^=swal2-success-circular-line][class$=right]{top:-0.25em;left:.9375em;transform-origin:0 1.5em;border-radius:0 4em 4em 0}.swal2-toast .swal2-success .swal2-success-ring{width:2em;height:2em}.swal2-toast .swal2-success .swal2-success-fix{top:0;left:.4375em;width:.4375em;height:2.6875em}.swal2-toast .swal2-success [class^=swal2-success-line]{height:.3125em}.swal2-toast .swal2-success [class^=swal2-success-line][class$=tip]{top:1.125em;left:.1875em;width:.75em}.swal2-toast .swal2-success [class^=swal2-success-line][class$=long]{top:.9375em;right:.1875em;width:1.375em}.swal2-toast .swal2-success.swal2-icon-show .swal2-success-line-tip{animation:swal2-toast-animate-success-line-tip .75s}.swal2-toast .swal2-success.swal2-icon-show .swal2-success-line-long{animation:swal2-toast-animate-success-line-long .75s}.swal2-toast.swal2-show{animation:var(--swal2-toast-show-animation)}.swal2-toast.swal2-hide{animation:var(--swal2-toast-hide-animation)}@keyframes swal2-show{0%{transform:translate3d(0, -50px, 0) scale(0.9);opacity:0}100%{transform:translate3d(0, 0, 0) scale(1);opacity:1}}@keyframes swal2-hide{0%{transform:translate3d(0, 0, 0) scale(1);opacity:1}100%{transform:translate3d(0, -50px, 0) scale(0.9);opacity:0}}@keyframes swal2-animate-success-line-tip{0%{top:1.1875em;left:.0625em;width:0}54%{top:1.0625em;left:.125em;width:0}70%{top:2.1875em;left:-0.375em;width:3.125em}84%{top:3em;left:1.3125em;width:1.0625em}100%{top:2.8125em;left:.8125em;width:1.5625em}}@keyframes swal2-animate-success-line-long{0%{top:3.375em;right:2.875em;width:0}65%{top:3.375em;right:2.875em;width:0}84%{top:2.1875em;right:0;width:3.4375em}100%{top:2.375em;right:.5em;width:2.9375em}}@keyframes swal2-rotate-success-circular-line{0%{transform:rotate(-45deg)}5%{transform:rotate(-45deg)}12%{transform:rotate(-405deg)}100%{transform:rotate(-405deg)}}@keyframes swal2-animate-error-x-mark{0%{margin-top:1.625em;transform:scale(0.4);opacity:0}50%{margin-top:1.625em;transform:scale(0.4);opacity:0}80%{margin-top:-0.375em;transform:scale(1.15)}100%{margin-top:0;transform:scale(1);opacity:1}}@keyframes swal2-animate-error-icon{0%{transform:rotateX(100deg);opacity:0}100%{transform:rotateX(0deg);opacity:1}}@keyframes swal2-rotate-loading{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}@keyframes swal2-animate-question-mark{0%{transform:rotateY(-360deg)}100%{transform:rotateY(0)}}@keyframes swal2-animate-i-mark{0%{transform:rotateZ(45deg);opacity:0}25%{transform:rotateZ(-25deg);opacity:.4}50%{transform:rotateZ(15deg);opacity:.8}75%{transform:rotateZ(-5deg);opacity:1}100%{transform:rotateX(0);opacity:1}}@keyframes swal2-toast-show{0%{transform:translateY(-0.625em) rotateZ(2deg)}33%{transform:translateY(0) rotateZ(-2deg)}66%{transform:translateY(0.3125em) rotateZ(2deg)}100%{transform:translateY(0) rotateZ(0deg)}}@keyframes swal2-toast-hide{100%{transform:rotateZ(1deg);opacity:0}}@keyframes swal2-toast-animate-success-line-tip{0%{top:.5625em;left:.0625em;width:0}54%{top:.125em;left:.125em;width:0}70%{top:.625em;left:-0.25em;width:1.625em}84%{top:1.0625em;left:.75em;width:.5em}100%{top:1.125em;left:.1875em;width:.75em}}@keyframes swal2-toast-animate-success-line-long{0%{top:1.625em;right:1.375em;width:0}65%{top:1.25em;right:.9375em;width:0}84%{top:.9375em;right:0;width:1.125em}100%{top:.9375em;right:.1875em;width:1.375em}}</style>
+    <script>
+    /* Global UTC timestamp formatter - the panel runs on UTC end-to-end, so displayed
+       times must be UTC, not the viewer's PC zone. Parses a naive "Y-m-d H:i:s" as UTC
+       (tags Z), leaves zoned/epoch values alone, formats from getUTC* (zone-proof).
+       Defined before the packed page JS runs so those renderers can call it.
+       opts: {seconds, dateOnly, noLabel, empty}. */
+    window.iprnUtc = function (value, opts) {
+        opts = opts || {};
+        if (value === null || value === undefined || value === '') return (opts.empty != null ? opts.empty : '-');
+        var s = String(value).trim();
+        if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(s)) s = s.replace(' ', 'T') + 'Z';
+        var d = (typeof value === 'number') ? new Date(value) : new Date(s);
+        if (isNaN(d.getTime())) return String(value);
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        if (opts.timeOnly) return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds()) + (opts.noLabel ? '' : ' UTC');
+        var out = d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate());
+        if (!opts.dateOnly) { out += ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()); if (opts.seconds) out += ':' + p(d.getUTCSeconds()); }
+        return out + (opts.noLabel ? '' : ' UTC');
+    };
+    </script>
+
+    
+    
+    <style>
+    :root {
+        /* ── LOGO-SAMPLED CONSTANTS ──────────────────────────────────────────
+           Measured off the supplied mark, not picked by eye: #0A2559 is the
+           most common dark pixel in the wordmark and #0578E4 the most common
+           bright one. These are brand facts and are NOT admin-configurable. */
+        --au-navy-deep: #071A40;
+        --au-navy:      #0A2559;
+        --au-navy-mid:  #12327E;
+        --au-blue:      #0578E4;
+        --au-blue-soft: #3E97F0;
+        /* #0578E4 carries only 4.37:1 against white - fine for a large surface,
+           short of AA for button-sized text on it. This is the same hue taken
+           down to 6.16:1 so solid fills can hold white labels. */
+        --au-blue-deep: #0A5FC0;
+
+        /* ── STEEL: THE GRADIENT BASE ────────────────────────────────────────
+           #5B7A9D is 4.45:1 on white, so it is used as a SURFACE - the light
+           end of every gradient, and the brand-400 ramp stop - never as a fill
+           behind small text. It is the bridge between the page and the navy. */
+        --au-steel:       #5B7A9D;
+        --au-steel-light: #8FAECE;
+        --au-steel-deep:  #44607F;
+        --au-steel-pale:  #DCE7F4;
+        --au-steel-mist:  #EFF4FA;
+
+        /* ── THE SIGNATURE GRADIENT ──────────────────────────────────────────
+           Steel at the light end running down into the logo navy. Every dark
+           branded surface in the portal uses this one declaration: the auth
+           brand panel, the sidebar, the dashboard hero. That shared ramp is
+           what makes the sign-in page and the dashboard read as one product.
+
+           WHY STEEL STOPS AT 24% AND NOT 42%.
+           White on #5B7A9D is 4.45:1 - under the 4.5:1 AA floor. That is not
+           an alpha problem: even SOLID white body text fails on pure steel, so
+           no amount of opacity on the copy can rescue it. Steel therefore owns
+           the top-left corner, where the wordmark sits (a large graphic, held
+           to the 3:1 non-text floor, which it clears), and the text column
+           below it lands on --au-navy-mid #12327E or darker, where white is
+           10.62:1 and the muted alphas below have real headroom.
+           Steel is still the base of the gradient; it just is not underneath
+           12px copy. */
+        --au-gradient: linear-gradient(155deg,
+                        var(--au-steel) 0%,
+                        var(--au-navy-mid) 24%,
+                        var(--au-navy) 66%,
+                        var(--au-navy-deep) 100%);
+
+        /* Same ramp, left-to-right, for wide short surfaces (headers, bars). */
+        --au-gradient-h: linear-gradient(100deg,
+                        var(--au-navy-deep) 0%,
+                        var(--au-navy) 26%,
+                        var(--au-navy-mid) 62%,
+                        var(--au-steel) 100%);
+
+        /* Action gradient - the logo blue, for buttons and active states. */
+        --au-gradient-action: linear-gradient(135deg, var(--au-blue) 0%, var(--au-blue-deep) 100%);
+
+        /* Soft lighting pools layered over --au-gradient. Declared as
+           background layers rather than blurred <span> circles: a big
+           filter:blur() blob has a visible circular edge where its alpha runs
+           out and repaints the whole panel on resize. */
+        --au-glow: radial-gradient(58% 44% at 12% 96%, rgba(5,120,227,.38) 0%, transparent 70%),
+                   radial-gradient(46% 38% at 96% 4%,  rgba(143,174,206,.26) 0%, transparent 72%);
+
+        /* Fine grain. A navy gradient this large bands into visible steps on an
+           8-bit display; noise dithers them away. Inline SVG turbulence - no
+           request, no asset that can go missing. */
+        --au-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+
+        /* ── THEME WIRE ──────────────────────────────────────────────────────
+           Drives --color-brand-500/-600 in the compiled sheet, and through them
+           every bg-brand-500 / text-brand-600 / ring-brand-500 in the portal.
+           Sourced from Settings → Theme so the admin UI keeps working; the
+           defaults it falls back to are the Augestel palette. */
+        --primary-color:   #0A5FC0;
+        --primary-dark:    #0A2559;
+        --secondary-color: #5B7A9D;
+        --secondary-dark:  #44607F;
+        --success-color:   #2E9A78;
+        --danger-color:    #C0494A;
+        --warning-color:   #B8842A;
+        --info-color:      #0578E4;
+
+        /* ── BRAND RAMP ──────────────────────────────────────────────────────
+           The stops the compiled sheet hard-codes. Re-anchored on steel so the
+           ramp is one continuous family with the logo instead of the old
+           unrelated blue. -300 alone is used ~250 times across the views. */
+        --color-brand-50:  #EFF4FA;
+        --color-brand-100: #DCE7F4;
+        --color-brand-300: #8FAECE;
+        --color-brand-400: #5B7A9D;
+
+        /* Sidebar chrome. Was near-black graphite in the layouts and slate in
+           the model defaults - two different answers to the same question. */
+        --sidebar-bg-start: #0A2559;
+        --sidebar-bg-end:   #071A40;
+        --header-bg:        #ffffff;
+        --header-text:      #0A2559;
+
+        /* Page ground, tinted a few degrees toward steel so white cards read as
+           raised against it rather than merging into a neutral grey. */
+        --color-ground: #EAEFF6;
+    }
+
+    /* Dark mode keeps the navy identity instead of falling back to pure
+       graphite - the sidebar and the page then share one family. */
+    .dark {
+        --color-ground: #070C16;
+    }
+
+    /* ── SHARED BRANDED SURFACE ──────────────────────────────────────────────
+       One class for every dark branded panel in the product. Used by the auth
+       brand side, the sidebar and the dashboard hero so they are literally the
+       same pixels, not three similar gradients that drift on the next edit. */
+    .au-surface {
+        position: relative;
+        background-image: var(--au-glow), var(--au-gradient);
+        background-color: var(--au-navy);
+    }
+    .au-surface::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: .5;
+        mix-blend-mode: overlay;
+        background-image: var(--au-grain);
+    }
+    /* Content has to out-stack the grain layer. */
+    .au-surface > * { position: relative; z-index: 2; }
+
+    /* The knock-out wordmark. public/logo-white.png is an alpha build of the
+       supplied logo, so it sits on the gradient directly - the original is a
+       dark mark on white paper and would show as a sticker. */
+    .au-logo { display: block; width: 100%; height: auto; }
+</style>
+
+    <style>
+        :root {
+            --current-mode: 'sms';
+        }
+
+        /* NOTE: the old `* { margin:0; padding:0; box-sizing:border-box }` reset was
+           removed. Tailwind 4 emits utilities inside @layer, and UNLAYERED css beats
+           layered css regardless of specificity - that one line silently overrode
+           every padding, margin and space utility and collapsed the layout.
+           Tailwind's preflight already applies the same reset, correctly layered. */
+
+        .js-hidden { display: none; }
+    </style>
+        <style>
+        /* Only the state classes that JS toggles live here - the rest of the page
+           is design-system utilities. Kept deliberately narrow: page <style> is
+           unlayered and outranks Tailwind utilities. */
+        .modal-overlay { display: none; }
+        .modal-overlay.show { display: flex; }
+
+        /* selectPaymentType() adds/removes .selected on the tiles. */
+        .payment-type-option.selected {
+            border-color: var(--primary-color);
+            background-color: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        }
+
+        /* Step dots: openAddModal()/selectPaymentType() toggle .active. */
+        .step-dot.active {
+            width: 28px;
+            background-color: var(--primary-color);
+        }
+
+        /* Native <option> lists keep the UA background on a dark surface. */
+        .dark select option {
+            background-color: #171F33;
+            color: #E2E8F0;
+        }
+    </style>
+<style>
+    .twofa-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .twofa-modal-overlay.show {
+        display: flex;
+    }
+    .twofa-modal-content {
+        background: white;
+        border-radius: var(--radius-3xl);
+        width: 100%;
+        max-width: 420px;
+        overflow: hidden;
+        animation: twoFaModalSlideIn 0.3s ease;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    @keyframes twoFaModalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    .twofa-modal-header {
+        padding: 24px;
+        text-align: center;
+        background: #fef3c7 0%;
+    }
+    .twofa-modal-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin: 0 auto 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    .twofa-modal-icon i {
+        font-size: 36px;
+        color: #d97706;
+    }
+    .twofa-modal-header h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1f2937;
+        margin: 0 0 8px 0;
+    }
+    .twofa-modal-header p {
+        font-size: 14px;
+        color: #4b5563;
+        margin: 0;
+    }
+    .twofa-modal-body {
+        padding: 24px;
+    }
+    .twofa-action-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: var(--radius-2xl);
+        padding: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .twofa-action-icon {
+        flex-shrink: 0;
+        color: #3b82f6;
+        margin-top: 2px;
+    }
+    .twofa-action-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .twofa-action-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #1d4ed8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .twofa-action-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e40af;
+    }
+    .twofa-instructions {
+        margin-bottom: 20px;
+    }
+    .twofa-instructions > p {
+        font-size: 14px;
+        color: #374151;
+        margin-bottom: 12px;
+    }
+    .twofa-instructions > p i {
+        color: var(--primary-color, #0A5FC0);
+        margin-right: 8px;
+    }
+    .twofa-code-input-wrapper {
+        position: relative;
+    }
+    .twofa-code-input {
+        width: 100%;
+        padding: 16px 48px 16px 16px;
+        border: 2px solid #d1d5db;
+        border-radius: var(--radius-2xl);
+        text-align: center;
+        font-size: 24px;
+        font-family: monospace;
+        letter-spacing: 0.5em;
+        transition: all 0.3s;
+        background: #fafafa;
+    }
+    .twofa-code-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    .twofa-code-input::placeholder {
+        color: #9ca3af;
+        letter-spacing: 0.3em;
+    }
+    .twofa-code-icon {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+    }
+    .twofa-help-box {
+        background: #f9fafb;
+        border-radius: var(--radius-2xl);
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .twofa-help-title {
+        font-size: 12px;
+        color: #4b5563;
+        margin: 0 0 6px 0;
+    }
+    .twofa-help-title i {
+        color: #eab308;
+        margin-right: 6px;
+    }
+    .twofa-help-text {
+        font-size: 12px;
+        color: #6b7280;
+        margin: 0;
+    }
+    .twofa-buttons {
+        display: flex;
+        gap: 12px;
+    }
+    .twofa-btn {
+        flex: 1;
+        padding: 14px 16px;
+        border-radius: var(--radius-2xl);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: all 0.3s;
+        border: none;
+    }
+    .twofa-btn-cancel {
+        background: white;
+        border: 2px solid #d1d5db;
+        color: #374151;
+    }
+    .twofa-btn-cancel:hover {
+        background: #f3f4f6;
+    }
+    .twofa-btn-verify {
+        background: var(--primary-color, #0A5FC0);
+        color: white;
+        box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+    }
+    .twofa-btn-verify:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+    .twofa-btn-verify:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+    .twofa-security-notice {
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+        text-align: center;
+    }
+    .twofa-security-notice p {
+        font-size: 12px;
+        color: #9ca3af;
+        margin: 0;
+    }
+    .twofa-security-notice i {
+        margin-right: 6px;
+    }
+</style>
+</head>
+
+<body class="h-full bg-ground dark:bg-ink-950 font-sans text-slate-800 dark:text-slate-200 antialiased">
+
+<script type="application/json" id="partials-sender-branding-config">{"k0":"https:\/\/augestel.com\/sender-icons.json","k1":"https:\/\/augestel.com\/country-iso.json","k2":"https:\/\/augestel.com\/mcc-iso.json","k3":"https:\/\/augestel.com\/flags"}</script>
+<script src="https://augestel.com/Switchfy/assets/js/5264adcf7e20/partials-sender-branding.js"></script>
+
+<script type="application/json" id="partials-termination-meta-config">{"k0":"https:\/\/augestel.com\/Switchfy\/test\/termination-meta"}</script>
+<script src="https://augestel.com/Switchfy/assets/js/11467172d542/partials-termination-meta.js"></script>
+
+
+<div class="flex h-full">
+
+    
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-[264px] shrink-0
+              -translate-x-full lg:translate-x-0 transition-transform duration-300
+              flex flex-col border-r border-white/5" style="background-color: var(--sidebar-bg-end, #071A40);
+              background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.06) 1px, transparent 0),
+                                linear-gradient(180deg, var(--sidebar-bg-start, #0A2559) 0%, var(--sidebar-bg-end, #071A40) 100%);
+              background-size: 22px 22px, auto;">
+
+    <div class="h-[68px] flex items-center gap-3 px-4 border-b border-white/5 shrink-0">
+    <div class="h-9 w-9 rounded-xl grid place-items-center shadow-glow shrink-0" style="background: var(--primary-color);">
+        
+        <img src="https://augestel.com/augestel-mark-white.svg" alt="" aria-hidden="true" class="w-auto object-contain" style="height:22px">
+    </div>
+
+    <div id="logoFull" class="min-w-0">
+        
+        <img src="https://augestel.com/augestel-word-white.svg" alt="Augestel" class="w-auto object-contain" style="height:38px; max-width:100%">
+    </div>
+
+    <button id="toggleSidebar" class="ml-auto h-8 w-8 grid place-items-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition shrink-0">
+        <i class="fas fa-bars text-[13px]"></i>
+    </button>
+</div>
+
+
+
+    <div id="userInfo" class="mx-3 mt-4 rounded-2xl bg-white/[.04] ring-1 ring-white/5 p-3 flex items-center gap-3 shrink-0">
+    <div class="relative shrink-0">
+        <div class="h-10 w-10 rounded-full grid place-items-center text-white font-bold text-sm" style="background: var(--primary-color);">
+            D
+        </div>
+        
+        <span class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-[3px]
+                     bg-mint-500" style="--tw-ring-color: var(--sidebar-bg-start, #0A2559);" title="Active"></span>
+    </div>
+    <div class="min-w-0 menu-text">
+        <p class="text-[13.5px] font-semibold text-white truncate">DHIMAS TRY SAPUTRA</p>
+        <p class="text-[11px] font-medium text-mint-400">
+            Premium Client
+        </p>
+    </div>
+</div>
+
+    
+            <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+
+    <p class="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-[.12em] text-slate-500 menu-text pt-0">Overview</p>
+
+        <a href="https://augestel.com/Switchfy/client/dashboard" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+                <i class="fas fa-chart-line w-[18px]"></i>
+        <span class="menu-text">Dashboard</span>
+    </a>
+
+    <p class="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-[.12em] text-slate-500 menu-text">Client System</p>
+
+    <a href="https://augestel.com/Switchfy/client/live-sms" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-comment-dots w-[18px]"></i>
+        <span class="menu-text">Client Active SMS</span>
+        <span class="menu-text ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-mint-500/15 text-mint-400">LIVE</span>
+    </a>
+    <a href="https://augestel.com/Switchfy/client/numbers" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-hashtag w-[18px]"></i>
+        <span class="menu-text">My Numbers</span>
+    </a>
+    <a href="https://augestel.com/Switchfy/client/sms-statistics" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-chart-simple w-[18px]"></i>
+        <span class="menu-text">My SMS Statistics</span>
+    </a>
+
+    <p class="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-[.12em] text-slate-500 menu-text">Tools</p>
+
+    
+    <button id="testSystemToggle" type="button" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-flask w-[18px]"></i>
+        <span class="menu-text flex-1 text-left">Test System</span>
+        <i class="fas fa-chevron-right menu-chevron ml-auto text-[11px] transition-transform "></i>
+    </button>
+    <div id="testSystemSubmenu" class="pl-11 pr-3 pb-1 space-y-0.5" style=" display: none; ">
+        <a href="https://augestel.com/Switchfy/test/live-sms" class="submenu-item block rounded-lg px-3 py-2 text-[13px] text-slate-500 hover:text-white hover:bg-white/5 transition">
+            <span class="menu-text">Live Test SMS</span>
+        </a>
+        <a href="https://augestel.com/Switchfy/test/numbers" class="submenu-item block rounded-lg px-3 py-2 text-[13px] text-slate-500 hover:text-white hover:bg-white/5 transition">
+            <span class="menu-text">Test Numbers</span>
+        </a>
+        
+        <a href="https://augestel.com/Switchfy/test/edr-history" class="submenu-item block rounded-lg px-3 py-2 text-[13px] text-slate-500 hover:text-white hover:bg-white/5 transition">
+            <span class="menu-text">SMS Records</span>
+        </a>
+        <a href="https://augestel.com/Switchfy/test/sid-notifications" class="submenu-item block rounded-lg px-3 py-2 text-[13px] text-slate-500 hover:text-white hover:bg-white/5 transition">
+            <span class="menu-text">SID Notifications</span>
+        </a>
+    </div>
+
+    
+    <button id="invoicesToggle" type="button" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-file-invoice-dollar w-[18px]"></i>
+        <span class="menu-text flex-1 text-left">Invoices System</span>
+        <i class="fas fa-chevron-right menu-chevron ml-auto text-[11px] transition-transform "></i>
+    </button>
+    <div id="invoicesSubmenu" class="pl-11 pr-3 pb-1 space-y-0.5" style=" display: none; ">
+        <a href="https://augestel.com/Switchfy/invoices" class="submenu-item block rounded-lg px-3 py-2 text-[13px] text-slate-500 hover:text-white hover:bg-white/5 transition">
+            <span class="menu-text">My Invoices</span>
+        </a>
+    </div>
+
+    
+    <div class="hidden">
+        <button id="clientSystemToggle" type="button"></button>
+        <div id="clientSystemSubmenu"></div>
+    </div>
+
+    
+    
+    
+    <p class="px-3 pt-5 pb-2 text-[10px] font-bold uppercase tracking-[.12em] text-slate-500 menu-text">Developer</p>
+
+    <a href="https://augestel.com/Switchfy/api/documentation" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-code w-[18px]"></i>
+        <span class="menu-text">SMS API</span>
+    </a>
+
+    <a href="https://augestel.com/Switchfy/api/webhooks" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-bolt w-[18px]"></i>
+        <span class="menu-text">Webhooks</span>
+    </a>
+
+    <a href="https://augestel.com/Switchfy/api/guide" class="menu-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium text-slate-400 hover:text-white hover:bg-white/[.06] transition">
+        <i class="fas fa-robot w-[18px]"></i>
+        <span class="menu-text">Telegram Bot Guide</span>
+    </a>
+</nav>
+    
+    
+
+    <div class="px-3 pb-3 shrink-0">
+        
+        <a href="https://t.me/augestel" target="_blank" rel="noopener noreferrer" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-semibold
+                  bg-brand-500/15 ring-1 ring-inset ring-brand-500/20
+                  text-white hover:bg-brand-500/20 transition">
+            <i class="fab fa-telegram w-[18px] text-[16px] text-brand-300"></i>
+            <span class="menu-text">Contact us</span>
+            <i class="fas fa-arrow-up-right-from-square menu-text ml-auto text-[10px] text-brand-300"></i>
+        </a>
+    </div>
+
+    <div class="px-3 pb-4 shrink-0">
+        <form method="POST" action="https://augestel.com/Switchfy/logout" id="logoutForm">
+            <input type="hidden" name="_token" value="iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ" autocomplete="off">            <button type="submit" class="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13.5px] font-medium
+                           text-slate-400 hover:text-coral-400 hover:bg-coral-500/10 transition">
+                <i class="fas fa-right-from-bracket w-[18px]"></i>
+                <span class="menu-text">Logout</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+    
+    <div id="sidebarBackdrop" class="fixed inset-0 z-40 bg-ink-950/60 backdrop-blur-sm hidden lg:hidden"></div>
+
+    
+    <div class="flex-1 flex flex-col min-w-0">
+
+        
+        <header class="sticky top-0 z-30 h-[68px] shrink-0 flex items-center gap-4 px-4 sm:px-7
+                       bg-white/80 dark:bg-ink-900/80 backdrop-blur-xl
+                       border-b border-slate-200/80 dark:border-white/5">
+
+            <button id="mobileMenuBtn" class="lg:hidden h-9 w-9 grid place-items-center rounded-lg
+                                              hover:bg-slate-100 dark:hover:bg-white/5">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="min-w-0">
+                <h1 class="text-[17px] font-bold tracking-tight text-ink-900 dark:text-white leading-tight truncate">
+                    Payment Methods                </h1>
+                <p class="hidden sm:block text-[12px] text-slate-500 dark:text-slate-400 truncate">
+                    Welcome back, DHIMAS TRY SAPUTRA
+                </p>
+            </div>
+
+            <div class="ml-auto flex items-center gap-2 sm:gap-3">
+
+                
+                <div class="hidden md:flex items-center gap-2 rounded-xl bg-slate-100 dark:bg-white/[.04] px-3 py-2
+                            ring-1 ring-inset ring-slate-200/60 dark:ring-white/5">
+                    <span class="h-1.5 w-1.5 rounded-full bg-mint-500 animate-pulseDot"></span>
+                    <span id="currentDateTime" class="text-[12.5px] font-mono font-semibold text-slate-600 dark:text-slate-300 tabular">10/19/2026, 10:28:47 AM</span>
+                </div>
+
+                
+                <button id="themeBtn" type="button" aria-label="Toggle dark mode" class="h-9 w-9 grid place-items-center rounded-xl hover:bg-slate-100 dark:hover:bg-white/5
+                               text-slate-500 dark:text-slate-400 transition">
+                    <i class="fas fa-sun hidden dark:block"></i>
+                    <i class="fas fa-moon dark:hidden"></i>
+                </button>
+
+                
+                                <div class="relative">
+                    <button id="notificationsBtn" type="button" class="relative h-9 w-9 grid place-items-center rounded-xl hover:bg-slate-100
+                                   dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 transition">
+                        <i class="fas fa-bell"></i>
+                                                    <span id="notificationBadge" class="absolute top-1 right-1 h-2 w-2 rounded-full bg-coral-500 ring-2 ring-white dark:ring-ink-900"></span>
+                                            </button>
+
+                    <div id="notificationsDropdown" class="absolute right-0 mt-2 w-80 rounded-2xl bg-white dark:bg-ink-850 shadow-lift
+                                ring-1 ring-slate-200/70 dark:ring-white/10 overflow-hidden z-50" style="display: none;">
+
+                        <div class="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                            <h3 class="text-[13.5px] font-bold text-ink-900 dark:text-white">Notifications</h3>
+                                                            <span class="rounded-full bg-coral-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-coral-600 dark:text-coral-400">
+                                    1180 new
+                                </span>
+                                                    </div>
+
+                        <div class="max-h-96 overflow-y-auto" id="notificationsList">
+                                                                                            <a href="https://augestel.com/Switchfy/client/profile" class="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.03] transition
+                                          border-b border-slate-100 dark:border-white/5 last:border-0">
+                                    <div class="flex items-start gap-3">
+                                        <div class="h-9 w-9 rounded-xl bg-coral-500/10 grid place-items-center shrink-0">
+                                            <i class="fas fa-exclamation-circle text-coral-600 dark:text-coral-400 text-[13px]"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">A session was blocked</p>
+                                            <p class="text-[12px] text-slate-500 dark:text-slate-400 truncate">A request to your account was refused because the...</p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">2 minutes ago</p>
+                                        </div>
+                                                                                    <span class="h-2 w-2 rounded-full bg-brand-500 shrink-0 mt-1.5"></span>
+                                                                            </div>
+                                </a>
+                                                                                            <a href="/Switchfy/client/notifications/1857855/sid-traffic" class="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.03] transition
+                                          border-b border-slate-100 dark:border-white/5 last:border-0">
+                                    <div class="flex items-start gap-3">
+                                        <div class="h-9 w-9 rounded-xl bg-slate-500/10 grid place-items-center shrink-0">
+                                            <i class="fas fa-satellite-dish text-slate-500 dark:text-slate-400 text-[13px]"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">8 new messages on 1 watched sender ID</p>
+                                            <p class="text-[12px] text-slate-500 dark:text-slate-400 truncate">whatsapp (Congo (DR), Malawi) - 8 messages
+• CONGO...</p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">22 hours ago</p>
+                                        </div>
+                                                                            </div>
+                                </a>
+                                                                                            <a href="/Switchfy/client/notifications/1857755/sid-traffic" class="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.03] transition
+                                          border-b border-slate-100 dark:border-white/5 last:border-0">
+                                    <div class="flex items-start gap-3">
+                                        <div class="h-9 w-9 rounded-xl bg-slate-500/10 grid place-items-center shrink-0">
+                                            <i class="fas fa-satellite-dish text-slate-500 dark:text-slate-400 text-[13px]"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">10 new messages on 1 watched sender ID</p>
+                                            <p class="text-[12px] text-slate-500 dark:text-slate-400 truncate">whatsapp (Congo (DR), Malawi) - 10 messages
+• CONG...</p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">22 hours ago</p>
+                                        </div>
+                                                                                    <span class="h-2 w-2 rounded-full bg-brand-500 shrink-0 mt-1.5"></span>
+                                                                            </div>
+                                </a>
+                                                                                            <a href="/Switchfy/client/notifications/1857655/sid-traffic" class="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.03] transition
+                                          border-b border-slate-100 dark:border-white/5 last:border-0">
+                                    <div class="flex items-start gap-3">
+                                        <div class="h-9 w-9 rounded-xl bg-slate-500/10 grid place-items-center shrink-0">
+                                            <i class="fas fa-satellite-dish text-slate-500 dark:text-slate-400 text-[13px]"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">8 new messages on 1 watched sender ID</p>
+                                            <p class="text-[12px] text-slate-500 dark:text-slate-400 truncate">whatsapp (Congo (DR), Malawi) - 8 messages
+• CONGO...</p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">22 hours ago</p>
+                                        </div>
+                                                                                    <span class="h-2 w-2 rounded-full bg-brand-500 shrink-0 mt-1.5"></span>
+                                                                            </div>
+                                </a>
+                                                                                            <a href="/Switchfy/client/notifications/1857577/sid-traffic" class="block px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.03] transition
+                                          border-b border-slate-100 dark:border-white/5 last:border-0">
+                                    <div class="flex items-start gap-3">
+                                        <div class="h-9 w-9 rounded-xl bg-slate-500/10 grid place-items-center shrink-0">
+                                            <i class="fas fa-satellite-dish text-slate-500 dark:text-slate-400 text-[13px]"></i>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">12 new messages on 1 watched sender ID</p>
+                                            <p class="text-[12px] text-slate-500 dark:text-slate-400 truncate">whatsapp (Congo (DR), Malawi) - 12 messages
+• CONG...</p>
+                                            <p class="text-[11px] text-slate-400 mt-0.5">22 hours ago</p>
+                                        </div>
+                                                                                    <span class="h-2 w-2 rounded-full bg-brand-500 shrink-0 mt-1.5"></span>
+                                                                            </div>
+                                </a>
+                                                    </div>
+
+                        <div class="px-4 py-3 border-t border-slate-100 dark:border-white/5 text-center">
+                            <a href="https://augestel.com/Switchfy/client/notifications" class="text-[12.5px] font-semibold text-brand-600 dark:text-brand-300 hover:underline">
+                                View all notifications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="h-6 w-px bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
+
+                
+                                <div class="relative">
+                    <button id="profileDropdownBtn" type="button" class="flex items-center gap-2.5 rounded-xl pl-1 pr-2 py-1 hover:bg-slate-100
+                                   dark:hover:bg-white/5 transition">
+                        <span class="h-8 w-8 rounded-lg grid place-items-center text-white text-xs font-bold shrink-0" style="background: var(--primary-color);">
+                            D
+                        </span>
+                        <span class="hidden sm:block text-[13px] font-semibold text-ink-900 dark:text-white max-w-[9rem] truncate">
+                            DHIMAS TRY SAPUTRA
+                        </span>
+                        <i class="fas fa-chevron-down hidden sm:block text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <div id="profileDropdown" class="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-ink-850 shadow-lift
+                                ring-1 ring-slate-200/70 dark:ring-white/10 py-2 z-50" style="display: none;">
+                        <div class="px-4 py-2 border-b border-slate-100 dark:border-white/5">
+                            <p class="text-[13px] font-semibold text-ink-900 dark:text-white truncate">DHIMAS TRY SAPUTRA</p>
+                            <p class="text-[11.5px] text-slate-400 truncate">saputradimas0878@gmail.com</p>
+                        </div>
+                        <div class="py-1">
+                            <a href="https://augestel.com/Switchfy/client/profile" class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                <i class="fas fa-user w-4 text-slate-400"></i> Profile
+                            </a>
+                            <a href="https://augestel.com/Switchfy/client/payment-methods" class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                <i class="fas fa-credit-card w-4 text-slate-400"></i> Payment methods
+                            </a>
+                            <a href="https://augestel.com/Switchfy/client/security" class="flex items-center gap-2.5 px-4 py-2 text-[13px] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                <i class="fas fa-shield-halved w-4 text-slate-400"></i> Security
+                            </a>
+                        </div>
+                        <div class="pt-1 border-t border-slate-100 dark:border-white/5">
+                            <form method="POST" action="https://augestel.com/Switchfy/logout">
+                                <input type="hidden" name="_token" value="iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ" autocomplete="off">                                <button type="submit" class="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-coral-600 dark:text-coral-400 hover:bg-coral-500/10 transition">
+                                    <i class="fas fa-right-from-bracket w-4"></i> Sign out
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        
+        
+        
+        
+                
+        <main class="flex-1 overflow-y-auto px-4 sm:px-7 py-6">
+
+                            <nav class="mb-4 flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400">
+                    
+                    <a href="https://augestel.com/Switchfy" class="hover:text-brand-600 dark:hover:text-brand-300 transition">Dashboard</a>
+                        <i class="fas fa-chevron-right text-[9px] text-slate-300 dark:text-slate-600"></i>
+    <span class="font-semibold text-ink-900 dark:text-white whitespace-nowrap">Payment Methods</span>
+                </nav>
+            
+                        
+                <div class="space-y-6">
+
+        
+        <div class="flex flex-wrap items-end justify-between gap-4 animate-riseIn">
+            <div>
+                <h2 class="text-[22px] font-bold tracking-tight text-ink-900 dark:text-white">My Payment Methods</h2>
+                <p class="mt-0.5 text-[13px] text-slate-500 dark:text-slate-400">Manage how you receive your payments</p>
+            </div>
+            <button onclick="openAddModal()" type="button" class="inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-[12.5px] font-semibold text-white
+                           hover:opacity-90 active:scale-95 transition" style="background: var(--primary-color);">
+                <i class="fas fa-plus text-[11px]"></i>Add New Method
+            </button>
+        </div>
+
+        
+                    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                    <div class="animate-riseIn relative overflow-hidden rounded-2xl bg-white dark:bg-ink-850 shadow-card
+                                hover:shadow-lift transition-all duration-300 hover:-translate-y-0.5 ring-1
+                                ring-brand-500/40">
+
+                                                    <div class="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-brand-500 to-brand-300"></div>
+                        
+                        <div class="p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="h-11 w-11 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                    <i class="fas fa-coins text-[17px]"></i>
+                                </div>
+                                                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-500/10 px-2.5 py-1 text-[11px] font-semibold text-brand-600 dark:text-brand-300">
+                                        <i class="fas fa-star text-[9px]"></i>Primary
+                                    </span>
+                                                            </div>
+
+                            <h3 class="mt-3.5 text-[15px] font-bold text-ink-900 dark:text-white">Tether (USDT)</h3>
+                            <p class="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">aaa</p>
+
+                            
+                            <div class="mt-4 rounded-xl bg-slate-50 dark:bg-white/[.03] ring-1 ring-inset ring-slate-100 dark:ring-white/5 px-3.5">
+                                <div class="divide-y divide-slate-100 dark:divide-white/5">
+                                    
+                                                                                                                                                                        <div class="flex items-center justify-between gap-3 py-2.5">
+                                                    
+                                                    <span class="text-[12px] text-slate-500 dark:text-slate-400">USDT Wallet Address</span>
+                                                    <span class="text-[12.5px] font-semibold text-ink-900 dark:text-white truncate">0x74**********************************5e12</span>
+                                                </div>
+                                                                                                                                                                                <div class="flex items-center justify-between gap-3 py-2.5">
+                                                    
+                                                    <span class="text-[12px] text-slate-500 dark:text-slate-400">Network</span>
+                                                    <span class="text-[12.5px] font-semibold text-ink-900 dark:text-white truncate">BSC</span>
+                                                </div>
+                                                                                                                        
+                                    
+                                    <div id="fullDetails-383" class="hidden py-2.5"></div>
+                                </div>
+                            </div>
+
+                            
+                            <button type="button" id="revealBtn-383" onclick="revealDetails(383)" class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2
+                                           text-[12px] font-semibold text-slate-600 dark:text-slate-300
+                                           ring-1 ring-inset ring-slate-200 dark:ring-white/10
+                                           hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                <i class="fas fa-eye text-[11px]"></i>Show full details
+                            </button>
+
+                            
+                            <div class="mt-4">
+                                                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-500">
+                                        <i class="fas fa-clock text-[10px]"></i>Pending Verification
+                                    </span>
+                                                            </div>
+
+                            
+                            <div class="mt-4 flex flex-wrap items-center gap-2">
+                                                                <button onclick="deleteMethod(383)" type="button" title="Delete" class="inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-[12.5px] font-semibold
+                                               text-coral-600 dark:text-coral-400 hover:bg-coral-500/10 transition">
+                                    <i class="fas fa-trash text-[12px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                                    <div class="animate-riseIn relative overflow-hidden rounded-2xl bg-white dark:bg-ink-850 shadow-card
+                                hover:shadow-lift transition-all duration-300 hover:-translate-y-0.5 ring-1
+                                ring-slate-200/70 dark:ring-white/5">
+
+                        
+                        <div class="p-5">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="h-11 w-11 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                    <i class="fab fa-paypal text-[17px]"></i>
+                                </div>
+                                                            </div>
+
+                            <h3 class="mt-3.5 text-[15px] font-bold text-ink-900 dark:text-white">PayPal</h3>
+                            <p class="mt-0.5 text-[12px] text-slate-500 dark:text-slate-400">aaa</p>
+
+                            
+                            <div class="mt-4 rounded-xl bg-slate-50 dark:bg-white/[.03] ring-1 ring-inset ring-slate-100 dark:ring-white/5 px-3.5">
+                                <div class="divide-y divide-slate-100 dark:divide-white/5">
+                                    
+                                                                                                                                                                        <div class="flex items-center justify-between gap-3 py-2.5">
+                                                    
+                                                    <span class="text-[12px] text-slate-500 dark:text-slate-400">PayPal Email</span>
+                                                    <span class="text-[12.5px] font-semibold text-ink-900 dark:text-white truncate">di*********@gmail.com</span>
+                                                </div>
+                                                                                                                        
+                                    
+                                    <div id="fullDetails-384" class="hidden py-2.5"></div>
+                                </div>
+                            </div>
+
+                            
+                            <button type="button" id="revealBtn-384" onclick="revealDetails(384)" class="mt-2.5 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-3.5 py-2
+                                           text-[12px] font-semibold text-slate-600 dark:text-slate-300
+                                           ring-1 ring-inset ring-slate-200 dark:ring-white/10
+                                           hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                <i class="fas fa-eye text-[11px]"></i>Show full details
+                            </button>
+
+                            
+                            <div class="mt-4">
+                                                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-500">
+                                        <i class="fas fa-clock text-[10px]"></i>Pending Verification
+                                    </span>
+                                                            </div>
+
+                            
+                            <div class="mt-4 flex flex-wrap items-center gap-2">
+                                                                    <button onclick="setPrimary(384)" type="button" class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-[12.5px] font-semibold
+                                                   text-slate-600 dark:text-slate-300 ring-1 ring-inset ring-slate-200 dark:ring-white/10
+                                                   hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                        <i class="fas fa-star text-[11px]"></i>Set Primary
+                                    </button>
+                                                                <button onclick="deleteMethod(384)" type="button" title="Delete" class="inline-flex items-center justify-center rounded-xl px-3.5 py-2 text-[12.5px] font-semibold
+                                               text-coral-600 dark:text-coral-400 hover:bg-coral-500/10 transition">
+                                    <i class="fas fa-trash text-[12px]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                            </section>
+        
+        
+        <section class="animate-riseIn [animation-delay:60ms] rounded-2xl bg-white dark:bg-ink-850 shadow-card ring-1 ring-slate-200/70 dark:ring-white/5">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-white/5">
+                <h3 class="text-[15px] font-bold text-ink-900 dark:text-white">Available Payment Options</h3>
+                <span class="text-[10px] font-bold uppercase tracking-[.13em] text-slate-400">Processing time</span>
+            </div>
+            <div class="p-5">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                                            <div class="rounded-xl bg-slate-50 dark:bg-white/[.03] ring-1 ring-inset ring-slate-100 dark:ring-white/5 p-4 text-center">
+                            <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                <i class="fas fa-money-bill-wave text-[15px]"></i>
+                            </div>
+                            <p class="mt-2.5 text-[12px] font-semibold text-ink-900 dark:text-white">Cash</p>
+                                                            <p class="mt-0.5 text-[11px] text-slate-400 tabular">2 day(s)</p>
+                                                    </div>
+                                            <div class="rounded-xl bg-slate-50 dark:bg-white/[.03] ring-1 ring-inset ring-slate-100 dark:ring-white/5 p-4 text-center">
+                            <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                <i class="fab fa-paypal text-[15px]"></i>
+                            </div>
+                            <p class="mt-2.5 text-[12px] font-semibold text-ink-900 dark:text-white">PayPal</p>
+                                                            <p class="mt-0.5 text-[11px] text-slate-400">Instant</p>
+                                                    </div>
+                                            <div class="rounded-xl bg-slate-50 dark:bg-white/[.03] ring-1 ring-inset ring-slate-100 dark:ring-white/5 p-4 text-center">
+                            <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                <i class="fas fa-coins text-[15px]"></i>
+                            </div>
+                            <p class="mt-2.5 text-[12px] font-semibold text-ink-900 dark:text-white">Tether (USDT)</p>
+                                                            <p class="mt-0.5 text-[11px] text-slate-400 tabular">1 day(s)</p>
+                                                    </div>
+                                    </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 2FA Confirmation Modal (Reusable Component) -->
+    <!-- 2FA Confirmation Modal -->
+<div id="twoFaModal" class="twofa-modal-overlay">
+    <div class="twofa-modal-content">
+        <div class="twofa-modal-header">
+            <div class="twofa-modal-icon">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3>Security Verification Required</h3>
+            <p>This action requires additional verification to protect your account</p>
+        </div>
+
+        <div class="twofa-modal-body">
+            <!-- Action Being Performed -->
+            <div class="twofa-action-box">
+                <div class="twofa-action-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="twofa-action-content">
+                    <span class="twofa-action-label">Action You're Confirming</span>
+                    <span class="twofa-action-text" id="twoFaActionLabel">Confirm Action</span>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="twofa-instructions">
+                <p>
+                    <i class="fas fa-mobile-alt"></i>
+                    Open your <strong>authenticator app</strong> and enter the 6-digit code:
+                </p>
+
+                <div class="twofa-code-input-wrapper">
+                    <input type="text" id="twoFaCode" class="twofa-code-input" placeholder="● ● ● ● ● ●" maxlength="6" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*">
+                    <div class="twofa-code-icon">
+                        <i class="fas fa-key"></i>
+                    </div>
+                </div>
+                <input type="hidden" id="twoFaAction" value="">
+            </div>
+
+            <!-- Help Text -->
+            <div class="twofa-help-box">
+                <p class="twofa-help-title">
+                    <i class="fas fa-lightbulb"></i>
+                    <strong>Don't have access to your authenticator?</strong>
+                </p>
+                <p class="twofa-help-text">
+                    You can use one of your <strong>recovery codes</strong> instead. Recovery codes are single-use and should be kept secure.
+                </p>
+            </div>
+
+            <!-- Buttons -->
+            <div class="twofa-buttons">
+                <button type="button" onclick="closeTwoFaModal()" class="twofa-btn twofa-btn-cancel">
+                    <i class="fas fa-times"></i>Cancel
+                </button>
+                <button type="button" onclick="verifyTwoFa()" id="twoFaSubmitBtn" class="twofa-btn twofa-btn-verify">
+                    <i class="fas fa-check-circle"></i>Verify &amp; Continue
+                </button>
+            </div>
+
+            <!-- Security Notice -->
+            <div class="twofa-security-notice">
+                <p>
+                    <i class="fas fa-lock"></i>
+                    Your security is our priority. This verification helps prevent unauthorized access.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+    <!-- Add Payment Method Modal -->
+    <div id="addModal" class="modal-overlay fixed inset-0 z-50 items-center justify-center p-4 bg-ink-950/60 backdrop-blur-sm">
+        <div class="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-2xl bg-white dark:bg-ink-850
+                    shadow-lift ring-1 ring-slate-200/70 dark:ring-white/10 animate-riseIn">
+
+            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-100 dark:border-white/5">
+                <h3 id="modalTitle" class="text-[15px] font-bold text-ink-900 dark:text-white">Add Payment Method</h3>
+                <button type="button" onclick="closeAddModal()" aria-label="Close" class="h-9 w-9 grid place-items-center rounded-xl text-slate-400
+                               hover:bg-slate-100 dark:hover:bg-white/5 transition">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="min-h-0 p-5 overflow-y-auto">
+
+                <!-- Step Indicator -->
+                <div class="flex items-center justify-center gap-2 mb-6">
+                    <div class="step-dot active h-2 w-2 rounded-full bg-slate-200 dark:bg-white/10 transition-all duration-300" id="stepDot1"></div>
+                    <div class="step-dot h-2 w-2 rounded-full bg-slate-200 dark:bg-white/10 transition-all duration-300" id="stepDot2"></div>
+                </div>
+
+                <!-- Step 1: Select Payment Type -->
+                <div id="step1">
+                    <h4 class="text-center text-[13.5px] font-semibold text-slate-600 dark:text-slate-300 mb-5">Choose Payment Method</h4>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                                                    <div class="payment-type-option cursor-pointer rounded-xl border border-slate-200 dark:border-white/10
+                                        bg-white dark:bg-ink-800 p-4 text-center transition
+                                        hover:border-brand-500 hover:shadow-card" data-method-id="15" onclick="selectPaymentType(15, 'Cash', 'fas fa-money-bill-wave')">
+                                <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                    <i class="fas fa-money-bill-wave text-[15px]"></i>
+                                </div>
+                                <div class="mt-2.5 text-[12.5px] font-semibold text-ink-900 dark:text-white">Cash</div>
+                                                                    <div class="mt-0.5 text-[11px] text-slate-400 tabular">
+                                        3.00%                                                                            </div>
+                                                            </div>
+                                                    <div class="payment-type-option cursor-pointer rounded-xl border border-slate-200 dark:border-white/10
+                                        bg-white dark:bg-ink-800 p-4 text-center transition
+                                        hover:border-brand-500 hover:shadow-card" data-method-id="12" onclick="selectPaymentType(12, 'PayPal', 'fab fa-paypal')">
+                                <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                    <i class="fab fa-paypal text-[15px]"></i>
+                                </div>
+                                <div class="mt-2.5 text-[12.5px] font-semibold text-ink-900 dark:text-white">PayPal</div>
+                                                                    <div class="mt-0.5 text-[11px] text-slate-400 tabular">
+                                        3.49%                                        +$0.49                                    </div>
+                                                            </div>
+                                                    <div class="payment-type-option cursor-pointer rounded-xl border border-slate-200 dark:border-white/10
+                                        bg-white dark:bg-ink-800 p-4 text-center transition
+                                        hover:border-brand-500 hover:shadow-card" data-method-id="14" onclick="selectPaymentType(14, 'Tether (USDT)', 'fas fa-coins')">
+                                <div class="mx-auto h-10 w-10 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center text-brand-600 dark:text-brand-300">
+                                    <i class="fas fa-coins text-[15px]"></i>
+                                </div>
+                                <div class="mt-2.5 text-[12.5px] font-semibold text-ink-900 dark:text-white">Tether (USDT)</div>
+                                                                    <div class="mt-0.5 text-[11px] text-slate-400 tabular">
+                                        0.10%                                                                            </div>
+                                                            </div>
+                                            </div>
+                </div>
+
+                <!-- Step 2: Fill Details -->
+                <div id="step2" style="display: none;">
+                    <div class="flex items-center gap-3 mb-5">
+                        <button onclick="backToStep1()" type="button" aria-label="Back" class="h-9 w-9 grid place-items-center rounded-xl text-slate-600 dark:text-slate-300
+                                       ring-1 ring-inset ring-slate-200 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                            <i class="fas fa-arrow-left text-[12px]"></i>
+                        </button>
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div id="selectedIconWrapper" class="h-10 w-10 shrink-0 rounded-xl bg-brand-50 dark:bg-brand-500/10 grid place-items-center">
+                                <i id="selectedIcon" class="fas fa-credit-card text-[15px] text-brand-600 dark:text-brand-300"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h4 id="selectedName" class="text-[14px] font-bold text-ink-900 dark:text-white truncate">Payment Details</h4>
+                                <p class="text-[12px] text-slate-500 dark:text-slate-400">Fill in your payment information</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="addPaymentForm">
+                        <input type="hidden" name="payment_method_id" id="paymentMethodId">
+
+                        <div class="mb-4">
+                            <label class="block mb-1.5 text-[12px] font-semibold text-slate-600 dark:text-slate-300">Label (Optional)</label>
+                            <input type="text" name="label" placeholder="e.g., My Main PayPal Account" class="w-full rounded-xl bg-white dark:bg-ink-800 px-3.5 py-2.5 text-[13px]
+                                          ring-1 ring-inset ring-slate-200 dark:ring-white/10 focus:ring-2 focus:ring-brand-500 outline-none transition">
+                        </div>
+
+                        <div id="dynamicFields" class="space-y-4">
+                            <!-- Dynamic fields will be loaded here -->
+                        </div>
+
+                        <div class="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 dark:bg-white/[.03]
+                                    ring-1 ring-inset ring-slate-100 dark:ring-white/5 p-3.5">
+                            <input type="checkbox" name="is_primary" value="1" id="isPrimary" class="h-4 w-4 shrink-0 cursor-pointer rounded accent-brand-500">
+                            <label for="isPrimary" class="cursor-pointer text-[12.5px] text-slate-600 dark:text-slate-300">
+                                Set as my primary payment method
+                            </label>
+                        </div>
+
+                        <div class="mt-5 flex gap-3">
+                            <button type="button" onclick="closeAddModal()" class="flex-1 rounded-xl px-3.5 py-2 text-[12.5px] font-semibold text-slate-600 dark:text-slate-300
+                                           ring-1 ring-inset ring-slate-200 dark:ring-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition">
+                                Cancel
+                            </button>
+                            <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-[12.5px]
+                                           font-semibold text-white hover:opacity-90 active:scale-95 transition" style="background: var(--primary-color);">
+                                <i class="fas fa-save text-[12px]"></i>Save Payment Method
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <footer class="pt-8 pb-2 flex flex-col sm:flex-row items-center justify-between gap-2 text-[12px] text-slate-400">
+                <p>© 2026 AugesTel. All rights reserved.</p>
+                
+                    <p class="font-mono">SWITCHFY v3.0.0</p>
+            </footer>
+        </main>
+    </div>
+</div>
+
+<style>
+    /* Marks a value as copyable without shouting. The dotted underline only
+       appears on hover, so a grid of numbers stays calm until pointed at. */
+    [data-copy-number] {
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color .12s, box-shadow .12s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    [data-copy-number]:hover {
+        background: rgba(61, 109, 255, .08);
+        box-shadow: 0 0 0 3px rgba(61, 109, 255, .08);
+    }
+
+    /* Touch has no hover: give the tap itself a visible acknowledgement so the
+       pill is not the only signal that anything happened. */
+    [data-copy-number]:active {
+        background: rgba(61, 109, 255, .16);
+        box-shadow: 0 0 0 3px rgba(61, 109, 255, .16);
+    }
+
+    .dark [data-copy-number]:hover  { background: rgba(61, 109, 255, .18); box-shadow: 0 0 0 3px rgba(61, 109, 255, .18); }
+    .dark [data-copy-number]:active { background: rgba(61, 109, 255, .28); box-shadow: 0 0 0 3px rgba(61, 109, 255, .28); }
+
+    /* position:fixed and body-level, so it escapes table cells, scroll containers
+       and the card lists - which is where nearly every number on this panel sits. */
+    .iprn-copy-flash {
+        position: fixed;
+        z-index: 100000;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: #0D1220;
+        color: #fff;
+        font-size: 11.5px;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 6px 20px -6px rgba(15, 23, 42, .45);
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity .3s, transform .3s;
+    }
+
+    .iprn-copy-flash.is-bad { background: #D93842; }
+    .iprn-copy-flash.is-out { opacity: 0; transform: translateY(-4px); }
+
+    .dark .iprn-copy-flash { background: #fff; color: #0D1220; }
+    .dark .iprn-copy-flash.is-bad { background: #FF7A7A; color: #2b0a0d; }
+</style>
+
+<script type="application/json" id="partials-scripts-config">{"k0":"iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ","k1":1792405727113,"k2":"UTC"}</script>
+<script src="https://augestel.com/Switchfy/assets/js/cf1eeb92c901/partials-scripts.js"></script>
+
+
+    <script type="application/json" id="client-notify-sound-config">{"pollUrl":"https:\/\/augestel.com\/Switchfy\/client\/notifications\/latest","sound":"\/notify.mp3?v=1786151840","lastId":1917084,"pollMs":20000}</script>
+    <script src="https://augestel.com/Switchfy/assets/js/2f7d68a663af/client-notify-sound.js"></script>
+
+<script>
+    
+    document.getElementById('themeBtn')?.addEventListener('click', function () {
+        const root = document.documentElement;
+        root.classList.toggle('dark');
+        try {
+            localStorage.theme = root.classList.contains('dark') ? 'dark' : 'light';
+        } catch (e) {}
+    });
+</script>
+
+<script>
+    // 2FA Modal State
+    if (typeof window.twoFaState === 'undefined') {
+        window.twoFaState = {
+            pendingAction: null,
+            pendingActionData: null,
+            verifyUrl: 'https://augestel.com/Switchfy/client/security/confirm',
+            csrfToken: 'iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ'
+        };
+    }
+
+    // Convenience accessors for backwards compatibility
+    Object.defineProperty(window, 'pendingAction', {
+        get: function() { return window.twoFaState.pendingAction; },
+        set: function(val) { window.twoFaState.pendingAction = val; }
+    });
+    Object.defineProperty(window, 'pendingActionData', {
+        get: function() { return window.twoFaState.pendingActionData; },
+        set: function(val) { window.twoFaState.pendingActionData = val; }
+    });
+
+    /**
+     * Show the 2FA verification modal
+     * @param {string} actionLabel - The label describing the action being confirmed
+     */
+    function showTwoFaModal(actionLabel) {
+        $('#twoFaActionLabel').text(actionLabel || 'Confirm Action');
+        $('#twoFaCode').val('');
+        $('#twoFaAction').val(window.twoFaState.pendingAction);
+        $('#twoFaModal').addClass('show');
+        $('body').css('overflow', 'hidden');
+        setTimeout(() => $('#twoFaCode').focus(), 100);
+    }
+
+    /**
+     * Close the 2FA verification modal
+     */
+    function closeTwoFaModal() {
+        $('#twoFaModal').removeClass('show');
+        $('body').css('overflow', '');
+        $('#twoFaCode').val('');
+        window.twoFaState.pendingAction = null;
+        window.twoFaState.pendingActionData = null;
+    }
+
+    /**
+     * Verify the 2FA code
+     */
+    function verifyTwoFa() {
+        const code = $('#twoFaCode').val();
+        if (!code || code.length !== 6) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Code',
+                text: 'Please enter a valid 6-digit code',
+                confirmButtonColor: 'var(--primary-color, #0A5FC0)'
+            });
+            return;
+        }
+
+        const btn = $('#twoFaSubmitBtn');
+        const originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Verifying...');
+
+        $.ajax({
+            url: window.twoFaState.verifyUrl,
+            method: 'POST',
+            dataType: 'json',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            data: {
+                _token: window.twoFaState.csrfToken,
+                code: code,
+                action: window.twoFaState.pendingAction,
+                action_data: window.twoFaState.pendingActionData
+            },
+            success: function(response) {
+                const action = window.twoFaState.pendingAction;
+                const data = window.twoFaState.pendingActionData;
+
+                console.log('2FA verification success', { action, data, response });
+
+                closeTwoFaModal();
+                btn.prop('disabled', false).html(originalHtml);
+
+                // Call the callback if defined
+                if (typeof onTwoFaSuccess === 'function') {
+                    try {
+                        onTwoFaSuccess(action, data);
+                    } catch (e) {
+                        console.error('Error in onTwoFaSuccess callback', e);
+                        Swal.fire('Error', 'Failed to complete action after verification. Please try again.', 'error');
+                    }
+                } else {
+                    console.warn('onTwoFaSuccess callback not defined');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                $('#twoFaCode').val('').focus();
+
+                console.log('2FA verification error', { status: xhr.status, response: xhr.responseJSON });
+
+                // Check for session expired
+                if (xhr.status === 401 || xhr.responseJSON?.session_expired) {
+                    closeTwoFaModal();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Session Expired',
+                        text: 'Your session has expired. Please log in again.',
+                        confirmButtonColor: 'var(--primary-color, #0A5FC0)'
+                    }).then(() => {
+                        window.location.href = xhr.responseJSON?.redirect || 'https://augestel.com/Switchfy';
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Verification Failed',
+                    text: xhr.responseJSON?.message || 'Invalid verification code. Please try again.',
+                    confirmButtonColor: 'var(--primary-color, #0A5FC0)'
+                });
+            }
+        });
+    }
+
+    /**
+     * Handle 2FA requirement from API response
+     * @param {object} xhr - The XMLHttpRequest object from the failed request
+     * @param {string} action - The action being performed
+     * @param {object} actionData - Data related to the action
+     * @returns {boolean} - True if 2FA is required, false otherwise
+     */
+    function handleTwoFaRequired(xhr, action, actionData) {
+        if (xhr.status === 403 && xhr.responseJSON?.requires_2fa) {
+            window.twoFaState.pendingAction = action;
+            window.twoFaState.pendingActionData = actionData;
+            showTwoFaModal(xhr.responseJSON.action_label);
+            return true;
+        }
+        return false;
+    }
+
+    // Auto-format 2FA code input (numbers only)
+    $(document).on('input', '#twoFaCode', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').substring(0, 6);
+    });
+
+    // Allow Enter key to submit 2FA code
+    $(document).on('keypress', '#twoFaCode', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            verifyTwoFa();
+        }
+    });
+
+    // Close modal on outside click
+    $(document).on('click', '#twoFaModal', function(e) {
+        if (e.target === this) {
+            closeTwoFaModal();
+        }
+    });
+
+    // Close modal on Escape key
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('#twoFaModal').hasClass('show')) {
+            closeTwoFaModal();
+        }
+    });
+</script>
+    <script type="application/json" id="clients-profile-payment-methods-config">{"k0":{"15":{"id":15,"name":"Cash","code":"cash","icon":"fa-money-bill-wave","description":null,"fields_config":[{"name":"agent_id","label":"Payment Agent","type":"payment_agent","required":true},{"name":"pickup_location","label":"Pickup Location (optional)","type":"text","required":false},{"name":"notes","label":"Notes","type":"textarea","required":false}],"min_amount":"100.00","max_amount":null,"fee_percentage":"3.00","fee_fixed":"0.00","currency":"USD","processing_days":2,"is_active":true,"requires_approval":false,"country_mode":"all","instructions":null,"sort_order":0,"agent_id":9,"created_at":"2026-08-02T10:58:02.000000Z","updated_at":"2026-08-16T11:55:14.000000Z","deleted_at":null},"12":{"id":12,"name":"PayPal","code":"paypal","icon":"fab fa-paypal","description":null,"fields_config":[{"name":"paypal_email","label":"PayPal Email","type":"email","required":true}],"min_amount":"100.00","max_amount":null,"fee_percentage":"3.49","fee_fixed":"0.49","currency":"USD","processing_days":0,"is_active":true,"requires_approval":false,"country_mode":"all","instructions":null,"sort_order":0,"agent_id":null,"created_at":"2026-08-02T08:42:54.000000Z","updated_at":"2026-08-07T14:26:32.000000Z","deleted_at":null},"14":{"id":14,"name":"Tether (USDT)","code":"crypto_usdt","icon":"fa-coins","description":null,"fields_config":[{"name":"wallet_address","label":"USDT Wallet Address","type":"text","required":true},{"name":"wallet_network","label":"Network","type":"select","required":true}],"min_amount":"100.00","max_amount":null,"fee_percentage":"0.10","fee_fixed":"0.00","currency":"USD","processing_days":1,"is_active":true,"requires_approval":false,"country_mode":"all","instructions":null,"sort_order":0,"agent_id":9,"created_at":"2026-08-02T08:45:31.000000Z","updated_at":"2026-08-16T11:39:42.000000Z","deleted_at":null}},"k1":{"AF":"Afghanistan","AL":"Albania","DZ":"Algeria","AS":"American Samoa","AD":"Andorra","AO":"Angola","AI":"Anguilla","AQ":"Antarctica","AG":"Antigua and Barbuda","AR":"Argentina","AM":"Armenia","AW":"Aruba","AU":"Australia","AT":"Austria","AZ":"Azerbaijan","BS":"Bahamas","BH":"Bahrain","BD":"Bangladesh","BB":"Barbados","BY":"Belarus","BE":"Belgium","BZ":"Belize","BJ":"Benin","BM":"Bermuda","BT":"Bhutan","BO":"Bolivia","BA":"Bosnia and Herzegovina","BW":"Botswana","BR":"Brazil","BN":"Brunei","BG":"Bulgaria","BF":"Burkina Faso","BI":"Burundi","KH":"Cambodia","CM":"Cameroon","CA":"Canada","CV":"Cape Verde","KY":"Cayman Islands","CF":"Central African Republic","TD":"Chad","CL":"Chile","CN":"China","CO":"Colombia","KM":"Comoros","CG":"Congo","CD":"Congo (DRC)","CR":"Costa Rica","CI":"Ivory Coast","HR":"Croatia","CU":"Cuba","CY":"Cyprus","CZ":"Czech Republic","DK":"Denmark","DJ":"Djibouti","DM":"Dominica","DO":"Dominican Republic","EC":"Ecuador","EG":"Egypt","SV":"El Salvador","GQ":"Equatorial Guinea","ER":"Eritrea","EE":"Estonia","ET":"Ethiopia","FJ":"Fiji","FI":"Finland","FR":"France","GA":"Gabon","GM":"Gambia","GE":"Georgia","DE":"Germany","GH":"Ghana","GR":"Greece","GD":"Grenada","GT":"Guatemala","GN":"Guinea","GW":"Guinea-Bissau","GY":"Guyana","HT":"Haiti","HN":"Honduras","HK":"Hong Kong","HU":"Hungary","IS":"Iceland","IN":"India","ID":"Indonesia","IR":"Iran","IQ":"Iraq","IE":"Ireland","IL":"Israel","IT":"Italy","JM":"Jamaica","JP":"Japan","JO":"Jordan","KZ":"Kazakhstan","KE":"Kenya","KI":"Kiribati","KP":"North Korea","KR":"South Korea","KW":"Kuwait","KG":"Kyrgyzstan","LA":"Laos","LV":"Latvia","LB":"Lebanon","LS":"Lesotho","LR":"Liberia","LY":"Libya","LI":"Liechtenstein","LT":"Lithuania","LU":"Luxembourg","MO":"Macau","MK":"North Macedonia","MG":"Madagascar","MW":"Malawi","MY":"Malaysia","MV":"Maldives","ML":"Mali","MT":"Malta","MH":"Marshall Islands","MR":"Mauritania","MU":"Mauritius","MX":"Mexico","FM":"Micronesia","MD":"Moldova","MC":"Monaco","MN":"Mongolia","ME":"Montenegro","MA":"Morocco","MZ":"Mozambique","MM":"Myanmar","NA":"Namibia","NR":"Nauru","NP":"Nepal","NL":"Netherlands","NZ":"New Zealand","NI":"Nicaragua","NE":"Niger","NG":"Nigeria","NO":"Norway","OM":"Oman","PK":"Pakistan","PW":"Palau","PS":"Palestine","PA":"Panama","PG":"Papua New Guinea","PY":"Paraguay","PE":"Peru","PH":"Philippines","PL":"Poland","PT":"Portugal","PR":"Puerto Rico","QA":"Qatar","RO":"Romania","RU":"Russia","RW":"Rwanda","WS":"Samoa","SM":"San Marino","ST":"Sao Tome and Principe","SA":"Saudi Arabia","SN":"Senegal","RS":"Serbia","SC":"Seychelles","SL":"Sierra Leone","SG":"Singapore","SK":"Slovakia","SI":"Slovenia","SB":"Solomon Islands","SO":"Somalia","ZA":"South Africa","SS":"South Sudan","ES":"Spain","LK":"Sri Lanka","SD":"Sudan","SR":"Suriname","SZ":"Eswatini","SE":"Sweden","CH":"Switzerland","SY":"Syria","TW":"Taiwan","TJ":"Tajikistan","TZ":"Tanzania","TH":"Thailand","TL":"Timor-Leste","TG":"Togo","TO":"Tonga","TT":"Trinidad and Tobago","TN":"Tunisia","TR":"Turkey","TM":"Turkmenistan","TV":"Tuvalu","UG":"Uganda","UA":"Ukraine","AE":"United Arab Emirates","GB":"United Kingdom","US":"United States","UY":"Uruguay","UZ":"Uzbekistan","VU":"Vanuatu","VA":"Vatican City","VE":"Venezuela","VN":"Vietnam","YE":"Yemen","ZM":"Zambia","ZW":"Zimbabwe"},"k2":"https:\/\/augestel.com\/Switchfy\/client\/payment-agents","k3":"https:\/\/augestel.com\/Switchfy\/client\/payment-methods","k4":"iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ","k5":"https:\/\/augestel.com\/Switchfy","k6":"https:\/\/augestel.com\/Switchfy\/client\/payment-methods","k7":"iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ","k8":"https:\/\/augestel.com\/Switchfy\/client\/payment-methods","k9":"iQiPnQGyjELDf2iEcfKUab0jGXz9lDvomvNu4hEJ","k10":"https:\/\/augestel.com\/Switchfy\/client\/payment-methods\/__ID__\/reveal","k11":"https:\/\/augestel.com\/Switchfy\/client\/security"}</script>
+<script src="https://augestel.com/Switchfy/assets/js/1bd5e786d7da/clients-profile-payment-methods.js"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;adfdb33208a742c0b5ced0e4ba55ec87&quot;,&quot;r&quot;:1,&quot;spa&quot;:2}" crossorigin="anonymous"></script>
+
+
+</body></html>
