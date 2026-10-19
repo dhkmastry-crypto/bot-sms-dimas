@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.632,
-  "total_revenue_idr": 91520,
-  "total_sms": 352,
+  "total_revenue_usd": 5.648,
+  "total_revenue_idr": 91780,
+  "total_sms": 353,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.056,
-  "today_sms": 66,
+  "today_revenue_usd": 1.072,
+  "today_sms": 67,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -673,9 +673,9 @@
     },
     "18": {
       "email": "nnkk6516@gmail.com",
-      "sms": 16,
-      "usd": 0.256,
-      "idr": 4160,
+      "sms": 17,
+      "usd": 0.272,
+      "idr": 4420,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 21:49:11",
+      "account": "Akun #18",
+      "phone": "265881398797",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 21:45:14",
       "account": "Akun #18",
       "phone": "265881302156",
@@ -1732,14 +1740,6 @@
       "phone": "243893849078",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 16:25:16",
-      "account": "Akun #35",
-      "phone": "94713694243",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
       "rate_usd": 0.016
     }
   ],
