@@ -9,7 +9,7 @@ s.post("http://localhost:5000/login", data={"username": "admin", "password": "ad
 
 res = s.get("http://localhost:5000/api/augestel/internal-guardian-status", timeout=15)
 data = res.json()
-guardian = data.get("guardian", {})
+guardian = data.get("status", {})
 
 print(f"{'No':<4} | {'Email':<34} | {'Active':<7} | {'Delivering':<11} | {'Paused':<7} | {'Status'}")
 print("-" * 85)
