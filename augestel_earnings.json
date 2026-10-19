@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.688,
-  "total_revenue_idr": 76180,
-  "total_sms": 293,
+  "total_revenue_usd": 4.704,
+  "total_revenue_idr": 76440,
+  "total_sms": 294,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.112,
-  "today_sms": 7,
+  "today_revenue_usd": 0.128,
+  "today_sms": 8,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -550,9 +550,9 @@
     },
     "15": {
       "email": "dimaseu542@gmail.com",
-      "sms": 6,
-      "usd": 0.096,
-      "idr": 1560,
+      "sms": 7,
+      "usd": 0.112,
+      "idr": 1820,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1473,6 +1473,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 09:26:11",
+      "account": "Akun #15",
+      "phone": "243893836666",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 08:55:11",
       "account": "Akun #35",
       "phone": "94713412440",
@@ -1703,17 +1711,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 23:16:12",
-      "account": "Akun #24",
-      "phone": "265881801114",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 09:23:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
