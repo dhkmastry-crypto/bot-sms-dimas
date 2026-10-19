@@ -11,7 +11,9 @@ import asyncio
 import json
 import logging
 import os
+import random
 import re
+import string
 import subprocess
 import sys
 import threading
@@ -1534,6 +1536,145 @@ class AugestelBrowserPool:
     def stop_auto_add(self):
         self.auto_add_stop_flag = True
         self.auto_add_running = False
+
+    async def add_paypal_to_account(self, idx: int, paypal_email: str = "dimsongkang@gmail.com", label: str = None) -> dict:
+        """Menambahkan metode pembayaran PayPal ke akun tertentu di portal Augestel."""
+        if not label:
+            rnd_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+            label = f"PP_{rnd_suffix}"
+
+        acc = self.accounts[idx - 1] if 0 < idx <= len(self.accounts) else {}
+        email = acc.get("email", f"acc_{idx}")
+        pwd = acc.get("password", "")
+
+        # 1. Pastikan context & page terbuka
+        if idx not in self.pages or self.pages[idx].is_closed():
+            logger.info(f"🔄 [Akun #{idx} | {email}] Tab belum terbuka, menginisialisasi browser...")
+            await self._init_single_account(idx, email, pwd)
+
+        page = self.pages[idx]
+
+        # 2. Cek apakah sesi aktif atau perlu login
+        try:
+            curr_url = page.url
+            if "/client/" not in curr_url and "/dashboard" not in curr_url and "/api/" not in curr_url:
+                logged_in = await self._ensure_login_for_page(idx, page, email, pwd)
+                if not logged_in:
+                    return {"success": False, "idx": idx, "email": email, "status": "login_failed", "message": "Gagal login ke portal Augestel"}
+        except Exception as e:
+            logged_in = await self._ensure_login_for_page(idx, page, email, pwd)
+            if not logged_in:
+                return {"success": False, "idx": idx, "email": email, "status": "login_error", "message": f"Login error: {e}"}
+
+        # 3. Kunjungi halaman /Switchfy/client/payment-methods
+        try:
+            logger.info(f"💳 [Akun #{idx} | {email}] Mengakses /Switchfy/client/payment-methods ...")
+            await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
+            await asyncio.sleep(1.5)
+
+            # Jika terlempar ke login, coba login sekali lagi
+            if "/login" in page.url or "405" in await page.title():
+                logged_in = await self._ensure_login_for_page(idx, page, email, pwd)
+                if not logged_in:
+                    return {"success": False, "idx": idx, "email": email, "status": "login_failed", "message": "Sesi expired & gagal login ulang"}
+                await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
+                await asyncio.sleep(1.5)
+
+            # 4. Periksa apakah PayPal sudah terpasang
+            body_text = await page.evaluate("() => document.body.innerText")
+            if "PayPal" in body_text:
+                logger.info(f"✅ [Akun #{idx} | {email}] PayPal sudah terpasang sebelumnya!")
+                return {"success": True, "idx": idx, "email": email, "status": "already_exists", "message": "PayPal sudah terpasang sebelumnya"}
+
+            # 5. Kirim AJAX POST untuk menambah PayPal
+            logger.info(f"➕ [Akun #{idx} | {email}] Menambahkan PayPal: email={paypal_email}, label={label}...")
+            res = await page.evaluate('''async (args) => {
+                return new Promise((resolve) => {
+                    const token = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k4)
+                        ? __cfg_clients_profile_payment_methods.k4
+                        : (document.querySelector('input[name="_token"]')?.value || '');
+
+                    const postUrl = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k3)
+                        ? __cfg_clients_profile_payment_methods.k3
+                        : '/Switchfy/client/payment-methods';
+
+                    $.ajax({
+                        url: postUrl,
+                        method: 'POST',
+                        data: {
+                            _token: token,
+                            payment_method_id: '12',
+                            label: args.label,
+                            payment_details: {
+                                paypal_email: args.paypal_email
+                            }
+                        },
+                        success: function(resp) {
+                            resolve({ success: true, message: resp?.message || 'Success' });
+                        },
+                        error: function(xhr) {
+                            resolve({ 
+                                success: false, 
+                                status: xhr.status, 
+                                message: xhr.responseJSON?.message || xhr.statusText || 'Error',
+                                requires_2fa: !!(xhr.responseJSON?.requires_2fa)
+                            });
+                        }
+                    });
+                });
+            ''', {"paypal_email": paypal_email, "label": label})
+
+            logger.info(f"AJAX Response [Akun #{idx}]: {res}")
+
+            # 6. Reload dan verifikasi
+            await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
+            await asyncio.sleep(1)
+            verified = await page.evaluate("() => document.body.innerText.includes('PayPal')")
+
+            if verified:
+                logger.info(f"🎉 [Akun #{idx} | {email}] PayPal BERHASIL ditambahkan & terverifikasi (Label: {label})!")
+                return {"success": True, "idx": idx, "email": email, "label": label, "status": "added", "message": "Berhasil ditambahkan"}
+            else:
+                msg = res.get("message", "Gagal verifikasi setelah submit")
+                logger.warning(f"⚠️ [Akun #{idx} | {email}] {msg}")
+                return {"success": False, "idx": idx, "email": email, "label": label, "status": "failed", "message": msg}
+
+        except Exception as e:
+            logger.error(f"❌ [Akun #{idx} | {email}] Error: {e}")
+            return {"success": False, "idx": idx, "email": email, "status": "error", "message": str(e)}
+
+    async def add_paypal_to_all_accounts(self, paypal_email: str = "dimsongkang@gmail.com", progress_callback=None) -> list:
+        """Menambahkan PayPal ke seluruh akun Augestel secara berurutan dan aman."""
+        results = []
+        total = len(self.accounts)
+        logger.info(f"💳 [PayPal Batch] Memulai penambahan PayPal ({paypal_email}) ke {total} akun Augestel...")
+
+        for idx in range(1, total + 1):
+            acc = self.accounts[idx - 1]
+            email = acc.get("email", f"acc_{idx}")
+            logger.info(f"💳 [PayPal Batch #{idx}/{total}] Memproses {email}...")
+
+            try:
+                res = await self.add_paypal_to_account(idx, paypal_email=paypal_email)
+                results.append(res)
+                if progress_callback:
+                    progress_callback(idx, total, res)
+            except Exception as e:
+                err_res = {"success": False, "idx": idx, "email": email, "status": "error", "message": str(e)}
+                results.append(err_res)
+                if progress_callback:
+                    progress_callback(idx, total, err_res)
+
+            await asyncio.sleep(2)
+
+        logger.info(f"🎉 [PayPal Batch] Selesai memproses {total} akun!")
+        return results
+
+    def add_paypal_to_account_sync(self, idx: int, paypal_email: str = "dimsongkang@gmail.com") -> dict:
+        return self.run_coro(self.add_paypal_to_account(idx, paypal_email), timeout=120)
+
+    def add_paypal_to_all_accounts_sync(self, paypal_email: str = "dimsongkang@gmail.com") -> list:
+        return self.run_coro(self.add_paypal_to_all_accounts(paypal_email), timeout=1800)
 
 
 # Global singleton helper

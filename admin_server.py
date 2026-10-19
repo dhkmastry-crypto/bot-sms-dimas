@@ -2967,6 +2967,34 @@ def api_augestel_pool_eval(idx):
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/api/augestel/pool/add-paypal/<int:idx>", methods=["POST"])
+@login_required
+def api_augestel_pool_add_paypal(idx):
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        data = request.json or {}
+        paypal_email = data.get("paypal_email", "dimsongkang@gmail.com")
+        res = pool.add_paypal_to_account_sync(idx, paypal_email=paypal_email)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/augestel/pool/add-paypal-all", methods=["POST"])
+@login_required
+def api_augestel_pool_add_paypal_all():
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        data = request.json or {}
+        paypal_email = data.get("paypal_email", "dimsongkang@gmail.com")
+        res = pool.add_paypal_to_all_accounts_sync(paypal_email=paypal_email)
+        return jsonify({"success": True, "results": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/augestel/pool/test-login/<int:idx>", methods=["POST"])
 @login_required
 def api_augestel_pool_test_login(idx):
