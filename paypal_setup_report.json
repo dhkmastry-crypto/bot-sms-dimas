@@ -2,281 +2,281 @@
   {
     "idx": 1,
     "email": "saputradimas0878@gmail.com",
-    "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
-  },
-  {
-    "idx": 2,
-    "email": "Ekiprijipratama03@gmail.com",
     "success": false,
     "status": "login_failed",
     "label": "-",
     "message": "Gagal login ke portal Augestel"
   },
   {
+    "idx": 2,
+    "email": "Ekiprijipratama03@gmail.com",
+    "success": true,
+    "status": "added",
+    "label": "PP_vs44at",
+    "message": "Berhasil ditambahkan"
+  },
+  {
     "idx": 3,
     "email": "Fikriramdn424@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_ap53i7",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 4,
     "email": "dhkmastry@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_43uezd",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 5,
     "email": "mayateng86@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_73tjgw",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 6,
     "email": "pakupakuwak@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_0plo16",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 7,
     "email": "beras.capakor@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_tbevrw",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 8,
     "email": "azarinnur@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_aw6v4h",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 9,
     "email": "malinoo788@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_dwoq4c",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 10,
     "email": "keztokitems@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_uix6p7",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 11,
     "email": "dimasganteung69@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_hu9nzd",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 12,
     "email": "maskupukupu15@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_hggpsz",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 13,
     "email": "songkanjut@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_nicuxl",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 14,
     "email": "dimsongkang@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_6ffmn5",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 15,
     "email": "dimaseu542@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_t0htgd",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 16,
     "email": "mulyanasurin@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_8rkp2k",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 17,
     "email": "agusbanget67@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_ke5usa",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 18,
     "email": "nnkk6516@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_ducrom",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 19,
     "email": "jangsuk771@gmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_0l5khu",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 20,
     "email": "tefroittessaheu-7248@yopmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_t0kioe",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 21,
     "email": "sms_ce11e137@yopmail.com",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_tktcgl",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 22,
     "email": "tele_4679c9da@monemail.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_kepavf",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 23,
     "email": "user_e9088b13@monemail.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_apz3as",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 24,
     "email": "sms_ecae22a4@moncourrier.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_9olkio",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 25,
     "email": "user_86e6f586@moncourrier.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_1srt6g",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 26,
     "email": "tele_7c275315@courriel.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_6n9kcw",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 27,
     "email": "sms_905e6eb5@jetable.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_s997rv",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 28,
     "email": "iprn_7536b3d4@jetable.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_59kjcy",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 29,
     "email": "acc_3f68900f@jetable.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_3n5teo",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 30,
     "email": "sms_d98388f2@monemail.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_xszi0j",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 31,
     "email": "aug_8579d469@monemail.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_naphpp",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 32,
     "email": "aug_42f2622a@monemail.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_bxyqcg",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 33,
     "email": "tele_69a65f83@courriel.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_rho2ni",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 34,
     "email": "user_16ec95f2@moncourrier.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_g6ehg7",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 35,
     "email": "iprn_61c2edb5@moncourrier.fr.nf",
     "success": true,
-    "status": "already_exists",
-    "label": "-",
-    "message": "PayPal sudah terpasang sebelumnya"
+    "status": "added",
+    "label": "PP_u4vat3",
+    "message": "Berhasil ditambahkan"
   }
 ]
