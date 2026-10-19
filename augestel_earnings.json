@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.576,
-  "total_revenue_idr": 74360,
-  "total_sms": 286,
+  "total_revenue_usd": 4.592,
+  "total_revenue_idr": 74620,
+  "total_sms": 287,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 2.064,
-  "today_sms": 129,
+  "today_revenue_usd": 2.08,
+  "today_sms": 130,
   "yesterday_revenue_usd": 2.16,
   "yesterday_sms": 135,
   "by_account": {
@@ -439,9 +439,9 @@
     },
     "12": {
       "email": "maskupukupu15@gmail.com",
-      "sms": 8,
-      "usd": 0.128,
-      "idr": 2080,
+      "sms": 9,
+      "usd": 0.144,
+      "idr": 2340,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1466,6 +1466,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 07:05:09",
+      "account": "Akun #12",
+      "phone": "243893492804",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 06:33:11",
       "account": "Akun #15",
       "phone": "243893760103",
@@ -1696,17 +1704,10 @@
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 22:14:12",
-      "account": "Akun #17",
-      "phone": "265881051340",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 07:03:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
