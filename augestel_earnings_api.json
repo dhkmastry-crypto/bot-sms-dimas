@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.472,
-  "total_revenue_idr": 88920,
-  "total_sms": 342,
+  "total_revenue_usd": 5.504,
+  "total_revenue_idr": 89440,
+  "total_sms": 344,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.896,
-  "today_sms": 56,
+  "today_revenue_usd": 0.928,
+  "today_sms": 58,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -751,9 +751,9 @@
     },
     "20": {
       "email": "tefroittessaheu-7248@yopmail.com",
-      "sms": 9,
-      "usd": 0.144,
-      "idr": 2340,
+      "sms": 10,
+      "usd": 0.16,
+      "idr": 2600,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1168,9 +1168,9 @@
     },
     "33": {
       "email": "tele_69a65f83@courriel.fr.nf",
-      "sms": 12,
-      "usd": 0.192,
-      "idr": 3120,
+      "sms": 13,
+      "usd": 0.208,
+      "idr": 3380,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,22 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 20:58:12",
+      "account": "Akun #33",
+      "phone": "94713764416",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-19 20:58:11",
+      "account": "Akun #20",
+      "phone": "265881363600",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 20:57:10",
       "account": "Akun #35",
       "phone": "94713220863",
@@ -1722,22 +1738,6 @@
       "time": "2026-10-19 15:31:16",
       "account": "Akun #21",
       "phone": "265881101290",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:27:10",
-      "account": "Akun #33",
-      "phone": "94713772715",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:27:09",
-      "account": "Akun #22",
-      "phone": "265881813229",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
