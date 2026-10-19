@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.328,
-  "total_revenue_idr": 86580,
-  "total_sms": 333,
+  "total_revenue_usd": 5.344,
+  "total_revenue_idr": 86840,
+  "total_sms": 334,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.752,
-  "today_sms": 47,
+  "today_revenue_usd": 0.768,
+  "today_sms": 48,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -595,9 +595,9 @@
     },
     "16": {
       "email": "mulyanasurin@gmail.com",
-      "sms": 10,
-      "usd": 0.16,
-      "idr": 2600,
+      "sms": 11,
+      "usd": 0.176,
+      "idr": 2860,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 17:26:12",
+      "account": "Akun #16",
+      "phone": "243893261326",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 17:15:10",
       "account": "Akun #35",
       "phone": "94713996124",
@@ -1733,17 +1741,10 @@
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 14:50:11",
-      "account": "Akun #34",
-      "phone": "94713180907",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 17:23:10",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
