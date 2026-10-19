@@ -1641,8 +1641,10 @@ class AugestelBrowserPool:
                 return {"success": False, "idx": idx, "email": email, "label": label, "status": "failed", "message": msg}
 
         except Exception as e:
-            logger.error(f"❌ [Akun #{idx} | {email}] Error: {e}")
-            return {"success": False, "idx": idx, "email": email, "status": "error", "message": str(e)}
+            import traceback
+            tb = traceback.format_exc()
+            logger.error(f"❌ [Akun #{idx} | {email}] Error: {e}\n{tb}")
+            return {"success": False, "idx": idx, "email": email, "status": "error", "message": str(e), "traceback": tb}
 
     async def add_paypal_to_all_accounts(self, paypal_email: str = "dimsongkang@gmail.com", progress_callback=None) -> list:
         """Menambahkan PayPal ke seluruh akun Augestel secara berurutan dan aman."""
