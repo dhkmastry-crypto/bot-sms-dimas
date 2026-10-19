@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.568,
-  "total_revenue_idr": 90480,
-  "total_sms": 348,
+  "total_revenue_usd": 5.584,
+  "total_revenue_idr": 90740,
+  "total_sms": 349,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.992,
-  "today_sms": 62,
+  "today_revenue_usd": 1.008,
+  "today_sms": 63,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -751,9 +751,9 @@
     },
     "20": {
       "email": "tefroittessaheu-7248@yopmail.com",
-      "sms": 10,
-      "usd": 0.16,
-      "idr": 2600,
+      "sms": 11,
+      "usd": 0.176,
+      "idr": 2860,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 21:29:10",
+      "account": "Akun #20",
+      "phone": "265881327250",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 21:26:11",
       "account": "Akun #18",
       "phone": "265881381462",
@@ -1732,14 +1740,6 @@
       "phone": "94713185794",
       "platform": "WhatsApp",
       "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:52:11",
-      "account": "Akun #28",
-      "phone": "923332030561",
-      "platform": "WhatsApp",
-      "flag": "🇵🇰",
       "rate_usd": 0.016
     }
   ],
