@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.808,
-  "total_revenue_idr": 94380,
-  "total_sms": 363,
+  "total_revenue_usd": 5.824,
+  "total_revenue_idr": 94640,
+  "total_sms": 364,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.232,
-  "today_sms": 77,
+  "today_revenue_usd": 1.248,
+  "today_sms": 78,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -127,9 +127,9 @@
     },
     "4": {
       "email": "dhkmastry@gmail.com",
-      "sms": 13,
-      "usd": 0.208,
-      "idr": 3380,
+      "sms": 14,
+      "usd": 0.224,
+      "idr": 3640,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 22:55:11",
+      "account": "Akun #4",
+      "phone": "213551932173",
+      "platform": "Google",
+      "flag": "🇩🇿",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 22:54:12",
       "account": "Akun #35",
       "phone": "94713920694",
@@ -1730,14 +1738,6 @@
       "time": "2026-10-19 17:15:10",
       "account": "Akun #35",
       "phone": "94713996124",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 17:10:12",
-      "account": "Akun #35",
-      "phone": "94713116277",
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
