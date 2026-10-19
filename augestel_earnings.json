@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.552,
-  "total_revenue_idr": 90220,
-  "total_sms": 347,
+  "total_revenue_usd": 5.568,
+  "total_revenue_idr": 90480,
+  "total_sms": 348,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.976,
-  "today_sms": 61,
+  "today_revenue_usd": 0.992,
+  "today_sms": 62,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -673,9 +673,9 @@
     },
     "18": {
       "email": "nnkk6516@gmail.com",
-      "sms": 13,
-      "usd": 0.208,
-      "idr": 3380,
+      "sms": 14,
+      "usd": 0.224,
+      "idr": 3640,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 21:26:11",
+      "account": "Akun #18",
+      "phone": "265881381462",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 21:20:12",
       "account": "Akun #18",
       "phone": "265881331873",
@@ -1733,17 +1741,10 @@
       "platform": "WhatsApp",
       "flag": "🇵🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:36:11",
-      "account": "Akun #24",
-      "phone": "265881731439",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 21:24:36",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
