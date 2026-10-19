@@ -34,8 +34,8 @@ async def run_single(idx=2):
         )
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
 
-        print(f"[{idx}] Navigating to payment methods...")
-        await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="domcontentloaded", timeout=45000)
+        print(f"[{idx}] Navigating to https://augestel.com/Switchfy ...")
+        await page.goto("https://augestel.com/Switchfy", wait_until="domcontentloaded", timeout=45000)
         await asyncio.sleep(2)
 
         # Check login
@@ -51,9 +51,18 @@ async def run_single(idx=2):
                 pass
             btn = await page.query_selector("#loginForm button[type='submit'], button[type='submit'], #loginSubmit")
             if btn: await btn.click()
-            await asyncio.sleep(3)
-            await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=45000)
-            await asyncio.sleep(2)
+            
+            # Wait for redirect to dashboard / live-sms
+            for _ in range(15):
+                await asyncio.sleep(1)
+                u = page.url
+                if "/client/" in u or "/dashboard" in u or "/test/" in u:
+                    print(f"[{idx}] Logged in successfully! URL: {u}")
+                    break
+
+        print(f"[{idx}] Navigating to payment methods...")
+        await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=45000)
+        await asyncio.sleep(2)
 
         print(f"[{idx}] Current URL: {page.url} | Title: {await page.title()}")
 
