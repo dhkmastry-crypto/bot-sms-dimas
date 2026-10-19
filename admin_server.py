@@ -2981,6 +2981,41 @@ def api_augestel_pool_add_paypal(idx):
         return jsonify({"success": False, "error": str(e)})
 
 
+@app.route("/api/augestel/pool/inspect-pm/<int:idx>", methods=["GET"])
+@login_required
+def api_augestel_pool_inspect_pm(idx):
+    try:
+        from augestel_browser_pool import get_browser_pool
+        pool = get_browser_pool()
+        if idx not in pool.pages:
+            return jsonify({"success": False, "error": "No page for index"})
+        page = pool.pages[idx]
+        
+        async def check():
+            await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
+            data = await page.evaluate('''() => {
+                const text = document.body.innerText;
+                const hasEmpty = text.includes('No Payment Methods Yet');
+                const methodsContainer = document.querySelector('.payment-methods-list, .payment-cards, .row, .card-body');
+                const tokens = (typeof __cfg_clients_profile_payment_methods !== 'undefined') ? __cfg_clients_profile_payment_methods : null;
+                // find any PayPal email or cards
+                const inputs = Array.from(document.querySelectorAll('input, button, a')).map(el => el.outerHTML.slice(0, 100));
+                return {
+                    url: window.location.href,
+                    title: document.title,
+                    hasEmpty: hasEmpty,
+                    bodySlice: text.slice(0, 1200),
+                    cfg: tokens
+                };
+            }''')
+            return data
+            
+        res = pool.run_coro(check(), timeout=30)
+        return jsonify({"success": True, "data": res})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/augestel/pool/add-paypal-all", methods=["POST"])
 @login_required
 def api_augestel_pool_add_paypal_all():
