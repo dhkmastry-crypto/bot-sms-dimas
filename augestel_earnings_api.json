@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.152,
-  "total_revenue_idr": 83720,
-  "total_sms": 322,
+  "total_revenue_usd": 5.168,
+  "total_revenue_idr": 83980,
+  "total_sms": 323,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.576,
-  "today_sms": 36,
+  "today_revenue_usd": 0.592,
+  "today_sms": 37,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -478,9 +478,9 @@
     },
     "13": {
       "email": "songkanjut@gmail.com",
-      "sms": 5,
-      "usd": 0.08,
-      "idr": 1300,
+      "sms": 6,
+      "usd": 0.096,
+      "idr": 1560,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1497,6 +1497,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 16:30:15",
+      "account": "Akun #13",
+      "phone": "243893849078",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 16:25:16",
       "account": "Akun #35",
       "phone": "94713694243",
@@ -1726,14 +1734,6 @@
       "phone": "243893836666",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 08:55:11",
-      "account": "Akun #35",
-      "phone": "94713412440",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
       "rate_usd": 0.016
     }
   ],
