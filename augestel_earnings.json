@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.024,
-  "total_revenue_idr": 81640,
-  "total_sms": 314,
+  "total_revenue_usd": 5.04,
+  "total_revenue_idr": 81900,
+  "total_sms": 315,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.448,
-  "today_sms": 28,
+  "today_revenue_usd": 0.464,
+  "today_sms": 29,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -790,9 +790,9 @@
     },
     "21": {
       "email": "sms_ce11e137@yopmail.com",
-      "sms": 7,
-      "usd": 0.112,
-      "idr": 1820,
+      "sms": 8,
+      "usd": 0.128,
+      "idr": 2080,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1485,6 +1485,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 15:31:16",
+      "account": "Akun #21",
+      "phone": "265881101290",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 15:27:10",
       "account": "Akun #33",
       "phone": "94713772715",
@@ -1714,14 +1722,6 @@
       "phone": "243893760103",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 04:08:12",
-      "account": "Akun #33",
-      "phone": "94713740160",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
       "rate_usd": 0.016
     }
   ],
