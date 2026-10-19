@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.624,
-  "total_revenue_idr": 75140,
-  "total_sms": 289,
+  "total_revenue_usd": 4.64,
+  "total_revenue_idr": 75400,
+  "total_sms": 290,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.048,
-  "today_sms": 3,
+  "today_revenue_usd": 0.064,
+  "today_sms": 4,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -1138,9 +1138,9 @@
     },
     "33": {
       "email": "tele_69a65f83@courriel.fr.nf",
-      "sms": 8,
-      "usd": 0.128,
-      "idr": 2080,
+      "sms": 9,
+      "usd": 0.144,
+      "idr": 2340,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1473,6 +1473,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 08:19:09",
+      "account": "Akun #33",
+      "phone": "94713400423",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 07:49:09",
       "account": "Akun #12",
       "phone": "243893835080",
@@ -1703,17 +1711,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-18 22:20:12",
-      "account": "Akun #35",
-      "phone": "94713933456",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 08:03:02",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
