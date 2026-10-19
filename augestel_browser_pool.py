@@ -1588,42 +1588,44 @@ class AugestelBrowserPool:
 
             # 5. Kirim AJAX POST untuk menambah PayPal
             logger.info(f"➕ [Akun #{idx} | {email}] Menambahkan PayPal: email={paypal_email}, label={label}...")
-            res = await page.evaluate('''async (args) => {
-                return new Promise((resolve) => {
-                    const token = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k4)
-                        ? __cfg_clients_profile_payment_methods.k4
-                        : (document.querySelector('input[name="_token"]')?.value || '');
+            js_script = f"""() => new Promise((resolve) => {{
+                const token = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k4)
+                    ? __cfg_clients_profile_payment_methods.k4
+                    : (document.querySelector('input[name="_token"]')?.value || '');
 
-                    const postUrl = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k3)
-                        ? __cfg_clients_profile_payment_methods.k3
-                        : '/Switchfy/client/payment-methods';
+                const postUrl = (typeof __cfg_clients_profile_payment_methods !== 'undefined' && __cfg_clients_profile_payment_methods.k3)
+                    ? __cfg_clients_profile_payment_methods.k3
+                    : '/Switchfy/client/payment-methods';
 
-                    $.ajax({
+                if (typeof $ !== 'undefined') {{
+                    $.ajax({{
                         url: postUrl,
                         method: 'POST',
-                        data: {
+                        data: {{
                             _token: token,
                             payment_method_id: '12',
-                            label: args.label,
-                            payment_details: {
-                                paypal_email: args.paypal_email
-                            }
-                        },
-                        success: function(resp) {
-                            resolve({ success: true, message: resp?.message || 'Success' });
-                        },
-                        error: function(xhr) {
-                            resolve({ 
+                            label: '{label}',
+                            payment_details: {{
+                                paypal_email: '{paypal_email}'
+                            }}
+                        }},
+                        success: function(resp) {{
+                            resolve({{ success: true, message: resp?.message || 'Success' }});
+                        }},
+                        error: function(xhr) {{
+                            resolve({{ 
                                 success: false, 
                                 status: xhr.status, 
                                 message: xhr.responseJSON?.message || xhr.statusText || 'Error',
                                 requires_2fa: !!(xhr.responseJSON?.requires_2fa)
-                            });
-                        }
-                    });
-                });
-            ''', {"paypal_email": paypal_email, "label": label})
-
+                            }});
+                        }}
+                    }});
+                }} else {{
+                    resolve({{ success: false, message: 'jQuery not found on page' }});
+                }}
+            }})"""
+            res = await page.evaluate(js_script)
             logger.info(f"AJAX Response [Akun #{idx}]: {res}")
 
             # 6. Reload dan verifikasi
