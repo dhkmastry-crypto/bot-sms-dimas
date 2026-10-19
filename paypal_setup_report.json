@@ -2,10 +2,10 @@
   {
     "idx": 1,
     "email": "saputradimas0878@gmail.com",
-    "success": false,
-    "status": "login_failed",
-    "label": "-",
-    "message": "Gagal login ke portal Augestel"
+    "success": true,
+    "status": "added",
+    "label": "PP_cn2oto",
+    "message": "Berhasil ditambahkan"
   },
   {
     "idx": 2,
