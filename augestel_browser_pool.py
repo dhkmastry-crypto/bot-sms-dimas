@@ -1581,12 +1581,8 @@ class AugestelBrowserPool:
                 await asyncio.sleep(1.5)
 
             # 4. Periksa apakah PayPal dengan email target sudah terpasang
-            is_already_added = await page.evaluate(''' (targetEmail) => {
-                const text = document.body.innerText;
-                if (text.includes('No Payment Methods Yet')) return false;
-                return text.includes(targetEmail);
-            } ''', paypal_email)
-            if is_already_added:
+            body_text = await page.evaluate("() => document.body.innerText")
+            if ("No Payment Methods Yet" not in body_text) and (paypal_email in body_text):
                 logger.info(f"✅ [Akun #{idx} | {email}] PayPal ({paypal_email}) sudah terpasang sebelumnya!")
                 return {"success": True, "idx": idx, "email": email, "status": "already_exists", "message": f"PayPal ({paypal_email}) sudah terpasang sebelumnya"}
 
@@ -1632,11 +1628,9 @@ class AugestelBrowserPool:
 
             # 6. Reload dan verifikasi
             await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
-            await asyncio.sleep(1.5)
-            verified = await page.evaluate(''' (targetEmail) => {
-                const text = document.body.innerText;
-                return !text.includes('No Payment Methods Yet') && (text.includes(targetEmail) || text.includes('PayPal'));
-            } ''', paypal_email)
+            await asyncio.sleep(2)
+            body_after = await page.evaluate("() => document.body.innerText")
+            verified = ("No Payment Methods Yet" not in body_after) and ((paypal_email in body_after) or ("PayPal" in body_after))
 
             if verified:
                 logger.info(f"🎉 [Akun #{idx} | {email}] PayPal BERHASIL ditambahkan & terverifikasi (Label: {label})!")
