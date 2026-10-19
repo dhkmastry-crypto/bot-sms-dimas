@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.904,
-  "total_revenue_idr": 95940,
-  "total_sms": 369,
+  "total_revenue_usd": 5.92,
+  "total_revenue_idr": 96200,
+  "total_sms": 370,
   "today_date": "2026-10-20",
-  "today_revenue_usd": 1.328,
-  "today_sms": 83,
+  "today_revenue_usd": 1.344,
+  "today_sms": 84,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -322,9 +322,9 @@
     },
     "9": {
       "email": "malinoo788@gmail.com",
-      "sms": 17,
-      "usd": 0.272,
-      "idr": 4420,
+      "sms": 18,
+      "usd": 0.288,
+      "idr": 4680,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-20 00:37:26",
+      "account": "Akun #9",
+      "phone": "243893390585",
+      "platform": "WeChat",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-20 00:31:27",
       "account": "Akun #10",
       "phone": "243893564235",
@@ -1732,14 +1740,6 @@
       "phone": "94713194819",
       "platform": "WhatsApp",
       "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 17:26:12",
-      "account": "Akun #16",
-      "phone": "243893261326",
-      "platform": "WhatsApp",
-      "flag": "🇨🇩",
       "rate_usd": 0.016
     }
   ],
