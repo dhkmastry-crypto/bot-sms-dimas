@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.888,
-  "total_revenue_idr": 95680,
-  "total_sms": 368,
+  "total_revenue_usd": 5.904,
+  "total_revenue_idr": 95940,
+  "total_sms": 369,
   "today_date": "2026-10-20",
-  "today_revenue_usd": 1.312,
-  "today_sms": 82,
+  "today_revenue_usd": 1.328,
+  "today_sms": 83,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -166,9 +166,9 @@
     },
     "5": {
       "email": "mayateng86@gmail.com",
-      "sms": 21,
-      "usd": 0.336,
-      "idr": 5460,
+      "sms": 22,
+      "usd": 0.352,
+      "idr": 5720,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-20 04:02:13",
+      "account": "Akun #5",
+      "phone": "51927358735",
+      "platform": "Uber",
+      "flag": "🇵🇪",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-20 00:41:03",
       "account": "Akun #34",
       "phone": "94713221507",
@@ -1733,17 +1741,10 @@
       "platform": "WhatsApp",
       "flag": "🇱🇰",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 19:40:13",
-      "account": "Akun #34",
-      "phone": "94713186464",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-20 03:44:37",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
