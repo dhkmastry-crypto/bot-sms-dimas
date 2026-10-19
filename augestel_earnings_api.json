@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.168,
-  "total_revenue_idr": 83980,
-  "total_sms": 323,
+  "total_revenue_usd": 5.184,
+  "total_revenue_idr": 84240,
+  "total_sms": 324,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.592,
-  "today_sms": 37,
+  "today_revenue_usd": 0.608,
+  "today_sms": 38,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -595,9 +595,9 @@
     },
     "16": {
       "email": "mulyanasurin@gmail.com",
-      "sms": 9,
-      "usd": 0.144,
-      "idr": 2340,
+      "sms": 10,
+      "usd": 0.16,
+      "idr": 2600,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1497,6 +1497,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 16:34:17",
+      "account": "Akun #16",
+      "phone": "243893762680",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 16:30:15",
       "account": "Akun #13",
       "phone": "243893849078",
@@ -1724,14 +1732,6 @@
       "time": "2026-10-19 09:42:08",
       "account": "Akun #11",
       "phone": "243893848139",
-      "platform": "WhatsApp",
-      "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 09:26:11",
-      "account": "Akun #15",
-      "phone": "243893836666",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
