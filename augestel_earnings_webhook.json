@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.279,
-  "total_revenue_idr": 85783,
-  "total_sms": 330,
+  "total_revenue_usd": 5.311,
+  "total_revenue_idr": 86303,
+  "total_sms": 332,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 1.152,
-  "today_sms": 72,
+  "today_revenue_usd": 1.184,
+  "today_sms": 74,
   "yesterday_revenue_usd": 0.176,
   "yesterday_sms": 160,
   "by_account": {
@@ -160,9 +160,9 @@
     },
     "Akun #35": {
       "email": "Akun #35",
-      "sms": 16,
-      "usd": 0.256,
-      "idr": 4160
+      "sms": 17,
+      "usd": 0.272,
+      "idr": 4420
     },
     "Akun #17": {
       "email": "Akun #17",
@@ -178,9 +178,9 @@
     },
     "Akun #34": {
       "email": "Akun #34",
-      "sms": 13,
-      "usd": 0.208,
-      "idr": 3380
+      "sms": 14,
+      "usd": 0.224,
+      "idr": 3640
     },
     "Akun #22": {
       "email": "Akun #22",
@@ -293,6 +293,22 @@
   },
   "by_platform": {},
   "recent_transactions": [
+    {
+      "time": "2026-10-19 19:50:13",
+      "account": "Akun #35",
+      "phone": "94713763035",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-19 19:50:12",
+      "account": "Akun #34",
+      "phone": "94713080971",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
     {
       "time": "2026-10-19 19:40:13",
       "account": "Akun #34",
@@ -516,25 +532,9 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:13:14",
-      "account": "Akun #18",
-      "phone": "265881330006",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:12:10",
-      "account": "Akun #23",
-      "phone": "265881731411",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
-  "last_event_time": "2026-10-19 19:40:13",
+  "last_event_time": "2026-10-19 19:50:13",
   "sync_source": "Augestel Real-Time Webhook Engine (https://dimsong.online)",
   "daily_breakdown": [],
   "top_numbers": [],

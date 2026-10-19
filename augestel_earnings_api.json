@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.392,
-  "total_revenue_idr": 87620,
-  "total_sms": 337,
+  "total_revenue_usd": 5.424,
+  "total_revenue_idr": 88140,
+  "total_sms": 339,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.816,
-  "today_sms": 51,
+  "today_revenue_usd": 0.848,
+  "today_sms": 53,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -1207,9 +1207,9 @@
     },
     "34": {
       "email": "user_16ec95f2@moncourrier.fr.nf",
-      "sms": 16,
-      "usd": 0.256,
-      "idr": 4160,
+      "sms": 17,
+      "usd": 0.272,
+      "idr": 4420,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1246,9 +1246,9 @@
     },
     "35": {
       "email": "iprn_61c2edb5@moncourrier.fr.nf",
-      "sms": 18,
-      "usd": 0.288,
-      "idr": 4680,
+      "sms": 19,
+      "usd": 0.304,
+      "idr": 4940,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,22 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 19:50:13",
+      "account": "Akun #35",
+      "phone": "94713763035",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
+      "time": "2026-10-19 19:50:12",
+      "account": "Akun #34",
+      "phone": "94713080971",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 19:40:13",
       "account": "Akun #34",
       "phone": "94713186464",
@@ -1725,25 +1741,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:13:14",
-      "account": "Akun #18",
-      "phone": "265881330006",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 15:12:10",
-      "account": "Akun #23",
-      "phone": "265881731411",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 19:44:35",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
