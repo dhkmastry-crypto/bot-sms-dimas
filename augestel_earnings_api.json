@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.888,
-  "total_revenue_idr": 95680,
-  "total_sms": 368,
+  "total_revenue_usd": 5.904,
+  "total_revenue_idr": 95940,
+  "total_sms": 369,
   "today_date": "2026-10-20",
-  "today_revenue_usd": 1.312,
-  "today_sms": 82,
+  "today_revenue_usd": 1.328,
+  "today_sms": 83,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -361,9 +361,9 @@
     },
     "10": {
       "email": "keztokitems@gmail.com",
-      "sms": 8,
-      "usd": 0.128,
-      "idr": 2080,
+      "sms": 9,
+      "usd": 0.144,
+      "idr": 2340,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1503,6 +1503,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-20 00:31:27",
+      "account": "Akun #10",
+      "phone": "243893564235",
+      "platform": "SMS",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 22:55:11",
       "account": "Akun #4",
       "phone": "213551932173",
@@ -1733,17 +1741,10 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 17:15:10",
-      "account": "Akun #35",
-      "phone": "94713996124",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-20 00:25:14",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
