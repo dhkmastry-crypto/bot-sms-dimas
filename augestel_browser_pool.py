@@ -1580,11 +1580,15 @@ class AugestelBrowserPool:
                 await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
                 await asyncio.sleep(1.5)
 
-            # 4. Periksa apakah PayPal sudah terpasang
-            body_text = await page.evaluate("() => document.body.innerText")
-            if "PayPal" in body_text:
-                logger.info(f"✅ [Akun #{idx} | {email}] PayPal sudah terpasang sebelumnya!")
-                return {"success": True, "idx": idx, "email": email, "status": "already_exists", "message": "PayPal sudah terpasang sebelumnya"}
+            # 4. Periksa apakah PayPal dengan email target sudah terpasang
+            is_already_added = await page.evaluate(''' (targetEmail) => {
+                const text = document.body.innerText;
+                if (text.includes('No Payment Methods Yet')) return false;
+                return text.includes(targetEmail);
+            } ''', paypal_email)
+            if is_already_added:
+                logger.info(f"✅ [Akun #{idx} | {email}] PayPal ({paypal_email}) sudah terpasang sebelumnya!")
+                return {"success": True, "idx": idx, "email": email, "status": "already_exists", "message": f"PayPal ({paypal_email}) sudah terpasang sebelumnya"}
 
             # 5. Kirim AJAX POST untuk menambah PayPal
             logger.info(f"➕ [Akun #{idx} | {email}] Menambahkan PayPal: email={paypal_email}, label={label}...")
@@ -1628,8 +1632,11 @@ class AugestelBrowserPool:
 
             # 6. Reload dan verifikasi
             await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
-            await asyncio.sleep(1)
-            verified = await page.evaluate("() => document.body.innerText.includes('PayPal')")
+            await asyncio.sleep(1.5)
+            verified = await page.evaluate(''' (targetEmail) => {
+                const text = document.body.innerText;
+                return !text.includes('No Payment Methods Yet') && (text.includes(targetEmail) || text.includes('PayPal'));
+            } ''', paypal_email)
 
             if verified:
                 logger.info(f"🎉 [Akun #{idx} | {email}] PayPal BERHASIL ditambahkan & terverifikasi (Label: {label})!")
