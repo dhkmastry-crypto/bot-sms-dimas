@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.04,
-  "total_revenue_idr": 81900,
-  "total_sms": 315,
+  "total_revenue_usd": 5.056,
+  "total_revenue_idr": 82160,
+  "total_sms": 316,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.464,
-  "today_sms": 29,
+  "today_revenue_usd": 0.48,
+  "today_sms": 30,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -829,9 +829,9 @@
     },
     "22": {
       "email": "tele_4679c9da@monemail.fr.nf",
-      "sms": 8,
-      "usd": 0.128,
-      "idr": 2080,
+      "sms": 9,
+      "usd": 0.144,
+      "idr": 2340,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1485,6 +1485,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 15:32:18",
+      "account": "Akun #22",
+      "phone": "265881730440",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 15:31:16",
       "account": "Akun #21",
       "phone": "265881101290",
@@ -1712,14 +1720,6 @@
       "time": "2026-10-19 07:05:09",
       "account": "Akun #12",
       "phone": "243893492804",
-      "platform": "WhatsApp",
-      "flag": "🇨🇩",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 06:33:11",
-      "account": "Akun #15",
-      "phone": "243893760103",
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
