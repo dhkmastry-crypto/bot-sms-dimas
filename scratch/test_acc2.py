@@ -1,119 +1,139 @@
 import asyncio
-import json
 import os
 import sys
-
-sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+import json
+import random
+import string
 from playwright.async_api import async_playwright
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT_WEBHOOK_URL = "https://dimsong.online/api/augestel/webhook"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+from augestel_browser_pool import cleanup_profile_locks_and_orphans
 
-def cleanup_profile_locks(user_data_dir: str):
-    for lk in ["lockfile", "SingletonLock", "SingletonSocket", "SingletonCookie"]:
-        lk_path = os.path.join(user_data_dir, lk)
-        if os.path.exists(lk_path):
-            try:
-                os.remove(lk_path)
-            except Exception:
-                pass
-
-async def test_acc(idx):
-    with open(os.path.join(BASE_DIR, "augestel_accounts.json"), "r", encoding="utf-8") as f:
+async def test_acc2():
+    with open("augestel_accounts.json", "r", encoding="utf-8") as f:
         accounts = json.load(f)
-    acc = accounts[idx - 1]
-    profile_dir = os.path.join(BASE_DIR, f"browser_profile_augestel_{idx}")
-    cleanup_profile_locks(profile_dir)
-    print(f"Testing account #{idx}: {acc['email']}")
+    acc = accounts[1] # Account #2
+    email = acc["email"]
+    password = acc["password"]
+
+    user_data_dir = os.path.abspath("browser_profile_augestel_2")
+    cleanup_profile_locks_and_orphans(user_data_dir)
 
     async with async_playwright() as p:
         ctx = await p.chromium.launch_persistent_context(
-            user_data_dir=profile_dir,
+            user_data_dir=user_data_dir,
             channel="msedge",
-            headless=False,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--no-sandbox",
-                "--disable-gpu",
-                "--window-position=-2000,-2000"
-            ]
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage"]
         )
         page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-        await page.goto("https://augestel.com/Switchfy/api/webhooks", wait_until="domcontentloaded", timeout=30000)
-        await asyncio.sleep(2)
+
+        # Step 1: Ensure login
+        print(f"Ensuring login for Account #2 ({email})...")
+        await page.goto("https://augestel.com/Switchfy", wait_until="networkidle", timeout=30000)
+
+        login_input = await page.query_selector("#loginEmail, input[name='email']")
+        if login_input:
+            print("Form login detected, submitting credentials...")
+            await page.fill("#loginEmail, input[name='email']", email)
+            await page.fill("#loginPassword, input[name='password']", password)
+            btn = await page.query_selector("#loginSubmit, button[type='submit']")
+            if btn:
+                await btn.click()
+            else:
+                await page.keyboard.press("Enter")
+            await page.wait_for_load_state("networkidle")
+            print("After login URL:", page.url)
+
+        # Step 2: Go to payment-methods
+        print("Navigating to https://augestel.com/Switchfy/client/payment-methods ...")
+        await page.goto("https://augestel.com/Switchfy/client/payment-methods", wait_until="networkidle", timeout=30000)
         print("Page URL:", page.url)
 
-        # Check state
-        cur_state = await page.evaluate('''() => {
-            const input = document.querySelector("#webhookUrl");
-            const cb = document.querySelector('input[name="is_active"][type="checkbox"]');
-            const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-            const na = document.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
-            const nr = document.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
+        # Check existing payment methods
+        existing = await page.evaluate('''() => {
+            const cards = Array.from(document.querySelectorAll('.rounded-2xl, .rounded-xl')).filter(el => {
+                const txt = el.innerText || '';
+                return txt.includes('PayPal') || txt.includes('Tether') || txt.includes('Cash');
+            }).map(el => el.innerText.trim());
+
+            const body = document.body.innerText;
             return {
-                url: input ? input.value : "",
-                is_active: cb ? cb.checked : false,
-                msg: msg ? msg.checked : false,
-                assigned: na ? na.checked : false,
-                removed: nr ? nr.checked : false,
+                hasPayPal: body.includes('PayPal'),
+                hasUSDT: body.includes('Tether (USDT)'),
+                bodySnippet: body.slice(0, 800)
             };
         }''')
-        print("Current State:", cur_state)
+        print("Existing check on Account #2:", existing)
 
-        target_url = cur_state.get("url") or DEFAULT_WEBHOOK_URL
-        sub_res = await page.evaluate(f'''() => {{
-            const input = document.querySelector("#webhookUrl");
-            if (!input) return {{ error: "No input" }};
-            const form = input.closest('form');
-            const delInput = form.querySelector('input[name="_method"]');
-            if (delInput) delInput.remove();
+        # Step 3: If no PayPal, try adding PayPal!
+        if not existing["hasPayPal"]:
+            print("Account #2 does NOT have PayPal. Adding now...")
+            # Generate random label
+            rnd_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=5))
+            label = f"PP_{rnd_suffix}"
+            print(f"Using label: {label}, paypal email: dimsongkang@gmail.com")
+
+            # Open modal
+            await page.evaluate("openAddModal()")
+            await asyncio.sleep(1)
+
+            # Click PayPal
+            await page.click('[data-method-id="12"]')
+            await asyncio.sleep(1)
+
+            # Fill form
+            await page.fill('input[name="label"]', label)
+            await page.fill('input[name="payment_details[paypal_email]"]', 'dimsongkang@gmail.com')
             
-            input.value = "{target_url}";
-            input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+            # Submit via button click or function
+            print("Submitting form...")
+            result = await page.evaluate('''async () => {
+                return new Promise((resolve) => {
+                    const form = $('#addPaymentForm');
+                    const formData = {};
+                    form.serializeArray().forEach(item => {
+                        if (item.name.includes('[')) {
+                            const matches = item.name.match(/(.+)\[(.+)\]/);
+                            if (matches) {
+                                if (!formData[matches[1]]) formData[matches[1]] = {};
+                                formData[matches[1]][matches[2]] = item.value;
+                            }
+                        } else {
+                            formData[item.name] = item.value;
+                        }
+                    });
 
-            const cb = form.querySelector('input[type="checkbox"][name="is_active"]');
-            if (cb) {{ cb.checked = true; cb.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
+                    $.ajax({
+                        url: __cfg_clients_profile_payment_methods.k3,
+                        method: 'POST',
+                        data: {
+                            _token: __cfg_clients_profile_payment_methods.k4,
+                            ...formData
+                        },
+                        success: function(resp) {
+                            resolve({ success: true, response: resp });
+                        },
+                        error: function(xhr) {
+                            resolve({ 
+                                success: false, 
+                                status: xhr.status, 
+                                responseJSON: xhr.responseJSON,
+                                responseText: xhr.responseText ? xhr.responseText.slice(0, 500) : ''
+                            });
+                        }
+                    });
+                });
+            }''')
+            print("AJAX Result:", json.dumps(result, indent=2))
+            await asyncio.sleep(2)
+            await page.screenshot(path="scratch/acc2_after_add.png")
+            print("Saved scratch/acc2_after_add.png")
+        else:
+            print("Account #2 ALREADY has PayPal!")
 
-            const msg = form.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-            if (msg) {{ msg.checked = true; msg.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
-
-            const na = form.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
-            if (na) {{ na.checked = false; na.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
-
-            const nr = form.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
-            if (nr) {{ nr.checked = false; nr.dispatchEvent(new Event('change', {{ bubbles: true }})); }}
-
-            const updateBtn = form.querySelector('button[style*="primary-color"]') || 
-                              Array.from(form.querySelectorAll('button')).find(b => b.innerText.includes('endpoint') && !b.innerText.includes('Remove'));
-            if (updateBtn) {{
-                updateBtn.click();
-                return {{ success: true, text: updateBtn.innerText.trim() }};
-            }} else {{
-                form.submit();
-                return {{ success: true, method: "form_submit" }};
-            }}
-        }}''')
-        print("Submit result:", sub_res)
-        await asyncio.sleep(4)
-        
-        final_state = await page.evaluate('''() => {
-            const na = document.querySelector('input[type="checkbox"][name="events[]"][value="number.assigned"]');
-            const nr = document.querySelector('input[type="checkbox"][name="events[]"][value="number.removed"]');
-            const msg = document.querySelector('input[type="checkbox"][name="events[]"][value="message.received"]');
-            const input = document.querySelector("#webhookUrl");
-            const cb = document.querySelector('input[name="is_active"][type="checkbox"]');
-            const text = document.body.innerText || "";
-            return {
-                url: input ? input.value : "",
-                is_active: cb ? cb.checked : false,
-                msg: msg ? msg.checked : false,
-                assigned: na ? na.checked : false,
-                removed: nr ? nr.checked : false,
-                is_delivering: text.includes("Delivering") && !text.includes("switched off automatically")
-            };
-        }''')
-        print("Final State:", final_state)
         await ctx.close()
 
 if __name__ == "__main__":
-    asyncio.run(test_acc(2))
+    asyncio.run(test_acc2())
