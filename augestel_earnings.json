@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 4.736,
-  "total_revenue_idr": 76960,
-  "total_sms": 296,
+  "total_revenue_usd": 4.752,
+  "total_revenue_idr": 77220,
+  "total_sms": 297,
   "today_date": "2026-10-19",
-  "today_revenue_usd": 0.16,
-  "today_sms": 10,
+  "today_revenue_usd": 0.176,
+  "today_sms": 11,
   "yesterday_revenue_usd": 2.064,
   "yesterday_sms": 129,
   "by_account": {
@@ -478,9 +478,9 @@
     },
     "13": {
       "email": "songkanjut@gmail.com",
-      "sms": 4,
-      "usd": 0.064,
-      "idr": 1040,
+      "sms": 5,
+      "usd": 0.08,
+      "idr": 1300,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1473,6 +1473,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-19 11:10:11",
+      "account": "Akun #13",
+      "phone": "243893561020",
+      "platform": "WhatsApp",
+      "flag": "🇨🇩",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-19 10:31:11",
       "account": "Akun #20",
       "phone": "265881337744",
@@ -1703,17 +1711,10 @@
       "platform": "WhatsApp",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 01:20:12",
-      "account": "Akun #20",
-      "phone": "265881818528",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-19 11:03:01",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
