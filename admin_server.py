@@ -1267,7 +1267,8 @@ def augestel_webhook():
         except Exception as e:
             logger.error(f"❌ Error processing Augestel webhook in background: {e}", exc_info=True)
 
-    _webhook_executor.submit(dispatch_webhook_event, event_type, data, payload)
+    req_acc = request.args.get("acc")
+    _webhook_executor.submit(dispatch_webhook_event, event_type, data, payload, req_acc)
 
     augestel_webhook_history.insert(0, {
         "event": event_type,
