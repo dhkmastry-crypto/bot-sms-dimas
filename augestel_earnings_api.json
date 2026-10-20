@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 5.984,
-  "total_revenue_idr": 97240,
-  "total_sms": 374,
+  "total_revenue_usd": 6.0,
+  "total_revenue_idr": 97500,
+  "total_sms": 375,
   "today_date": "2026-10-20",
-  "today_revenue_usd": 0.064,
-  "today_sms": 4,
+  "today_revenue_usd": 0.08,
+  "today_sms": 5,
   "yesterday_revenue_usd": 1.344,
   "yesterday_sms": 84,
   "by_account": {
@@ -1168,9 +1168,9 @@
     },
     "33": {
       "email": "tele_69a65f83@courriel.fr.nf",
-      "sms": 16,
-      "usd": 0.256,
-      "idr": 4160,
+      "sms": 17,
+      "usd": 0.272,
+      "idr": 4420,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1510,6 +1510,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-20 09:54:11",
+      "account": "Akun #33",
+      "phone": "94713230744",
+      "platform": "WhatsApp",
+      "flag": "🇱🇰",
+      "rate_usd": 0.016
+    },
+    {
       "time": "2026-10-20 09:46:09",
       "account": "Akun #33",
       "phone": "94713086502",
@@ -1739,14 +1747,6 @@
       "phone": "94713764416",
       "platform": "WhatsApp",
       "flag": "🇱🇰",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 20:58:11",
-      "account": "Akun #20",
-      "phone": "265881363600",
-      "platform": "WhatsApp",
-      "flag": "🇲🇼",
       "rate_usd": 0.016
     }
   ],
