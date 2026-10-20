@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 6.372,
-  "total_revenue_idr": 103545,
-  "total_sms": 396,
+  "total_revenue_usd": 6.39,
+  "total_revenue_idr": 103837,
+  "total_sms": 397,
   "today_date": "2026-10-21",
-  "today_revenue_usd": 0.452,
-  "today_sms": 26,
+  "today_revenue_usd": 0.47,
+  "today_sms": 27,
   "yesterday_revenue_usd": 1.344,
   "yesterday_sms": 84,
   "by_account": {
@@ -790,9 +790,9 @@
     },
     "21": {
       "email": "sms_ce11e137@yopmail.com",
-      "sms": 11,
-      "usd": 0.176,
-      "idr": 2860,
+      "sms": 12,
+      "usd": 0.194,
+      "idr": 3152,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1564,6 +1564,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-21 03:22:13",
+      "account": "Akun #21",
+      "phone": "265881521063",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.018
+    },
+    {
       "time": "2026-10-21 02:15:14",
       "account": "Akun #1",
       "phone": "265883869221",
@@ -1794,17 +1802,10 @@
       "platform": "WeChat",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-20 00:31:27",
-      "account": "Akun #10",
-      "phone": "243893564235",
-      "platform": "SMS",
-      "flag": "🇨🇩",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-21 03:05:09",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
