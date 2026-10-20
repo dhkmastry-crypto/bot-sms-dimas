@@ -1,10 +1,10 @@
 {
-  "total_revenue_usd": 6.57,
-  "total_revenue_idr": 106762,
-  "total_sms": 407,
+  "total_revenue_usd": 6.588,
+  "total_revenue_idr": 107055,
+  "total_sms": 408,
   "today_date": "2026-10-21",
-  "today_revenue_usd": 0.65,
-  "today_sms": 37,
+  "today_revenue_usd": 0.668,
+  "today_sms": 38,
   "yesterday_revenue_usd": 1.344,
   "yesterday_sms": 84,
   "by_account": {
@@ -127,9 +127,9 @@
     },
     "4": {
       "email": "dhkmastry@gmail.com",
-      "sms": 16,
-      "usd": 0.26,
-      "idr": 4225,
+      "sms": 17,
+      "usd": 0.278,
+      "idr": 4517,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1576,6 +1576,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-21 05:56:17",
+      "account": "Akun #4",
+      "phone": "265885461233",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.018
+    },
+    {
       "time": "2026-10-21 05:34:17",
       "account": "Akun #24",
       "phone": "265881533006",
@@ -1806,17 +1814,10 @@
       "platform": "WhatsApp",
       "flag": "🇲🇼",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-20 09:54:11",
-      "account": "Akun #33",
-      "phone": "94713230744",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-21 05:43:43",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
