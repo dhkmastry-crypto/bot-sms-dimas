@@ -1000,12 +1000,23 @@ def refresh_phone_account_map(force=False):
 # Pre-cache saat server start
 threading.Thread(target=refresh_phone_account_map, args=(True,), daemon=True).start()
 
+def _auto_refresh_phone_account_map():
+    while True:
+        try:
+            time.sleep(300)  # Setiap 5 menit refresh cache nomor di RAM
+            refresh_phone_account_map(force=True)
+        except Exception:
+            pass
+
+threading.Thread(target=_auto_refresh_phone_account_map, daemon=True).start()
+
 def find_account_by_phone(phone_number: str) -> tuple:
-    """Lookup akun pemilik nomor telepon dari RAM dalam 0.0001ms."""
+    """Lookup akun pemilik nomor telepon dari RAM dalam 0.0001ms dengan on-demand auto-reload jika ada nomor baru."""
     clean_p = re.sub(r'[\s\+\-]', '', str(phone_number))
     if not clean_p:
-        return 1, "Akun #1"
+        return 0, "Akun Tidak Dikenal"
 
+    # 1. Cek langsung di RAM map
     found = _phone_account_map.get(clean_p)
     if found:
         return found
@@ -1015,7 +1026,43 @@ def find_account_by_phone(phone_number: str) -> tuple:
             _phone_account_map[clean_p] = v
             return v
 
-    return 1, "Akun #1"
+    # 2. Jika belum ada di RAM (misal nomor baru saja digenerate oleh auto-add),
+    # coba reload cache dari disk secara on-demand jika sudah lewat 10 detik
+    if time.time() - _phone_map_last_refresh > 10:
+        try:
+            refresh_phone_account_map(force=True)
+            found = _phone_account_map.get(clean_p)
+            if found:
+                return found
+            for k, v in _phone_account_map.items():
+                if len(k) >= 8 and (clean_p.endswith(k) or k.endswith(clean_p)):
+                    _phone_account_map[clean_p] = v
+                    return v
+        except Exception as e:
+            logger.warning(f"Error on-demand phone map refresh: {e}")
+
+    # 3. Fallback pencarian langsung ke file cache jika nomor masih belum masuk map
+    try:
+        import glob
+        for c_path in glob.glob(os.path.join(BASE_DIR, "augestel_numbers_cache_*.json")):
+            m = re.search(r'augestel_numbers_cache_(\d+)\.json', c_path)
+            if not m:
+                continue
+            idx = int(m.group(1))
+            with open(c_path, "r", encoding="utf-8") as cf:
+                c_data = json.load(cf)
+                for n in c_data.get("numbers", []):
+                    raw_num = n.get("number") or n.get("phone") or "" if isinstance(n, dict) else str(n)
+                    cp = re.sub(r'[\s\+\-]', '', str(raw_num))
+                    if cp and (cp == clean_p or (len(cp) >= 8 and (clean_p.endswith(cp) or cp.endswith(clean_p)))):
+                        res = (idx, f"Akun #{idx}")
+                        _phone_account_map[clean_p] = res
+                        return res
+    except Exception:
+        pass
+
+    logger.warning(f"⚠️ [Augestel Webhook] Nomor {phone_number} tidak ditemukan di database nomor akun manapun.")
+    return 0, "Akun Tidak Dikenal"
 
 def record_earnings_sms(account_idx=1, account_email="", rate_val=0.015, country_cc="ZW", country_flag="🇿🇼", platform="WhatsApp", phone=""):
     """Catat pertambahan cuan SMS real-time melalui service analitik API."""
@@ -1084,7 +1131,7 @@ def augestel_webhook():
     augestel_webhook_status["last_event"] = event_type
 
     # Fast dispatch: Jalankan di thread pool terdedikasi tanpa latency thread creation
-    def dispatch_webhook_event(ev_type, ev_data, full_payload):
+    def dispatch_webhook_event(ev_type, ev_data, full_payload, acc_param=None):
         t_start = time.time()
         try:
             if ev_type == "message.received":
@@ -1108,7 +1155,11 @@ def augestel_webhook():
                     return
 
                 # 2. Cari akun pemilik nomor secara instan dari RAM (0.001 ms)
-                matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
+                if acc_param and str(acc_param).isdigit():
+                    matched_acc_idx = int(acc_param)
+                    matched_acc_email = f"Akun #{matched_acc_idx}"
+                else:
+                    matched_acc_idx, matched_acc_email = find_account_by_phone(phone)
 
                 try:
                     rev_str = f"${float(rate_val):.4f}" if float(rate_val) > 0 else "$0.0120"
