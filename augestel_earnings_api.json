@@ -1,18 +1,18 @@
 {
-  "total_revenue_usd": 6.336,
-  "total_revenue_idr": 102960,
-  "total_sms": 394,
+  "total_revenue_usd": 6.354,
+  "total_revenue_idr": 103252,
+  "total_sms": 395,
   "today_date": "2026-10-21",
-  "today_revenue_usd": 0.416,
-  "today_sms": 24,
+  "today_revenue_usd": 0.434,
+  "today_sms": 25,
   "yesterday_revenue_usd": 1.344,
   "yesterday_sms": 84,
   "by_account": {
     "1": {
       "email": "saputradimas0878@gmail.com",
-      "sms": 21,
-      "usd": 0.336,
-      "idr": 5460,
+      "sms": 22,
+      "usd": 0.354,
+      "idr": 5752,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1552,6 +1552,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-21 02:15:14",
+      "account": "Akun #1",
+      "phone": "265883869221",
+      "platform": "SMS",
+      "flag": "🇲🇼",
+      "rate_usd": 0.018
+    },
+    {
       "time": "2026-10-21 02:01:14",
       "account": "Akun #1",
       "phone": "265886536916",
@@ -1782,17 +1790,10 @@
       "platform": "SMS",
       "flag": "🇨🇩",
       "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 22:55:11",
-      "account": "Akun #4",
-      "phone": "213551932173",
-      "platform": "Google",
-      "flag": "🇩🇿",
-      "rate_usd": 0.016
     }
   ],
   "last_api_sync": "2026-10-21 02:05:14",
   "sync_source": "Augestel Official REST API (v1/iprn/statistics)",
-  "total_accounts_synced": 35
+  "total_accounts_synced": 35,
+  "last_event_time": null
 }
