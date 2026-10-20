@@ -1,18 +1,18 @@
 {
-  "total_revenue_usd": 6.264,
-  "total_revenue_idr": 101790,
-  "total_sms": 390,
+  "total_revenue_usd": 6.282,
+  "total_revenue_idr": 102082,
+  "total_sms": 391,
   "today_date": "2026-10-21",
-  "today_revenue_usd": 0.344,
-  "today_sms": 20,
+  "today_revenue_usd": 0.362,
+  "today_sms": 21,
   "yesterday_revenue_usd": 1.344,
   "yesterday_sms": 84,
   "by_account": {
     "1": {
       "email": "saputradimas0878@gmail.com",
-      "sms": 22,
-      "usd": 0.354,
-      "idr": 5752,
+      "sms": 23,
+      "usd": 0.372,
+      "idr": 6045,
       "api_connected": true,
       "top_numbers": [
         {
@@ -1546,6 +1546,14 @@
   },
   "recent_transactions": [
     {
+      "time": "2026-10-21 01:13:14",
+      "account": "Akun #1",
+      "phone": "265881051325",
+      "platform": "WhatsApp",
+      "flag": "🇲🇼",
+      "rate_usd": 0.018
+    },
+    {
       "time": "2026-10-21 01:06:13",
       "account": "Akun #1",
       "phone": "265884998079",
@@ -1775,14 +1783,6 @@
       "phone": "265881311285",
       "platform": "WhatsApp",
       "flag": "🇲🇼",
-      "rate_usd": 0.016
-    },
-    {
-      "time": "2026-10-19 22:06:11",
-      "account": "Akun #35",
-      "phone": "94713106046",
-      "platform": "WhatsApp",
-      "flag": "🇱🇰",
       "rate_usd": 0.016
     }
   ],
